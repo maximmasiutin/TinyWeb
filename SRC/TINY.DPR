@@ -1,14 +1,14 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  TinyWeb Copyright (C) 1997 RIT Research Labs
+//  TinyWeb Copyright (C) 2000 RITLABS S.R.L.
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
 //
-//  Copyright remains RIT Research Labs, and as such any Copyright notices
+//  Copyright remains RITLABS S.R.L., and as such any Copyright notices
 //  in the code are not to be removed. If this package is used in a
-//  product, RIT Research Labs should be given attribution as the RIT Research
-//  Labs of the parts of the library used. This can be in the form of a textual
+//  product, RITLABS S.R.L. should be given attribution as the owner
+//  of the parts of the library used. This can be in the form of a textual
 //  message at program startup or in documentation (online or textual)
 //  provided with the package.
 //
@@ -23,9 +23,9 @@
 //     documentation and/or other materials provided with the distribution.
 //  3. All advertising materials mentioning features or use of this software
 //     must display the following acknowledgement:
-//     "Based on TinyWeb Server by RIT Research Labs."
+//     "Based on TinyWeb Server by RITLABS S.R.L.."
 //
-//  THIS SOFTWARE IS PROVIDED BY RIT RESEARCH LABS "AS IS" AND ANY EXPRESS
+//  THIS SOFTWARE IS PROVIDED BY RITLABS S.R.L. "AS IS" AND ANY EXPRESS
 //  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 //  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 //  DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
@@ -51,9 +51,10 @@ program Tiny;
 
 uses
   SrvMain in 'SrvMain.pas',
-  {$IFDEF DEF_SSL}
-  xSSL in 'xSSL.pas',
-  {$ENDIF}
+  WinSock in '$(delphi)\source\rtl\win\winsock.pas',
+{$IFDEF ODBC}
+  OdbcAuth in 'OdbcAuth.pas',
+{$ENDIF}
   xBase in 'xBase.pas';
 
 begin

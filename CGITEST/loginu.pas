@@ -139,11 +139,20 @@ procedure ComeOn;
 var
   I, J: Integer;
   S: string;
+
+// It was unable to retrieve the posted information
+// because the seek to the end of the standard input file always returns zero
+// on Windows 95/98 system. Thanks to David Gommeren for fixing that.
+
+
+  Variable:string;
+  Buffer:array [0..4095] of char;
 begin
   StdIn  := GetStdHandle(STD_INPUT_HANDLE);
   StdOut := GetStdHandle(STD_OUTPUT_HANDLE);
   S := '';
-  I := FileSeek(StdIn, 0, FILE_END);
+  SetString(Variable, Buffer, GetEnvironmentVariable(PChar('CONTENT_LENGTH'), Buffer, SizeOf(Buffer)));
+  I := StrToInt(Variable);
   if I <= 0 then ShowError('Internal script error reading StdIn');
   FileSeek(StdIn, 0, FILE_BEGIN);
   SetString(S, nil, I);

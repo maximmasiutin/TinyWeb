@@ -21,9 +21,19 @@ void main(void)
 
   StdIn = GetStdHandle(STD_INPUT_HANDLE);
 
-  Size = SetFilePointer(StdIn, 0, NULL, FILE_END);
+///////////////////
 
+  Size = SetFilePointer(StdIn, 0, NULL, FILE_END);
   SetFilePointer(StdIn, 0, NULL, FILE_BEGIN);
+
+///////////////////
+//
+// Note that getting size of data available in StdIn via SetFilePointer()
+// works under WinNT only. Under Win9x, you should get the size from
+// CONTENT_LENGTH environment variable.
+//
+///////////////////
+
 
   String = malloc(Size+1);
   if (Size <= 0) return;
