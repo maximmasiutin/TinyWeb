@@ -44,6 +44,9 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+{$I DEFINE.INC}
+
+
 unit xBase;
 
 interface uses Windows, WinSock;
@@ -67,37 +70,30 @@ type
 
     TSocketOptions = Set of TSocketOption;
 
+    TSocketClass = class of TSocket;
+
     TSocket = class
     public
+      Dead: Integer;
       FPort: Integer;
       FAddr: Integer;
       Handle: Integer;
       Status: Integer;
+      Registered: Boolean;
+      procedure RegisterSelf;
+      procedure DeregisterSelf;
 
-      constructor Create;
-      constructor InitHandle(AHandle: Integer);
+      function Startup: Boolean; virtual;
+      function Handshake: Boolean; virtual;
       destructor Destroy; override;
-
-      function Bind(Port: Integer; Address: Integer): Boolean;
-      function Accept: TSocket;
-      function Connect(const Addr: String; APort: Integer): Boolean;
-      function Listen(Max: Integer): Boolean;
-
-      procedure Shutdown(ForRead, ForWrite: Boolean);
 
       function Read(var B; Size: Integer): Integer;
       function Write(const B; Size: Integer): Integer;
       function WriteStr(const s: string): Integer;
 
-      function _Write(var B; Size, Flags: Integer): Integer;
-      function _Read(var B; Size, Flags: Integer): Integer;
+      function _Write(const B; Size: Integer): Integer; virtual;
+      function _Read(var B; Size: Integer): Integer; virtual;
 
-      procedure SetOptions(O: TSocketOptions; OnOff: Boolean);
-      procedure SetLinger(OnOff: Boolean; Timeout: Integer);
-      procedure SetInSize(NewSize: Integer);
-      procedure SetOutSize(NewSize: Integer);
-      function  InSize: Integer;
-      function  OutSize: Integer;
     end;
 
   TObjProc = procedure of object;
@@ -444,10 +440,13 @@ procedure GlobalFail;
 function  _LogOK(const Name: string; var Handle: Integer): Boolean;
 procedure xBaseDone;
 procedure xBaseInit;
-
+procedure uCvtSetFileTime(T: Integer; var L, H: Integer); assembler;
+function uGetSystemTime: Integer;
+function Vl(const s: string): Integer;
 
 var
   TimeZoneBias: Integer;
+  SocketsColl: TColl;
 
 implementation
 
@@ -941,15 +940,6 @@ asm
   xchg [eax], ecx
   mov  [edx], ecx
 end;
-
-{
-procedure XAdd(var Critical, Normal: Integer); assembler;
-asm
-  mov  ecx, [edx]
-  xadd [eax], ecx   !!! i486+
-  mov  [edx], ecx
-end;
-}
 
 function NulSearch; assembler;
 asm;
@@ -1851,96 +1841,6 @@ begin
   end;
 end;
 
-(*
-function MatchMask(const AName, AMask: string): Boolean;
-begin
-  Result := _MatchMask(AName, AMask, False);
-end;
-
-function _MatchMask(AName, AMask: string; SupportPercent: Boolean): Boolean;
-var
-  s: string;
-  i, j: Integer;
-  Scan: Boolean;
-label
-  ok;
-begin
-  Replace('?*', '*', AMask);
-  Replace('*?', '*', AMask);
-  Replace('**', '*', AMask);
-  AName := UpperCase(AName);
-  AMask := UpperCase(AMask);
-  Result := False;
-  Scan := False;
-  while True do
-  begin
-    i := Pos('*', AMask);
-    if i = 0 then
-    begin
-      if AMask = '' then begin Result := True; Exit end;
-      j := PosMask(AMask, AName, SupportPercent); if j=0 then Exit;
-      if (j+Length(AMask)) <= Length(AName) then Exit;
-      Result := True;
-      Exit;
-    end else
-    begin
-      if i > 1 then
-      begin
-        s := Copy(AMask, 1, i-1);
-        if Scan then j := PosMask(s, AName, SupportPercent) else if CompareMask(AName, s, SupportPercent) then j := i-1 else j := 0;
-        if j = 0 then Exit else Delete(AName, 1, j);
-      end;
-      Delete(AMask, 1, i);
-    end;
-    Scan := True;
-  end;
-end;
-
-
-
-procedure AddVIntArr(var A: TvIntArr; i: Integer);
-begin
-  Inc(A.Cnt);
-  ReallocMem(A.Arr, A.Cnt*SizeOf(Integer));
-  A.Arr^[A.Cnt-1] := i;
-end;
-
-procedure FreeVIntArr(var A: TvIntArr);
-begin
-  ReallocMem(A.Arr, 0);
-end;
-
-*)
-
-{
-function TaskBarAddIcon(hwnd: HWND; uID: UINT; hicon: HICON; const lpszTip: string): Boolean;
-var
-  tnid: TNOTIFYICONDATA;
-begin
-  fillchar(tnid, sizeof(tnid), 0);
-  tnid.cbSize := sizeof(tnid);
-  tnid.Wnd := hwnd;
-  tnid.uID := uID;
-  tnid.uFlags := NIF_MESSAGE or NIF_ICON or NIF_TIP;
-  tnid.uCallbackMessage := WM__NOTIFYICON;
-  tnid.hIcon := hicon;
-  Move(lpszTip[1], tnid.szTip, Length(lpszTip));
-  Result := Shell_NotifyIcon(NIM_ADD, @tnid);
-end;
-
-function TaskBarDeleteIcon(hwnd: HWND; uID: UINT): Boolean;
-var
-  tnid: TNOTIFYICONDATA;
-begin
-  fillchar(tnid, sizeof(tnid), 0);
-  tnid.cbSize := sizeof(tnid);
-  tnid.Wnd := hwnd;
-  tnid.uID := uID;
-  Result := Shell_NotifyIcon(NIM_DELETE, @tnid);
-end;
-}
-
-
 function CreateTCollEL: TColl;
 begin
   Result := TColl.Create;
@@ -2343,258 +2243,73 @@ asm
 end;
 
 
-const
-    SockOptionNames: Array [TSocketOption] of Integer =
-                     (SO_BROADCAST,  SO_DEBUG, SO_DONTLINGER, SO_DONTROUTE,
-                      SO_KEEPALIVE, SO_OOBINLINE, SO_REUSEADDR, TCP_NODELAY,
-                      0, SO_ACCEPTCONN);
-
-    Sock_NotReady: Boolean = True;
-
-
-constructor TSocket.Create;
-  var WData: TWSAData;
+procedure TSocket.RegisterSelf;
 begin
-  inherited Create;
-  if Sock_NotReady then WSAStartup(MakeWord(1,1), WData);
-  Sock_NotReady := False;
-  Handle := Socket(AF_INET, Sock_Stream, 0);
-  Status := WSAGetLastError;
-//  if Status = 0 then UpdateOptions;
+  SocketsColl.Enter;
+  SocketsColl.Insert(Self);
+  Registered := True;
+  SocketsColl.Leave;
 end;
 
-constructor TSocket.InitHandle;
+procedure TSocket.DeregisterSelf;
 begin
-  Handle := AHandle;
-//  UpdateOptions;
-  Status := WSAGetLastError;
+  SocketsColl.Enter;
+  if Registered then SocketsColl.Delete(Self);
+  Registered := False;
+  SocketsColl.Leave;
 end;
+
+
+function TSocket.Startup: Boolean;
+begin
+  Result := True;
+end;
+
+function TSocket.Handshake: Boolean;
+begin
+  Result := True;
+end;
+
 
 destructor TSocket.Destroy;
 begin
-  //if ReadThd <> nil then DosKillThread(ReadThd);
-//  Shutdown(True, True);
+  DeregisterSelf;
   CloseSocket(Handle);
-end;
-
-function TSocket.Bind(Port: Integer; Address: Integer): Boolean;
-  var H: TSockAddr;
-begin
-  H.sin_family := AF_INET;
-  H.sin_port := htons(Port);
-  H.sin_addr.s_addr := Address;
-  Result := WinSock.Bind(Handle, H, SizeOf(H)) = 0;
-  if not Result then Status := WSAGetLastError;
-end;
-
-function TSocket.Accept;
-  var H: Integer;
-      addr: TSockAddr;
-      addrlen: Integer;
-begin
-  addrlen := SizeOf(addr);
-  H := WinSock.Accept(Handle, @addr, @addrlen);
-  if H = Invalid_Socket then Accept := nil else
-  begin
-    Result := TSocket.InitHandle(H);
-    Result.FAddr := addr.sin_addr.s_addr;
-    Result.FPort := addr.sin_port;
-  end;
-  Status := WSAGetLastError;
-end;
-
-{$S-}
-{
-function SocketRead(A: ULong): APIRet; cdecl;
-  var H, I, J: Integer;
-      B: Array[0..200] of Char;
-      S: PSocket absolute A;
-begin
-  H := S^.Handle;
-  repeat
-    I := Recv(H, B, SizeOf(B), 0);
-    if I = 0 then begin DosSleep(1); Continue end;
-    while (S^.BufPtr + I > S^.BufSize) do DosSleep(10);
-    EnterCritSec;
-    Move(B[0], S^.InBuf[S^.BufPtr], I);
-    Inc(S^.BufPtr, I);
-    ExitCritSec;
-  until False;
-end;
-}
-function TSocket.Connect(const Addr: String; APort: Integer): Boolean;
-  var H: PHostEnt;
-      A: TSockAddrIn;
-      S: String;
-
-begin
-  Connect := False;
-  S := Addr+#0;
-  FillChar(A, SizeOf(A), 0);
-  A.sin_Addr.S_Addr := inet_addr(@S[1]);
-  if A.sin_Addr.S_Addr = INADDR_NONE then
-    begin
-      H := GetHostByName(@S[1]);
-      A.sin_Addr.S_Addr := 0;
-      if H = nil then
-        begin
-          Status := WSAEADDRNOTAVAIL;
-          Exit;
-        end;
-      Move(H^.h_addr_list^[0], A.sin_Addr.S_Addr, H^.h_length);
-    end;
-  A.sin_Port := htons(APort);
-  A.sin_family := AF_INET;
-  if WinSock.Connect(Handle, A, SizeOf(A)) <> 0 then Status := WSAGetLastError else
-  begin
-    FAddr := A.sin_addr.s_addr;
-    FPort := A.sin_port;
-    Connect := True
-  end;
-end;
-
-function TSocket.Listen(Max: Integer): Boolean;
-begin
-  Max := WinSock.Listen(Handle, Max);
-  Status := Max;
-  Listen := Max = 0;
+  inherited Destroy;
 end;
 
 function TSocket.Read(var B; Size: Integer): Integer;
 begin
-  Read := _Read(B, Size, 0);
+  Result := _Read(B, Size);
+  Dead := 0;
 end;
+
+function TSocket.Write(const B; Size: Integer): Integer;
+begin
+  Result := _Write(B, Size);
+  Dead := 0;
+end;
+
+
 
 function TSocket.WriteStr(const s: string): Integer;
 begin
   Result := Write(s[1], Length(s));
 end;
 
-function TSocket.Write(const B; Size: Integer): Integer;
-  var I: Integer;
+function TSocket._Write(const B; Size: Integer): Integer;
+var
+  I: Integer;
 begin
-  Result := 0;
-  if Size = 0 then Exit;
-  I := Send(Handle, (@B)^, Size, 0);
-  if I <> Size then Status := WSAGetLastError
-               else Status := 0;
+  I := send(Handle, (@B)^, Size, 0);
+  if I = SOCKET_ERROR then Status := WSAGetLastError;
   Result := I;
 end;
 
-function TSocket._Write(var B; Size, Flags: Integer): Integer;
+function TSocket._Read(var B; Size: Integer): Integer;
 begin
-  _Write := Send(Handle, B, Size, Flags);
-  Status := WSAGetLastError;
-end;
-
-function TSocket._Read(var B; Size, Flags: Integer): Integer;
-begin
-  Result := Recv(Handle, B, Size, Flags);
-  if (Result = 0) or
-     (Result = SOCKET_ERROR)
-
-  then Status := WSAGetLastError
-                else Status := 0;
-end;
-
-procedure TSocket.SetOptions(O: TSocketOptions; OnOff: Boolean);
-  var I: TSocketOption;
-      V: LongInt;
-begin
-  V := Integer(OnOff);
-  for I := soBroadcast to soAcceptConn do
-    if I in O then
-     begin
-       case I of
-         soNoDelay: Status := SetSockOpt(Handle, IPPROTO_TCP, SockOptionNames[I], @V, SizeOf(V));
-         soBlocking: begin
-                       V := Integer(not OnOff);
-                       Status := IoctlSocket(Handle, FIONBIO, V);
-                     end;
-             else Status := SetSockOpt(Handle, SOL_SOCKET, SockOptionNames[I], @V, SizeOf(V));
-       end;
-       if Status <> 0 then Break;
-       {if OnOff then Options := Options + [I]
-                else Options := Options - [I];}
-     end;
-end;
-
-type
-  PLinger = ^TLinger;
-  TLinger = packed record
-    l_onoff: U_Short;
-    l_linger: U_Short;
-  end;
-
-procedure TSocket.SetLinger(OnOff: Boolean; Timeout: Integer);
-  var V: TLinger;
-      I: Integer;
-begin
-  V.l_onoff := Integer(OnOff); I := Integer(OnOff);
-  V.l_linger := Timeout;
-  if OnOff then Status := SetSockOpt(Handle, SOL_SOCKET, SO_LINGER, @V, SizeOf(V))
-           else Status := SetSockOpt(Handle, SOL_SOCKET, SO_DONTLINGER, @I, SizeOf(I));
-  if Status = 0 then
-     begin
-{       Linger := OnOff;
-       LingerTimeout := Timeout;}
-     end;
-end;
-
-procedure TSocket.SetInSize(NewSize: Integer);
-begin
-  Status := SetSockOpt(Handle, SOL_SOCKET, SO_RCVBUF, @NewSize, SizeOf(NewSize))
-end;
-
-procedure TSocket.SetOutSize(NewSize: Integer);
-begin
-  Status := SetSockOpt(Handle, SOL_SOCKET, SO_SNDBUF, @NewSize, SizeOf(NewSize))
-end;
-
-function  TSocket.InSize: Integer;
-  var N: Integer;
-begin
-  Status := SetSockOpt(Handle, SOL_SOCKET, SO_RCVBUF, @N, SizeOf(N));
-  Result := N;
-end;
-
-function  TSocket.OutSize: Integer;
-  var N: Integer;
-begin
-  Status := SetSockOpt(Handle, SOL_SOCKET, SO_SNDBUF, @N, SizeOf(N));
-  Result := N;
-end;
-
-{procedure TSocket.UpdateOptions;
-  var I: TSocketOption;
-      V: Integer;
-      L: TLinger;
-      LL: Integer;
-begin
-  Options := [];
-  for I := soBroadcast to soAcceptConn do
-     begin
-       LL := SizeOf(V);
-       if I = soNoDelay then GetSockOpt(Handle, IPPROTO_TCP, SockOptionNames[I], @V, LL)
-                        else GetSockOpt(Handle, SOL_SOCKET, SockOptionNames[I], @V, LL);
-       if V <> 0 then Options := Options + [I];
-     end;
-  LL := SizeOf(L);
-  GetSockOpt(Handle, SOL_SOCKET, SO_LINGER, @L, LL);
-  Linger := L.l_onoff <> 0;
-  LingerTimeout := L.l_linger;
-end;}
-
-procedure TSocket.Shutdown;
-  var I: Integer;
-begin
-  Status := 0;
-  if ForRead then
-    if ForWrite then I := 2
-                else I := 0
-      else if ForWrite then I := 1
-                       else Exit;
-  Status := WinSock.Shutdown(Handle, I);
+  Result := recv(Handle, B, Size, 0);
+  if Result = SOCKET_ERROR then Status := WSAGetLastError;
 end;
 
 function Inet2addr(const s: string): Integer;
@@ -2854,6 +2569,9 @@ var
   i: Integer;
   f: Boolean;
   c: THostCache;
+  ok: Boolean;
+  he: PHostEnt;
+  HostName: string;
 begin
   HostCache.Enter;
   f := HostCache.Search(Pointer(Addr), i);
@@ -2861,8 +2579,17 @@ begin
   HostCache.Leave;
   if f then Exit;
   p := gethostbyaddr(@addr, 4, PF_INET);
-  if p = nil then Result := AddrInet(Addr)
-             else Result := p^.h_name;
+  ok := False;
+  if p <> nil then
+  begin // host name got - now get address of this name
+    HostName := p^.h_name;
+    he := gethostbyname(PChar(HostName));
+    if he <> nil then
+    begin // address got - now compare it with the real one
+      ok := PIntArray(he^.h_addr_list^)^[0] = Addr;
+    end;
+  end;
+  if ok then Result := HostName else Result := AddrInet(Addr);
   HostCache.Enter;
   f := HostCache.Search(Pointer(Addr), i);
   if not f then
@@ -2874,6 +2601,25 @@ begin
   end;
   HostCache.Leave;
 end;
+
+function Vl(const s: string): Integer;
+var
+  a, i, l: Integer;
+  c: Char;
+begin
+  Result := -1;
+  l := Length(s);
+  if L > 9 then Exit;
+  a := 0;
+  for i := 1 to l do
+  begin
+    C := s[i];
+    if (C < '0') or (C > '9') then Exit;
+    a := a * 10 + Ord(C) - Ord('0');
+  end;
+  Result := a;
+end;
+
 
 procedure xBaseInit;
 begin

@@ -44,6 +44,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+{$I DEFINE.INC}
 
 unit SrvMain;
 
@@ -51,14 +52,25 @@ interface
 
 procedure ComeOn;
 
-implementation uses Windows, xBase;
+implementation
+
+uses
+  {$IFDEF DEF_SSL}
+  xSSL,
+  SSLeay,
+  {$ENDIF}
+  WinSock,
+  Windows,
+  xBase;
 
 const
 
   CIndexFile  = 'index.html';
   ScriptsPath = '/cgi-bin/';
 
-  CServerName = 'TinyWeb/0.3';
+  CServerVersion = '0.6';
+  CServerProductName = {$IFDEF DEF_SSL}'TinySSL'{$ELSE}'TinyWeb'{$ENDIF};
+  CServerName = CServerProductName+'/'+CServerVersion;
 
   CHTTPServerThreadBufSize = $2000;
   MaxStatusCodeIdx = 36;
@@ -252,6 +264,8 @@ type
     LastModified,            // Section 14.29
     EntityBody: string;
     EntityLength: Integer;
+    CGIStatus,
+    CGILocation: string;
     function Filter(const z, s: string): Boolean;
     procedure CopyEntityBody(Collector: TCollector);
     function OutString: string;
@@ -272,8 +286,7 @@ type
 
     ErrorMsg,
     Method, RequestURI, HTTPVersion,
-    URIPath, URIParams, URIQuery{,
-    LocalFName} : string;
+    URIPath, URIParams, URIQuery, URIQueryParam : string;
 
     ResponceObjective: TAbstractHttpResponseData;
 
@@ -309,6 +322,26 @@ var
   HAgentLog,
   HErrorLog,
   HRefererLog: Integer;
+
+
+function FileTimeToStr(AT: Integer): string;
+const
+  wkday: array[0..6] of string = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+var
+  D: TSystemTime;
+  T: TFileTime;
+begin
+  uCvtSetFileTime(AT, T.dwLowDateTime, T.dwHighDateTime);
+  if FileTimeToSystemTime(T, D) then
+  Result :=
+  wkday[D.wDayOfWeek] + ', ' +
+  ItoSz(D.wDay, 2) + ' ' +
+  MonthE(D.wMonth) + ' ' +
+  ItoS(D.wYear) + ' ' +
+  ItoSz(D.wHour, 2) + ':' +
+  ItoSz(D.wMinute, 2) + ':' +
+  ItoSz(D.wSecond, 2);
+end;
 
 constructor THTTPServerThread.Create;
 begin
@@ -436,6 +469,8 @@ begin
   if z = 'ETAG'             then ETag            := s else // 14.20
   if z = 'EXPIRES'          then Expires         := s else // 14.21
   if z = 'LAST-MODIFIED'    then LastModified    := s else // 14.29
+  if z = 'STATUS'           then CGIStatus       := s else
+  if z = 'LOCATION'         then CGILocation     := s else
     Result := False;
 end;
 
@@ -588,7 +623,7 @@ begin
   j := GetLastError
 end;
 
-function ExecuteScript(const AExecutable, APath, AScript, AEnvStr, AStdInStr: string; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: string): TEntityHeader;
+function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr, AStdInStr: string; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: string): TEntityHeader;
 var
   SI: TStartupInfo;
   PI: TProcessInformation;
@@ -600,7 +635,7 @@ var
   PipeReadStdThread: TPipeReadStdThread;
   PipeWriteStdThread: TPipeWriteStdThread;
   PipeReadErrThread: TPipeReadErrThread;
-
+  s: string;
 begin
   Result := nil;
 
@@ -621,10 +656,12 @@ begin
   SI.hStdInput := si_r;
   SI.hStdOutput := so_w;
   SI.hStdError := se_w;
+  if AExecutable = AScript then s := AExecutable else s := AExecutable + ' ' + AScript;
+  if AQueryParam <> '' then s := s + ' ' + AQueryParam;
 
   b := CreateProcess(
     nil,                     // pointer to name of executable module
-    PChar(AExecutable + ' '+AScript),  // pointer to command line string
+    PChar(DelSpaces(s)),  // pointer to command line string
     @Security,               // pointer to process security attributes
     @Security,               // pointer to thread security attributes
     True,                    // handle inheritance flag
@@ -816,6 +853,37 @@ begin
   FHandle := AHandle
 end;
 
+function OpenRequestedFile(const AFName: string; thr: THttpServerThread; d: THttpData): TAbstractHttpResponseData;
+var
+  I, FHandle: Integer;
+  z: string;
+begin
+// Try to open Requested file
+  FHandle := _CreateFile(AFName, [cRead, cSequentialScan]);
+  if FHandle = INVALID_HANDLE_VALUE then
+  begin
+    AddErrorLog('access to '+AFName+' failed for '+thr.RemoteHost+', reason: '+SysErrorMsg(GetLastError));
+    Result := THttpResponseErrorCode.Create(404);
+    Exit;
+  end;
+  if not GetFileNfoByHandle(FHandle, d.FileNfo) then
+  begin
+    Result := THttpResponseErrorCode.Create(404);
+    Exit;
+  end;
+  z := LowerCase(CopyLeft(ExtractFileExt(AFName),2));
+  if z <> '' then
+  begin
+    if not ContentTypes.Search(@z, I) then z := '' else z := TContentType(ContentTypes.FList^[I]).ContentType;
+  end;
+  if z = '' then z := 'text/plain';
+  d.ResponseEntityHeader := TEntityHeader.Create;
+  d.ResponseEntityHeader.ContentType := z;
+  d.ResponseEntityHeader.EntityLength := d.FileNfo.Size;
+  d.ResponseEntityHeader.LastModified := FileTimeToStr(d.FileNfo.Time);
+  d.ResponseGeneralHeader.Date := FileTimeToStr(uGetSystemTime);
+  Result := THttpResponseDataFileHandle.Create(FHandle);
+end;
 
 function GetEnvStr(thr: THttpServerThread; d: THttpData): string;
 var
@@ -838,6 +906,14 @@ begin
   Add('GATEWAY_INTERFACE', 'CGI/1.1');
   Add('SCRIPT_NAME', d.URIPath);
   Add('REQUEST_METHOD', d.Method);
+  Add('HTTP_ACCEPT', d.RequestRequestHeader.Accept);                     // Section 14.1
+  Add('HTTP_ACCEPT_CHARSET', d.RequestRequestHeader.AcceptCharset);      // Section 14.2
+  Add('HTTP_ACCEPT_ENCODING', d.RequestRequestHeader.AcceptEncoding);    // Section 14.3
+  Add('HTTP_ACCEPT_LANGUAGE', d.RequestRequestHeader.AcceptLanguage);    // Section 14.4
+  Add('HTTP_FROM', d.RequestRequestHeader.From);                         // Section 14.22
+  Add('HTTP_HOST', d.RequestRequestHeader.Host);                         // Section 14.23
+  Add('HTTP_REFERER', d.RequestRequestHeader.Referer);                   // Section 14.37
+  Add('HTTP_USER_AGENT', d.RequestRequestHeader.UserAgent);              // Section 14.42
   Add('QUERY_STRING', d.URIQuery);
   Add('SERVER_SOFTWARE', CServerName);
   Add('SERVER_NAME', 'RIT Research Labs');
@@ -854,13 +930,23 @@ begin
   Result := THttpResponseErrorCode.Create(302);
 end;
 
+function IsURL(const s: string): Boolean;
+begin
+  Result := Pos('://', s) > 0;
+end;
+
 function WebServerHttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
 var
   s, z,
   LocalFName: string;
   i: Integer;
   ResponseEntityHeader: TEntityHeader;
-  FHandle: Integer;
+
+procedure Exec;
+begin
+  ResponseEntityHeader := ExecuteScript(s, z, LocalFName, d.URIQueryParam, GetEnvStr(thr, d), d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
+end;
+
 begin
   ResponseEntityHeader := nil;
   s := d.URIPath;
@@ -892,51 +978,49 @@ begin
   begin
     SetLength(s, 1000);
     z := ExtractFilePath(LocalFName);
-    if FindExecutable(PChar(ExtractFileName(LocalFName)), PChar(z), @s[1]) > 32 then
+    i := FindExecutable(PChar(ExtractFileName(LocalFName)), PChar(z), @s[1]);
+    if i > 32 then
     begin
       SetLength(s, NulSearch(s[1]));
-      ResponseEntityHeader := ExecuteScript(s, z, LocalFName, GetEnvStr(thr, d), d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
+      Exec;
     end else
     begin
-      d.ErrorMsg := SysErrorMsg(GetLastError);
-      Result := THttpResponseErrorCode.Create(500);
-      Exit;
+      if i = 31 then
+      begin
+        s := LocalFName;
+        Exec;
+      end else
+      begin
+        d.ErrorMsg := SysErrorMsg(i);
+        Result := THttpResponseErrorCode.Create(500);
+        Exit;
+      end;
     end;
     if ResponseEntityHeader = nil then
     begin
       d.ErrorMsg := 'CGI script '+d.URIPath+' returned nothing';
       Result := THttpResponseErrorCode.Create(500);
-      Exit;
     end else
     begin
-      Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
-      Exit;
+      if ResponseEntityHeader.CGILocation <> '' then
+      begin
+        if IsURL(ResponseEntityHeader.CGILocation) then
+        begin
+          Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
+        end else
+        begin
+          Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
+        end;
+      end else
+      begin
+        Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
+      end;
     end;
+    Exit;
   end;
 
-// Try to open Requested file
-  FHandle := _CreateFile(LocalFName, [cRead, cSequentialScan]);
-  if FHandle = INVALID_HANDLE_VALUE then
-  begin
-    AddErrorLog('access to '+LocalFName+' failed for '+thr.RemoteHost+', reason: '+SysErrorMsg(GetLastError));
-    Result := THttpResponseErrorCode.Create(404);
-    Exit;
-  end;
-  if not GetFileNfoByHandle(FHandle, d.FileNfo) then
-  begin
-    Result := THttpResponseErrorCode.Create(404);
-    Exit;
-  end;
-  z := LowerCase(CopyLeft(ExtractFileExt(LocalFName),2));
-  if z <> '' then
-  begin
-    if not ContentTypes.Search(@z, I) then z := '' else z := TContentType(ContentTypes.FList^[I]).ContentType;
-  end;
-  if z = '' then z := 'text/plain';
-  d.ResponseEntityHeader := TEntityHeader.Create;
-  d.ResponseEntityHeader.ContentType := z;
-  d.ResponseEntityHeader.EntityLength := d.FileNfo.Size;
-  Result := THttpResponseDataFileHandle.Create(FHandle);
+  Result := OpenRequestedFile(LocalFName, thr, d);
+
 end;
 
 function HttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
@@ -983,6 +1067,8 @@ var
 
 begin
 
+  if not Socket.Handshake then Exit;
+
   RemoteAddr := AddrInet(Socket.FAddr);
   RemoteHost := GetHostNameByAddr(Socket.FAddr);
 
@@ -997,7 +1083,7 @@ begin
     with d do repeat
 
       j := Socket.Read(Buffer, CHTTPServerThreadBufSize);
-      if (j = 0) or (Socket.Status <> 0) then Break;
+      if (j <= 0) or (Socket.Status <> 0) then Break;
 
       if not RequestCollector.Collect(Buffer, j) then Break;
       if not RequestCollector.CollectEntityBody then Continue;
@@ -1077,6 +1163,11 @@ begin
         begin
           URIQuery := CopyLeft(s, i+1);
           DeleteLeft(s, i);
+          if Pos('=', URIQuery) = 0 then
+          begin
+            URIQueryParam := URIQuery;
+            if not UnpackPchars(URIQueryParam) then Break;
+          end;
         end;
         i := Pos(';', s);
         if i > 0 then
@@ -1101,17 +1192,22 @@ begin
     begin
       if ResponseEntityHeader = nil then ResponseEntityHeader := TEntityHeader.Create;
 
-     // Get Status Line
-      s := '';
-      for i := 0 to MaxStatusCodeIdx do if StatusCode = StatusCodes[i].Code then
+      s := ResponseEntityHeader.CGIStatus;
+      if s <> '' then
       begin
-        s := StatusCodes[i].Msg;
+        ReportError := True;
+      end else
+      begin
+ // Get Status Line
+        for i := 0 to MaxStatusCodeIdx do if StatusCode = StatusCodes[i].Code then
+        begin
+          s := StatusCodes[i].Msg;
+          Break;
+        end;
+        if s = '' then GlobalFail;
+        if ErrorMsg = '' then ErrorMsg := s;
+        s := ItoS(StatusCode)+ ' '+ s;
       end;
-      if s = '' then GlobalFail;
-      if ErrorMsg = '' then ErrorMsg := s;
-
-      s := ItoS(StatusCode)+ ' '+ s;
-
       if ReportError then
       begin
         KeepAlive := False;
@@ -1148,8 +1244,8 @@ begin
           Inc(i, j);
           if i > FileNfo.Size then Break;
           if j = 0 then Break;
-          Socket.Write(Buffer, j);
-        until j < CHTTPServerThreadBufSize;
+          j := Socket.Write(Buffer, j);
+        until (j < CHTTPServerThreadBufSize) or (Socket.Status <> 0);
         if i <> FileNfo.Size then AbortConnection := True;
         ZeroHandle(FHandle);
       end else
@@ -1250,13 +1346,76 @@ begin
   RegCloseKey(Key);
 end;
 
-procedure GetHomeDir;
+type
+  TAdrB = packed record
+    A, B, C, D: Byte;
+  end;
+
+
+function _Adr2Int(const s: string): Integer;
+
+var
+  CPos: Integer;
+  Error: Boolean;
+
+function Get: Byte;
+var
+  C: Char;
+  R: Integer;
+  err: Boolean;
+begin
+  Result := 0;
+  if Error then Exit;
+  err := False;
+  R := Ord(S[CPos])-48;
+  Inc(CPos);
+  C := S[CPos];
+  if (C >= '0') and (C <= '9') then
+  begin
+    R := R * 10 + (Ord(C)-48); Inc(CPos);
+    C := S[CPos];
+    if (C >= '0') and (C <= '9') then begin R := R * 10 + (Ord(C)-48); Inc(CPos) end else err := C <> '.';
+  end else err := C <> '.';
+  if (R > 255) or (err) then
+  begin
+    Error := True;
+    Exit;
+  end;
+  Inc(CPos);
+  Result := R;
+end;
+
+var
+  A: TAdrB;
+begin
+  Error := False;
+  CPos := 1;
+  A.A := Get;
+  A.B := Get;
+  A.C := Get;
+  A.D := Get;
+  if Error then Result := -1 else Result := PInteger(@A)^;
+end;
+
+function Adr2Int(const s: string): Integer;
+begin
+  Result := _Adr2Int(s+'.');
+end;
+
+
+var
+  BindPort, BindAddr: Integer;
+
 const
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
+
+
+procedure GetHomeDir;
 var
   s: string;
+  i: Integer;
 begin
-  if ParamCount <> 1 then
+  if ParamCount < 1 then
   begin
     MessageBox(0, 'Path to home directory is absent!'#13#10+
                   'See READ.ME for details.'#13#10#13#10+
@@ -1273,6 +1432,18 @@ begin
     CServerName+' service failed to start';
     MessageBox(0, PChar(s), CServerName, CMB_FAILED);
     Exit;
+  end;
+  BindPort := 80;
+  BindAddr := _INADDR_ANY;
+  if ParamCount > 1 then
+  begin
+    i := Vl(ParamStr(2));
+    if i <> -1 then BindPort := i;
+  end;
+  if ParamCount > 2 then
+  begin
+    i := Adr2Int(ParamStr(3));
+    if i <> -1 then BindAddr := i;
   end;
 end;
 
@@ -1300,34 +1471,145 @@ begin
   InitializeCriticalSection(CSRefererLog);
 end;
 
+
+type
+  TResetterThread = class(TThread)
+    oSleep: Integer;
+    constructor Create;
+    procedure Execute; override;
+    destructor Destroy; override;
+  end;
+
+constructor TResetterThread.Create;
+begin
+  inherited Create(True);
+  oSleep := CreateEvent(nil, False, False, nil);
+end;
+
+destructor TResetterThread.Destroy;
+begin
+  CloseHandle(oSleep);
+  inherited Destroy;
+end;
+
+
+procedure TResetterThread.Execute;
+const
+  SleepQuant = 1*60*1000; // 1 minute
+  KillQuants = 5; // Quants to shut down socket for inactivity
+var
+  i: Integer;
+  s: TSocket;
+begin
+  repeat
+    WaitForSingleObject(oSleep, SleepQuant);
+    if Terminated then Break;
+    SocketsColl.Enter;
+    for i := 0 to SocketsColl.Count - 1 do
+    begin
+      s := SocketsColl[i];
+      if s.Dead < 0 then Continue; // Already shut down
+      Inc(s.Dead);
+      if s.Dead <= KillQuants then Continue; // This one shows activity - let him live
+      s.Dead := -1; // Mark
+       // disable both sends and receives
+      shutdown(s.Handle, 2);
+    end;
+    SocketsColl.Leave;
+  until Terminated;
+end;
+
+var
+  ResetterThread: TResetterThread;
+
+
+procedure InitReseterThread;
+begin
+  SocketsColl := TColl.Create;
+  ResetterThread := TResetterThread.Create;
+end;
+
+
 procedure MainLoop;
 var
-  ServerSocket,
+  J, err, ServerSocketHandle: Integer;
+  NewSocketHandle: Integer;
   NewSocket: TSocket;
   NewThread: THTTPServerThread;
+  WData: TWSAData;
+  Addr: TSockAddr;
+  s: string;
 begin
-  ServerSocket := TSocket.Create;
-  ServerSocket.SetOptions([soReuseAddr], True);
-  ServerSocket.Bind(80, _INADDR_ANY);
-  ServerSocket.Listen(5);
+  err := WSAStartup(MakeWord(1,1), WData);
+  if err <> 0 then
+  begin
+    s := 'Failed to initialize WinSocket,error #'+ItoS(err);
+    MessageBox(0, PChar(s), CServerName, CMB_FAILED);
+    Halt;
+  end;
+  ServerSocketHandle := socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if ServerSocketHandle = INVALID_SOCKET then
+  begin
+    s := 'Failed to create a socket, Error #'+ItoS(WSAGetLastError);
+    MessageBox(0, PChar(s), CServerName, CMB_FAILED);
+    Halt;
+  end;
+
+  Addr.sin_family := AF_INET;
+  Addr.sin_port := htons(BindPort);
+  Addr.sin_addr.s_addr := BindAddr;
+  if bind(ServerSocketHandle, Addr, SizeOf(Addr)) = SOCKET_ERROR then
+  begin
+    S := 'Failed to bind the socket, error #'+ItoS(WSAGetLastError)+'.'#13#10#13#10+
+         'Probable reason is that another daemon is already running on the same port ('+ItoS(BindPort)+').';
+    MessageBox(0, PChar(S), CServerName, CMB_FAILED);
+    Halt;
+  end;
+
+
+  {$IFDEF DEF_SSL}
+  xSSLeayInit;
+  {$ENDIF DEF_SSL}
+
+
+  InitReseterThread;
+
+  listen(ServerSocketHandle, 5);
+
+  ResetterThread.Resume;
+
   repeat
-    NewSocket := ServerSocket.Accept;
-    if NewSocket = nil then Exit;
-    NewThread := THTTPServerThread.Create;
-    NewThread.FreeOnTerminate := True;
-    NewThread.Socket := NewSocket;
-    NewThread.Resume;
+    J := SizeOf(Addr);
+    NewSocketHandle := accept(ServerSocketHandle, @Addr, @J);
+    if NewSocketHandle = INVALID_SOCKET then
+    begin
+      asm nop end;
+      Exit;
+    end;
+    NewSocket := {$IFDEF DEF_SSL}TSSLSocket{$ELSE}TSocket{$ENDIF}.Create;
+    NewSocket.Handle := NewSocketHandle;
+    NewSocket.FAddr := Addr.sin_addr.s_addr;
+    NewSocket.FPort := Addr.sin_port;
+    if not NewSocket.Startup then FreeObject(NewSocket) else
+    begin
+      NewThread := THTTPServerThread.Create;
+      NewThread.FreeOnTerminate := True;
+      NewThread.Socket := NewSocket;
+      NewSocket.RegisterSelf;
+      NewThread.Resume;
+    end;
   until {$IFDEF DEBUG}DebugExit{$ELSE}False{$ENDIF};
   {$IFDEF DEBUG}
-  FreeObject(ServerSocket);
+  CloseSocket(ServerSocketHandle);
   {$ENDIF}
 end;
 
 procedure ComeOn;
+var
+ i: Integer;
 begin
-
 //--- Set Hight priority class
-  SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
+//  SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
 
 //--- Get and validate a home directory
   GetHomeDir;
@@ -1347,6 +1629,15 @@ begin
 // Non-debug version never exits :-)
 
 {$IFDEF DEBUG}
+  ResetterThread.Terminate;
+  SetEvent(ResetterThread.oSleep);
+  SocketsColl.Enter;
+  for i := 0 to SocketsColl.Count-1 do shutdown(TSocket(SocketsColl[i]).Handle, 2);
+  SocketsColl.Leave;
+  while SocketsColl.Count > 0 do Sleep(1000);
+  WaitForSingleObject(ResetterThread.Handle, INFINITE);
+  FreeObject(ResetterThread);
+  FreeObject(SocketsColl);
   FreeObject(ContentTypes);
   xBaseDone;
   CloseHandle(HAccessLog);
@@ -1361,4 +1652,5 @@ begin
 end;
 
 end.
+
 

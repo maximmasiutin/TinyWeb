@@ -46,8 +46,14 @@
 
 program Tiny;
 
+{$I DEFINE.INC}
+
+
 uses
   SrvMain in 'SrvMain.pas',
+  {$IFDEF DEF_SSL}
+  xSSL in 'xSSL.pas',
+  {$ENDIF}
   xBase in 'xBase.pas';
 
 begin
