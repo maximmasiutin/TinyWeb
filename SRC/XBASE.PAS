@@ -444,9 +444,27 @@ procedure uCvtSetFileTime(T: Integer; var L, H: Integer); assembler;
 function uGetSystemTime: Integer;
 function Vl(const s: string): Integer;
 
+type
+  TResetterThread = class(TThread)
+    oSleep: Integer;
+    constructor Create;
+    procedure Execute; override;
+    destructor Destroy; override;
+  end;
+
+
 var
+  ResetterThread: TResetterThread;
   TimeZoneBias: Integer;
   SocketsColl: TColl;
+  SocksCount: Integer;
+
+const
+  CServerVersion = '0.7';
+  CServerProductName = {$IFDEF DEF_SSL}'TinySSL'{$ELSE}'TinyWeb'{$ENDIF};
+  CServerName = CServerProductName+'/'+CServerVersion;
+  CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
+
 
 implementation
 
@@ -2275,6 +2293,10 @@ destructor TSocket.Destroy;
 begin
   DeregisterSelf;
   CloseSocket(Handle);
+  SocketsColl.Enter;
+  Dec(SocksCount);
+  if SocksCount = 0 then ResetterThread.Suspend;
+  SocketsColl.Leave;
   inherited Destroy;
 end;
 
@@ -2633,6 +2655,46 @@ procedure xBaseDone;
 begin
   FreeObject(HostCache);
 end;
+
+constructor TResetterThread.Create;
+begin
+  inherited Create(True);
+  oSleep := CreateEvent(nil, False, False, nil);
+end;
+
+destructor TResetterThread.Destroy;
+begin
+  CloseHandle(oSleep);
+  inherited Destroy;
+end;
+
+
+procedure TResetterThread.Execute;
+const
+  SleepQuant = 1*60*1000; // 1 minute
+  KillQuants = 5; // Quants to shut down socket for inactivity
+var
+  i: Integer;
+  s: TSocket;
+begin
+  repeat
+    WaitForSingleObject(oSleep, SleepQuant);
+    if Terminated then Break;
+    SocketsColl.Enter;
+    for i := 0 to SocketsColl.Count - 1 do
+    begin
+      s := SocketsColl[i];
+      if s.Dead < 0 then Continue; // Already shut down
+      Inc(s.Dead);
+      if s.Dead <= KillQuants then Continue; // This one shows activity - let him live
+      s.Dead := -1; // Mark
+       // disable both sends and receives
+      shutdown(s.Handle, 2);
+    end;
+    SocketsColl.Leave;
+  until Terminated;
+end;
+
 
 end.
 

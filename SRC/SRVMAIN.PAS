@@ -68,10 +68,6 @@ const
   CIndexFile  = 'index.html';
   ScriptsPath = '/cgi-bin/';
 
-  CServerVersion = '0.6';
-  CServerProductName = {$IFDEF DEF_SSL}'TinySSL'{$ELSE}'TinyWeb'{$ENDIF};
-  CServerName = CServerProductName+'/'+CServerVersion;
-
   CHTTPServerThreadBufSize = $2000;
   MaxStatusCodeIdx = 36;
   StatusCodes : array[0..MaxStatusCodeIdx] of record Code: Integer; Msg: string end =
@@ -1406,10 +1402,6 @@ end;
 var
   BindPort, BindAddr: Integer;
 
-const
-  CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
-
-
 procedure GetHomeDir;
 var
   s: string;
@@ -1433,7 +1425,7 @@ begin
     MessageBox(0, PChar(s), CServerName, CMB_FAILED);
     Exit;
   end;
-  BindPort := 80;
+  BindPort := {$IFDEF DEF_SSL} 443 {$ELSE} 80 {$ENDIF};
   BindAddr := _INADDR_ANY;
   if ParamCount > 1 then
   begin
@@ -1470,57 +1462,6 @@ begin
   InitializeCriticalSection(CSErrorLog);
   InitializeCriticalSection(CSRefererLog);
 end;
-
-
-type
-  TResetterThread = class(TThread)
-    oSleep: Integer;
-    constructor Create;
-    procedure Execute; override;
-    destructor Destroy; override;
-  end;
-
-constructor TResetterThread.Create;
-begin
-  inherited Create(True);
-  oSleep := CreateEvent(nil, False, False, nil);
-end;
-
-destructor TResetterThread.Destroy;
-begin
-  CloseHandle(oSleep);
-  inherited Destroy;
-end;
-
-
-procedure TResetterThread.Execute;
-const
-  SleepQuant = 1*60*1000; // 1 minute
-  KillQuants = 5; // Quants to shut down socket for inactivity
-var
-  i: Integer;
-  s: TSocket;
-begin
-  repeat
-    WaitForSingleObject(oSleep, SleepQuant);
-    if Terminated then Break;
-    SocketsColl.Enter;
-    for i := 0 to SocketsColl.Count - 1 do
-    begin
-      s := SocketsColl[i];
-      if s.Dead < 0 then Continue; // Already shut down
-      Inc(s.Dead);
-      if s.Dead <= KillQuants then Continue; // This one shows activity - let him live
-      s.Dead := -1; // Mark
-       // disable both sends and receives
-      shutdown(s.Handle, 2);
-    end;
-    SocketsColl.Leave;
-  until Terminated;
-end;
-
-var
-  ResetterThread: TResetterThread;
 
 
 procedure InitReseterThread;
@@ -1576,8 +1517,6 @@ begin
 
   listen(ServerSocketHandle, 5);
 
-  ResetterThread.Resume;
-
   repeat
     J := SizeOf(Addr);
     NewSocketHandle := accept(ServerSocketHandle, @Addr, @J);
@@ -1592,6 +1531,10 @@ begin
     NewSocket.FPort := Addr.sin_port;
     if not NewSocket.Startup then FreeObject(NewSocket) else
     begin
+      SocketsColl.Enter;
+      if SocksCount = 0 then ResetterThread.Resume;
+      Inc(SocksCount);
+      SocketsColl.Leave;
       NewThread := THTTPServerThread.Create;
       NewThread.FreeOnTerminate := True;
       NewThread.Socket := NewSocket;
@@ -1635,6 +1578,7 @@ begin
   for i := 0 to SocketsColl.Count-1 do shutdown(TSocket(SocketsColl[i]).Handle, 2);
   SocketsColl.Leave;
   while SocketsColl.Count > 0 do Sleep(1000);
+  ResetterThread.Resume;
   WaitForSingleObject(ResetterThread.Handle, INFINITE);
   FreeObject(ResetterThread);
   FreeObject(SocketsColl);

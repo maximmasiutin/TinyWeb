@@ -1,7 +1,7 @@
 <html>
 <body>
 <h1>TinyWeb Server</h1>
-<p>Version 0.6</p>
+<p>Version 0.7 (21-Dec-1997)</p>
 <p>Written by Maxim Masiutin</p>
 <ul>
 <li><a href="#Intro">Intro</a>
@@ -9,7 +9,7 @@
 <li><a href="#SoWhat">What does TinyWeb do</a>
 <li><a href="#DoNOT">What does TinyWeb not support</a>
 <li><a href="#TinySSL">TinySSL</a>
-<li><a href="#Troubleshuting">Troubleshuting &amp; FAQ</a>
+<li><a href="#TroubleShooting">TroubleShooting &amp; FAQ</a>
 <li><a href="#History">History</a>
 <li><a href="#Feedbacks">Feedbacks</a>
 <li><a href="#ToDo">ToDo</a>
@@ -17,10 +17,17 @@
 </ul>
 
 <h2><a name="Intro">Intro</a></h2>
-<p>TinyWeb is intended to be a simple Win32 daemon for regular (TCP/http) and secure (<a href="#TinySSL">SSL</a>/https) web servers. TinyWeb is written by Max Masyutin (<a href="https://web.archive.org/web/19980125093401/mailto:max@ritlabs.com">max@ritlabs.com</a>) using Delphi. Source code is also provided. 
-<p>This program is FREE for commercial and non-commercial use. The only restriction is that copyright holder must be attributed with the development of this code. See the <a href="/web/19980125093401/http://www.ritlabs.com/ftp/pub/tinyweb/licence.txt">LICENCE</a> file for more details. Well, as this has been in essence an unpaid effort there is no guarantee of support (you get what you pay for :-), however I do undertake a limited amount of consulting.
+<table cellspacing="0" cellpadding="0">
+<tr>
+<td>TinyWeb is intended to be a simple Win32 daemon for regular (TCP/http) and secure (<a href="#TinySSL">SSL</a>/https) web servers. TinyWeb is written by Max Masyutin (<a href="https://web.archive.org/web/19981205052436/mailto:max@ritlabs.com">max@ritlabs.com</a>) using Delphi. Source code is also provided.</td> 
+<td valign="TOP"><img src="/web/19981205052436im_/http://www.ritlabs.com/dpower.gif" width="114" height="41" alt=""></td>
+</tr>
+</table>
+
+<p>This program is FREE for commercial and non-commercial use. The only restriction is that copyright holder must be attributed with the development of this code. See the <a href="/web/19981205052436/http://www.ritlabs.com/ftp/pub/tinyweb/licence.txt">LICENCE</a> file for more details. Well, as this has been in essence an unpaid effort there is no guarantee of support (you get what you pay for :-), however I do undertake a limited amount of consulting.
 <p>This program may be freely distributed, provided the distribution package is not modified. No person or company may charge a fee for the distribution of this program without written permission of the copyright holder.
-<p>TinyWeb is extremely small (less than 50K), simple (no any configuration except command line) and fast (consumes as little system memory and CPU resources as possible).
+<p>TinyWeb is extremely small (executable file size is 34K), simple (no any configuration except command line) and fast (consumes as little system memory and CPU resources as possible). TinyWeb installs in minutes and maintains a low-memory profile.
+<p>TinyWeb has got <a href="https://web.archive.org/web/19981205052436/http://hotfiles.zdnet.com/cgi-bin/texis/swlib/hotfiles/info.html?fcode=000MQL">five-star rating at ZDNet HotFiles</a> <img src="/web/19981205052436im_/http://www.ritlabs.com/zd5star.gif" width="58" height="10" alt="">
 
 <h2><a name="Installing">Installing</a></h2>
 To install TinyWeb server just create a shortcut in Startup menu with the following properties:
@@ -28,7 +35,7 @@ To install TinyWeb server just create a shortcut in Startup menu with the follow
 <tr><td>Target<td><b><tt>c:\www\bin\tiny.exe c:\www\root</tt></b>
 <tr><td>Start In<td><b><tt>c:\www\log</tt></b>
 </table>
-<b><tt>c:\www\bin\tiny.exe</tt></b> is the path to TinyWeb executable, <b><tt>c:\www\root</tt></b> is the path to www home (root) directory, and <b><tt>c:\www\log</tt></b></b> is the directory for log files TinyWeb keeps.
+<b><tt>c:\www\bin\tiny.exe</tt></b> is the path to TinyWeb executable, <b><tt>c:\www\root</tt></b> is the path to www home (root) directory, and <b><tt>c:\www\log</tt></b> is the directory for log files TinyWeb keeps.
 
 <p>TinyWeb is neither windowed nor console application, moreover, it is not a Windows Service. Once started, <code>tiny.exe</code> will appear in Task List. There is no way to stop Tiny Web except End Task operation.
 
@@ -46,6 +53,7 @@ The default directory root file name is <code>index.html</code>. Make sure that 
 
 <p>The following environment variables are passed to application:
 
+<code>
 <ul>
 <li>REMOTE_HOST
 <li>REMOTE_ADDR
@@ -68,24 +76,26 @@ The default directory root file name is <code>index.html</code>. Make sure that 
 <li>CONTENT_TYPE
 <li>CONTENT_LENGTH
 </ul>
-<p>To learn more about CGI, please visit <a href="https://web.archive.org/web/19980125093401/http://hoohoo.ncsa.uiuc.edu/cgi/">http://hoohoo.ncsa.uiuc.edu/cgi/</a>.
-<p>CGI interface was tested with Perl5 for NT, which is available at <a href="https://web.archive.org/web/19980125093401/http://www.activestate.com/">http://www.activestate.com/</a>
+</code>
+
+<p>To learn more about CGI, please visit <a href="https://web.archive.org/web/19981205052436/http://hoohoo.ncsa.uiuc.edu/cgi/">http://hoohoo.ncsa.uiuc.edu/cgi/</a>.
+<p>CGI interface was tested with Perl5 for NT, which is available at <a href="https://web.archive.org/web/19981205052436/http://www.activestate.com/">http://www.activestate.com/</a>
 <p>CGI application are being executed from /cgi-bin/ directory only.
 <p>The samples to test CGI are provided in <code>cgitest.zip</code> package within TinyWeb archive.            
 <p>Note that TinyWeb extracts content-types, associated to file extensions, and script interpreters (e.g. Perl) form Windows Registry, so make sure that <code>.html</code>, <code>.htm</code>, <code>.pl</code> are registered file types. It means that I recommend to use <code>.pl</code> as an extension for CGI-scripts written in Perl. 
 <p>The information is being taken from registry (to TinyWeb's cache) on TinyWeb's startup, so if you made some content-type or file-assotiation-related changes of registry, you must reload TinyWeb in order to take effect.
 
 <h3>Keeps logs!</h3>
-<p>TinyWeb keeps Apache-compatible log files <code>access_log</code>, <code>agent_log</code>, <code>referer_log</code> and <code>error_log</code>, which can be analyzed by any compatible log analyzer, eg:
+<p>TinyWeb keeps Apache-compatible <a href="https://web.archive.org/web/19981205052436/http://www.w3.org/Daemon/User/Config/Logging.html#common-logfile-format">The Common Logfile Format</a> log files: <code>access_log</code>, <code>agent_log</code>, <code>referer_log</code> and <code>error_log</code>, which can be analyzed by any compatible log analyzer, eg:
 <ul>
-<li><a href="https://web.archive.org/web/19980125093401/http://www.statslab.cam.ac.uk/~sret1/analog/">Analog</a> (author's choice!)
-<li><a href="https://web.archive.org/web/19980125093401/http://www.ics.uci.edu/pub/websoft/wwwstat/">WWWstat</a>
-<li><a href="https://web.archive.org/web/19980125093401/http://www.boutell.com/wusage/">wusage</a>
-<li><a href="https://web.archive.org/web/19980125093401/ftp://ftp.ncsa.uiuc.edu/Mosaic/">WebReport</a>
+<li><a href="https://web.archive.org/web/19981205052436/http://www.statslab.cam.ac.uk/~sret1/analog/">Analog</a> (author's choice!)
+<li><a href="https://web.archive.org/web/19981205052436/http://www.ics.uci.edu/pub/websoft/wwwstat/">WWWstat</a>
+<li><a href="https://web.archive.org/web/19981205052436/http://www.boutell.com/wusage/">wusage</a>
+<li><a href="https://web.archive.org/web/19981205052436/ftp://ftp.ncsa.uiuc.edu/Mosaic/">WebReport</a>
 </ul>
-<p>If some of them do not do what you want, let me know! You can also try some of the other log analysis tools. Consult the <a href="https://web.archive.org/web/19980125093401/http://www.yahoo.com/Computers_and_Internet/Software/Internet/World_Wide_Web/Servers/Log_Analysis_Tools/">Yahoo guide</a> for a list.
+<p>If some of them do not do what you want, let me know! You can also try some of the other log analysis tools. Consult the <a href="https://web.archive.org/web/19981205052436/http://www.yahoo.com/Computers_and_Internet/Software/Internet/World_Wide_Web/Servers/Log_Analysis_Tools/">Yahoo guide</a> for a list.
 <p>Logs are kept in a derectory from that TinyWeb was started. Make sure that "Start In" directory of TinyWeb properties is set properly.
-
+<p>Please note that TinyWeb doesn't support <a href="https://web.archive.org/web/19981205052436/http://www.w3.org/TR/WD-logfile.html">W3C's Extended Log File Format</a>.
 
 <h2><a name="DoNOT">What does TinyWeb not support</a></h2>
 
@@ -121,7 +131,6 @@ The default directory root file name is <code>index.html</code>. Make sure that 
 
 <h3>Protocol Support and Includes</h3>
 <ul>
-<li>Automatic response to If-Modified-Since
 <li>Selecting documents based on Accept header
 <li>Selecting documents based on User-Agent header
 <li>Including based on HTML comments
@@ -171,7 +180,6 @@ The default directory root file name is <code>index.html</code>. Make sure that 
 
 <ul>
 <li>Script or action based on output media type
-<li>Servering other TCP protocols
 <li>Automatic directory tree
 <li>User directories
 <li>Direct (non-CGI) link to a DBMS
@@ -183,19 +191,20 @@ The default directory root file name is <code>index.html</code>. Make sure that 
 
 
 <h2><a name="TinySSL">TinySSL</a></h2>
-<table>
+<table cellspacing="0" cellpadding="0">
 <tr>
 <td>
-<p>TinySSL is a Secure Socket Layer Server Daemon, it is almost the same as TinyWeb but uses DLLs of <a href="https://web.archive.org/web/19980125093401/http://www.psy.uq.edu.au/~ftp/Crypto/ssleay/">SSLeay library</a>.
-<p>SSLeay is a free implementation of Netscape's Secure Socket Layer written by Eric Young (<a href="https://web.archive.org/web/19980125093401/mailto:eay@cryptsoft.com">eay@cryptsoft.com</a>), please visit SSLeay FAQ at <a href="https://web.archive.org/web/19980125093401/http://www.psy.uq.edu.au/~ftp/Crypto/">http://www.psy.uq.edu.au/~ftp/Crypto/</a> for a lot of useful information about it.
+<p>TinySSL is a Secure Socket Layer Server Daemon, it is almost the same as TinyWeb but uses DLLs of <a href="https://web.archive.org/web/19981205052436/http://www.psy.uq.edu.au/~ftp/Crypto/ssleay/">SSLeay library</a>.
+<p>SSLeay is a free implementation of Netscape's Secure Socket Layer written by Eric Young (<a href="https://web.archive.org/web/19981205052436/mailto:eay@cryptsoft.com">eay@cryptsoft.com</a>), please visit SSLeay FAQ at <a href="https://web.archive.org/web/19981205052436/http://www.psy.uq.edu.au/~ftp/Crypto/">http://www.psy.uq.edu.au/~ftp/Crypto/</a> for a lot of useful information about it. The current version of TinySSL uses SSLeay DLLs v0.9.0 (10-Apr-1998).
 </td>
-<td valign="TOP"><a href="https://web.archive.org/web/19980125093401/http://www.psy.uq.edu.au/~ftp/Crypto/"><img src="/web/19980125093401im_/http://www.ritlabs.com/ssleay.gif" alt="" width="102" height="47" border="0"></a></td>
+<td valign="TOP"><a href="https://web.archive.org/web/19981205052436/http://www.psy.uq.edu.au/~ftp/Crypto/"><img src="/web/19981205052436im_/http://www.ritlabs.com/ssleay.gif" alt="" width="102" height="47" border="0"></a></td>
 </tr>
 </table>
 
+<p>We do run TinySSL on a secure server certified by <a href="https://web.archive.org/web/19981205052436/http://www.thawte.com/">Thawte</a> at <a href="https://web.archive.org/web/19981205052436/https://support.ritlabs.com/">https://support.ritlabs.com/</a>
 
 <h3>Installing a Secure Socket Layer Server using TinySSL</h3>
-<p>In order to initiatine a SSL-connection, the secure server must have a certificate or, in other words, Digital ID (there is a good <a href="https://web.archive.org/web/19980125093401/http://digitalid.verisign.com/ask_veri.htm">Information Desk</a> on that at Verisign and <a href="https://web.archive.org/web/19980125093401/http://www.rsa.com/rsalabs/newfaq/">FAQ on Cryptography<a> at RSA). The client can (and probably should) have a certificate. TinySSL does not currently provide client-certificate verifications.
+<p>In order to initiatine a SSL-connection, the secure server must have a certificate or, in other words, Digital ID (there is a good <a href="https://web.archive.org/web/19981205052436/http://digitalid.verisign.com/ask_veri.htm">Information Desk</a> on that at Verisign and <a href="https://web.archive.org/web/19981205052436/http://www.rsa.com/rsalabs/newfaq/">FAQ on Cryptography</a> at RSA). The client can (and probably should) have a certificate. TinySSL does not currently provide client-certificate verifications.
 <p>First of all, you must generate your secure server's RSA private key. For that, feed <code>.rnd</code> file with lots of interesting and varied data, that would be used for key generation. <code>.rnd</code> is unformatted file, size don't care. You can copy a wav-file with digitized noize to it, or just a text-file with randomly-typed words and phrases.
 <p>To generate a key, type:
 <pre>
@@ -219,7 +228,17 @@ ueTyr6WsZ5+SD8g/Hy3xuvF3nPmJRH+rwvVihlcFOg==
 
 <h3>Obtaining a certificate (Digital ID) for secure server</h3>
 
-<p>Then you should generate your Certificate Signing Request (CSR) to be sent to Certificate Authority (CA) to receive the certificate.
+<p>Then you should generate your Certificate Signing Request (CSR). 
+The CSR is what contains the name information for the certificate (Country, State/Province, City, Organization, Division, Web Server Domain Name, etc).  
+It also contains your public key. 
+
+The formats of certificate and CSR used by TinySSL are the same as for <a href="https://web.archive.org/web/19981205052436/http://www.apache-ssl.org/">Apache-SSL</a>. 
+CSR should be sent for verification to Certificate Authority (CA) e.g. to Verisign (<a href="https://web.archive.org/web/19981205052436/http://www.verisign.com/">www.verisign.com</a>) or Thawte (<a href="https://web.archive.org/web/19981205052436/http://www.thawte.com/">www.thawte.com</a>). 
+
+Thawte has issued a certificate for TinySSL without any problem, we use it at <a href="https://web.archive.org/web/19981205052436/https://support.ritlabs.com/">https://support.ritlabs.com/</a>.
+Verisign are now signing certificate requests for <a href="https://web.archive.org/web/19981205052436/http://www.apache-ssl.org/">Apache-SSL</a>, more details are <a href="https://web.archive.org/web/19981205052436/http://digitalid.verisign.com/server/apacheNotice.htm">online</a>.
+
+After verification you will probably receive the certificate. 
 <p>To generate your CSR, run:
 
 <pre>
@@ -243,8 +262,8 @@ oO6+kPhx9fXSpMFHIsY3aH92Milkov/2A4SuZTcnv/P6+8klmS0EaiUKcRzak4E=
 </font>
 
 <p>You will now have a private key in <code>key.pem</code> and a CSR in <code>req.pem</code>
-<p>Make sure to store <code>key.pem</code> in a safe place. You will need the key to operate your secure server when CA issue your certificate.
-<p>Then send <code>req.pem</code> to CA, e.g. to Verisign (<a href="https://web.archive.org/web/19980125093401/http://www.verisign.com/">www.verisign.com</a>) or Thawte (<a href="https://web.archive.org/web/19980125093401/http://www.thawte.com/">www.thawte.com</a>).
+<p>Make sure to store <code>key.pem</code> in a safe place. You will need the key to operate your secure server when CA issue your certificate. Note, that it is very important to backup the private key that corresponds to the certificate you                             purchased. Without the private key the certificate is quite useless. For good security reasons the most of CA's are unable to reissue certificates arbitrarily if you cannot access your private key!
+<p>Then send <code>req.pem</code> to CA.
 <p>Upon reception of a signed certificate from CA, put it to cert.pem.
 <p>The certificate should look like:
 
@@ -265,24 +284,54 @@ dp7jnmWZwKZ9cXsNUS2o4OL07qOk2HOywC0YsNZQsOBu1CBTYYkIefDiKFL1zQHh
 ssleay req -new -key key.pem -out cert.pem -x509 -config ssleay.cnf 
 </pre>
 
-<p>There is also a good temporary untrusted test certificate generator at <a href="https://web.archive.org/web/19980125093401/http://www.cryptsoft.com/~tjh/usercert.cgi">http://www.cryptsoft.com/~tjh/usercert.cgi</a>. Also, you can get a free trial secure server certificate from Verisign at <a href="https://web.archive.org/web/19980125093401/http://digitalid.verisign.com/test_server_ids.html">http://digitalid.verisign.com/test_server_ids.html</a> (choose Apache-SSL or any compatible server).
+<p>There is also a good temporary untrusted test certificate generator at <a href="https://web.archive.org/web/19981205052436/http://www.cryptsoft.com/~tjh/usercert.cgi">http://www.cryptsoft.com/~tjh/usercert.cgi</a>. Also, you can get a free trial secure server certificate from Verisign at <a href="https://web.archive.org/web/19981205052436/http://digitalid.verisign.com/test_server_ids.html">http://digitalid.verisign.com/test_server_ids.html</a> (choose Apache-SSL or any compatible server) or from Thawte at <a href="https://web.archive.org/web/19981205052436/https://www.thawte.com/cgi/server/test.exe">https://www.thawte.com/cgi/server/test.exe</a> (chose Generate an X.509v3 certificate &amp; Use the most basic format).
+<p>We do run TinySSL on a secure server certified by <a href="https://web.archive.org/web/19981205052436/http://www.thawte.com/">Thawte</a>. If you enter <a href="https://web.archive.org/web/19981205052436/https://support.ritlabs.com/">https://support.ritlabs.com/</a>, you would be able to see the following:
+<p>
+<table cellpadding="0" cellspacing="0">
+<tr>
+<td>
+<strong>This Certificate belongs to:</strong>
+<br>support.ritlabs.com
+<br>support@ritlabs.com
+<br>RIT Research Labs
+<br>RITLABS S.R.L.
+<br>Chisinau, MD
+</td>
+<td>
+<strong>This Certificate was issued by:</strong>
+<br>Thawte Server CA
+<br>server-certs@thawte.com
+<br>Certification Services Division
+<br>Thawte Consulting cc
+<br>Cape Town, Western Cape, ZA
+</td>
+</tr>
+<tr colspan="2">
+<td>
+<strong>Serial Number:</strong> 1C:A5
+<br><strong>This Certificate is valid from Wed Jun 24, 1998 to Thu Jun 24, 1999</strong>
+<br><strong>Certificate Fingerprint:</strong>
+<br>57:DE:35:DD:B1:B7:89:81:49:F5:08:D2:09:68:2A:AB
+</tr>
+</tr>
+</table>
 
 <h3>Starting secure server</h3>
 
 <p>Before starting TinySSL, make shure <code>key.pem</code>, <code>cert.pem</code> and <code>.rnd</code> files are in the same directory with <code>TinySSL.exe</code>.
 <p>Run <code>TinySSL.exe</code> with the same parameters as needed for <code>tiny.exe</code>.
 
-<h2><a name="Troubleshuting">Troubleshuting &amp; FAQ</a></h2>
+<h2><a name="TroubleShooting">TroubleShooting &amp; FAQ</a></h2>
 
 <table>
 <tr><td valign="TOP"><b>Q?</b><td valign="TOP">When I use my browser to show me my home page it displays its source, i.e. with HTML tags. My browser also reports that the Content-Type of the document is "text/plain", whereas on other home pages I noticed that it is "text/html". Have you any ideas why this is, and what I can do to put it right?
-<tr><td valign="TOP"><b>A:</b><td valign="TOP">As stated above, TinyWeb uses Window Registry to obtain the information about content-types, file extensions, and script interpreters. If your registry does not contain the information about content-types, try to fill the basic minimum of HKEY_CLASSES_ROOT values by starting <a href="/web/19980125093401/http://www.ritlabs.com/ftp/pub/tinyweb/web.reg">web.reg</a>.
+<tr><td valign="TOP"><b>A:</b><td valign="TOP">As stated above, TinyWeb uses Window Registry to obtain the information about content-types, file extensions, and script interpreters. If your registry does not contain the information about content-types, try to fill the basic minimum of <code>HKEY_CLASSES_ROOT</code> values by starting <a href="/web/19981205052436/http://www.ritlabs.com/ftp/pub/tinyweb/web.reg">web.reg</a>.
 <tr><td>&nbsp;
 <tr><td valign="TOP"><b>Q?</b><td valign="TOP">I compiled a CGI script written in C as a DOS-application. Why does TinyWeb not execute it?
 <tr><td valign="TOP"><b>A:</b><td valign="TOP">DOS-based CGI scripts are not supported. Try to compile the script for Win32. 
 <tr><td>&nbsp;
 <tr><td valign="TOP"><b>Q?</b><td valign="TOP">Does TinyWEB support SSI (Server-Side Includes)?
-<tr><td valign="TOP"><b>A:</b><td valign="TOP">No. There are good docs on <a href="https://web.archive.org/web/19980125093401/http://hoohoo.ncsa.uiuc.edu/docs/tutorials/includes.html">NCSA SSI</a> and  <a href="https://web.archive.org/web/19980125093401/http://www.apache.org/docs/mod/mod_include.html">Apache SSI</a>, explaining SSI concepts, though.
+<tr><td valign="TOP"><b>A:</b><td valign="TOP">No. There are good docs on <a href="https://web.archive.org/web/19981205052436/http://hoohoo.ncsa.uiuc.edu/docs/tutorials/includes.html">NCSA SSI</a> and  <a href="https://web.archive.org/web/19981205052436/http://www.apache.org/docs/mod/mod_include.html">Apache SSI</a>, explaining SSI concepts, though.
 <tr><td>&nbsp;
 <tr><td valign="TOP"><b>Q?</b><td valign="TOP">I just made my homepage and launched TinyWeb. What should I enter in my browser's location field to access my site locally?
 <tr><td valign="TOP"><b>A:</b><td valign="TOP">http://localhost/
@@ -294,31 +343,28 @@ ssleay req -new -key key.pem -out cert.pem -x509 -config ssleay.cnf
 <tr><td valign="TOP"><b>A:</b><td valign="TOP">There is no difference except TinyWeb uses generic TCP connection while TinySSL adds a Secure Socket Layer to a TCP connection. Thus TinyWeb is an <b>http</b> daemon while TinySSL is an <b>https</b> daemon. Look the source code for <code>DEF_SSL</code> conditional definitions for more details.
 <tr><td><a name="legal">&nbsp;</a>
 <tr><td valign="TOP"><b>Q?</b><td valign="TOP">Is downloading and using of TinySSL legal?
-<tr><td valign="TOP"><b>A:</b><td valign="TOP">You need to read quite a bit of information about <a href="https://web.archive.org/web/19980125093401/http://www.psy.uq.edu.au/~ftp/Crypto/">SSLeay</a> to draw your own conclusions - and then go and talk to a lawyer. 
+<tr><td valign="TOP"><b>A:</b><td valign="TOP">You need to read quite a bit of information about <a href="https://web.archive.org/web/19981205052436/http://www.psy.uq.edu.au/~ftp/Crypto/">SSLeay</a> to draw your own conclusions - and then go and talk to a lawyer. 
 
 </table>
 
 <h2><a name="History">History</a></h2>
 <h3>0.5 (2-Dec-1997)</h3>
 <ul>
-<li>Supported (but not tested enough) "Location" and "Status" CGI script output directives. Your feedback would be appreciated. A very good explanation of CGI script output directives is at <a href="https://web.archive.org/web/19980125093401/http://hoohoo.ncsa.uiuc.edu/cgi/out.html">http://hoohoo.ncsa.uiuc.edu/cgi/out.html</a>.
-<li>Supported CGI command line options, mostly used for ISINDEX query. Try finger script at <a href="https://web.archive.org/web/19980125093401/http://hoohoo.ncsa.uiuc.edu/cgi-bin/finger">http://hoohoo.ncsa.uiuc.edu/cgi-bin/finger</a> as an example of isindex query.
-<li>Changed the algorithm of determining requester's host name. Now the address resolved back an forward to produce a true picture.</a>
-<li>Fixed some minor bugs with launching CGI scripts and tested with Perl5 by <a href="https://web.archive.org/web/19980125093401/http://www.activestate.com/">ActiveState</a>. 
+<li>Supported (but not tested enough) "Location" and "Status" CGI script output directives. Your feedback would be appreciated. A very good explanation of CGI script output directives is at <a href="https://web.archive.org/web/19981205052436/http://hoohoo.ncsa.uiuc.edu/cgi/out.html">http://hoohoo.ncsa.uiuc.edu/cgi/out.html</a>.
+<li>Supported CGI command line options, mostly used for ISINDEX query. Try finger script at <a href="https://web.archive.org/web/19981205052436/http://hoohoo.ncsa.uiuc.edu/cgi-bin/finger">http://hoohoo.ncsa.uiuc.edu/cgi-bin/finger</a> as an example of isindex query.
+<li>Changed the algorithm of determining requester's host name. Now the address resolved back an forward to produce a true picture.
+<li>Fixed some minor bugs with launching CGI scripts and tested with Perl5 by <a href="https://web.archive.org/web/19981205052436/http://www.activestate.com/">ActiveState</a>. 
 <li>Introduced a resetter thread that shuts down the sockets that are completely inactive for 5 minutes.
 <li>Duplicate binds are now reported.
 <li>It is now possible to bind the daemon to specified port (secong command line parameter) and specified address (third commandline parameter). 
 <li>Now supports more CGI environment variables. 
 </ul>
-<h3>0.6 (17-Dec-1997)</h3>
-<ul>
-<li>Fixed a bug with pointer access violation after calling <code>gethostbyname()</code>.
-</ul>
-<h3>0.7 (21-Dec-1997)</h3>
-<ul>
-<li>TinySSL gets available.
-</ul>
 
+<h3>0.6 (17-Dec-1997)</h3>
+<ul><li>Fixed a bug with pointer access violation after calling <code>gethostbyname()</code>.</ul>
+
+<h3>0.7 (21-Dec-1997)</h3>
+<ul><li>TinySSL gets available.</ul>
 
 <h2><a name="Feedbacks">Feedbacks</a></h2>
 
@@ -330,10 +376,13 @@ ssleay req -new -key key.pem -out cert.pem -x509 -config ssleay.cnf
 <li>I'm just moving into Delphi &amp; Winsock programming in a serious way (Lots of coding experience but new to these two environments). You're TinyWeb source code should be great for learning/experimenting! <i>&lt;Andy Frankford&gt;</i><p>
 <li>Cool program! Nice to see other people who want a simple server without soo much bloat! <i>&lt;Bruce Orcutt&gt;</i><p>
 <li>The Concept is excellent. I'm already running WinGate, which is a proxy server for intranets to allow each workstation on to the internet. All I wanted was a little http server to serve my actual home page, but I needed CGI. With all of the other servers, if they had CGI, then they usually also came with FTP, smtp, pop3, and so much other stuff. I did not want to do a lot of setting up, and I did not want anything but http. TinyWeb filled this gap nicely. It is incredibly easy to install, and integrates well with other things on your computer, not taking it over. And it was surprisingly easy to get perl to work.<i>&lt;Kim Saunders&gt;</i><p>
+<li>TinyWEB is pretty cool. I liked how it runned in the backround. I also run another program, though, for my domain name (which I got at http://www.ml.org) to work right, because I have a static IP. Still, I like TinyWEB because when somebody goes to your site, they don't need to go trough a server handling hundreds of requests. It goes directly to your site. Also, you won't need to upload files, because there already on your site! TinyWEB is a cool program. <i>&lt;Chance Original&gt;</i><p>
+<li>You know it already, but I have to say it once more: Your "tinyweb" is an excellent little web server, very very easy to install and.. well.. it works... ;) And the best: it's freeware and the sources are also free... I am a delphi programmer, and I am surprised how compact the program is... I don't know if we'll ever need a web-server in our projects, but if, it will surely be based on tinyweb... Once more: thank you.. <i>&lt;Juergen Witte&gt;</i><p>
+<li>Thanks for developing and sharing Tiny Web! It is one of the best basic Web servers to have come along to date, and NOBODY can argue about it's size, performance and low impact on the host system.  I have found absolutely NOTHING to complain about in Tiny Web. <i>&lt;Bill Powell&gt;</i><p>
+<li>I must congratulate you on your excellent web server program (TinyWeb), this is a great bit of code and I have found it perfect for creating a small, quick and easy web server.<i>&lt;Wayne Haigh&gt;</i><p>
+<li>I am so impressed with TinyWeb. Awsome coding!! I enjoyed reading the code. Prof looking! Lol. It just worked. I unzip it and ran it. It it just works. Wild!!!! heh. Very rar with server programs. :-) <i>&lt;Jonas E. Hjortlund&gt;</i><p>
+
 </ul>
 
-<h2><a name="#ToDo">ToDo</a></h2>
-
-<p>It's planning to implement Basic Access Authentication (rfc2068) and Digest Access Authentication (rfc2069).</p>
 </body>
 </html>
