@@ -1,14 +1,16 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  TinyWeb Copyright (C) 1997 RIT Research Labs
+//  TinyWeb 
+//  Copyright (C) 1997-2000 RIT Research Labs
+//  Copyright (C) 2000-2017 RITLABS S.R.L.
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
 //
-//  Copyright remains RIT Research Labs, and as such any Copyright notices
+//  Copyright remains RITLABS S.R.L., and as such any Copyright notices
 //  in the code are not to be removed. If this package is used in a
-//  product, RIT Research Labs should be given attribution as the RIT Research
-//  Labs of the parts of the library used. This can be in the form of a textual
+//  product, RITLABS S.R.L. should be given attribution as the owner
+//  of the parts of the library used. This can be in the form of a textual
 //  message at program startup or in documentation (online or textual)
 //  provided with the package.
 //
@@ -23,9 +25,9 @@
 //     documentation and/or other materials provided with the distribution.
 //  3. All advertising materials mentioning features or use of this software
 //     must display the following acknowledgement:
-//     "Based on TinyWeb Server by RIT Research Labs."
+//     "Based on TinyWeb Server by RITLABS S.R.L.."
 //
-//  THIS SOFTWARE IS PROVIDED BY RIT RESEARCH LABS "AS IS" AND ANY EXPRESS
+//  THIS SOFTWARE IS PROVIDED BY RITLABS S.R.L. "AS IS" AND ANY EXPRESS
 //  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 //  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 //  DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
@@ -55,18 +57,17 @@ procedure ComeOn;
 implementation
 
 uses
-  {$IFDEF DEF_SSL}
-  xSSL,
-  SSLeay,
+  {$IFDEF ODBC}
+  OdbcAuth,
   {$ENDIF}
   WinSock,
   Windows,
+  Messages,
   xBase;
 
 const
 
-  CIndexFile  = 'index.html';
-  ScriptsPath = '/cgi-bin/';
+  ScriptsPath = 'cgi-bin';
 
   CHTTPServerThreadBufSize = $2000;
   MaxStatusCodeIdx = 36;
@@ -117,8 +118,8 @@ type
   end;
 
   THttpResponseDataFileHandle = class(TAbstractHttpResponseData)
-    FHandle: Integer;
-    constructor Create(AHandle: Integer);
+    FHandle: THandle;
+    constructor Create(AHandle: DWORD);
   end;
 
   THttpResponseDataEntity = class(TAbstractHttpResponseData)
@@ -136,7 +137,7 @@ type
 
   TPipeReadStdThread = class(TThread)
     Error: Boolean;
-    HPipe: Integer;
+    HPipe: DWORD;
     Buffer: PHTTPServerThreadBufer;
     EntityHeader: TEntityHeader;
     Collector: TCollector;
@@ -144,13 +145,13 @@ type
   end;
 
   TPipeWriteStdThread = class(TThread)
-    HPipe: Integer;
+    HPipe: DWORD;
     s: string;
     procedure Execute; override;
   end;
 
   TPipeReadErrThread = class(TThread)
-    HPipe: Integer;
+    HPipe: DWORD;
     s: string;
     procedure Execute; override;
   end;
@@ -202,6 +203,7 @@ type
     Warning,                // Section 14.45
     WWWAuthenticate         // Section 14.46
       : string;
+    IsNormalAuthenticateAfterEmptyUsernamePassword: Boolean;
     function OutString: string;
   end;
 
@@ -222,7 +224,8 @@ type
     ProxyAuthorization,      // Section 14.34
     Range,                   // Section 14.36
     Referer,                 // Section 14.37
-    UserAgent: string;       // Section 14.42
+    UserAgent,               // Section 14.42
+    Cookie: string;          // rfc-2109
     function Filter(const z, s: string): Boolean;
   end;
 
@@ -231,6 +234,7 @@ type
     Parsed: Boolean;
     Lines: TStringColl;
     CollectStr: string;
+    CollectLen: Integer;
     ContentLength: Integer;
   public
     EntityBody: string;
@@ -258,8 +262,12 @@ type
     ETag,                    // Section 14.20
     Expires,                 // Section 14.21
     LastModified,            // Section 14.29
+    {This is two headers for file download by CGI}
+    AcceptRanges,            // Section 14.5
+    ContentDisposition,      // Section 15.10
     EntityBody: string;
     EntityLength: Integer;
+    SetCookie,
     CGIStatus,
     CGILocation: string;
     function Filter(const z, s: string): Boolean;
@@ -271,17 +279,18 @@ type
     RequestCollector: TCollector;
     FileNfo: TFileINfo;
 
-    FHandle,
+    FHandle: THandle;
     StatusCode,
     HTTPVersionHi,
     HTTPVersionLo: Integer;
 
     TransferFile,
     ReportError,
-    KeepAlive: Boolean;
+    KeepAliveInRequest,
+    KeepAliveInReply: Boolean;
 
     ErrorMsg,
-    Method, RequestURI, HTTPVersion,
+    Method, RequestURI, HTTPVersion, AuthUser, AuthPassword, AuthType,
     URIPath, URIParams, URIQuery, URIQueryParam : string;
 
     ResponceObjective: TAbstractHttpResponseData;
@@ -300,12 +309,10 @@ type
   end;
 
 var
-    {$IFDEF DEBUG}
-    DebugExit: Boolean;
-    {$ENDIF}
-
   ContentTypes: TContentTypeColl;
-  ParamStr1,
+  ParamStr1: string;
+
+{$IFDEF LOGGING}
   FAccessLog,
   FAgentLog,
   FErrorLog,
@@ -317,10 +324,10 @@ var
   HAccessLog,
   HAgentLog,
   HErrorLog,
-  HRefererLog: Integer;
+  HRefererLog: DWORD;
+{$ENDIF}
 
-
-function FileTimeToStr(AT: Integer): string;
+function FileTimeToStr(AT: DWORD): string;
 const
   wkday: array[0..6] of string = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
 var
@@ -336,8 +343,37 @@ begin
   ItoS(D.wYear) + ' ' +
   ItoSz(D.wHour, 2) + ':' +
   ItoSz(D.wMinute, 2) + ':' +
-  ItoSz(D.wSecond, 2);
+  ItoSz(D.wSecond, 2) + ' GMT';
 end;
+
+function StrToFileTime(AStr: string): DWORD;
+var
+  D: TSystemTime;
+  T: TFileTime;
+  s, z: string;
+  e: Integer;
+begin
+  Result := INVALID_FILE_TIME;
+  Clear(D, SizeOf(D));
+  s := AStr;
+  GetWrd(s, z, ' ');
+  GetWrdD(s, z); Val(z, D.wDay, e); if e > 0 then Exit;
+  GetWrdA(s, z); D.wMonth := Pos(#1+UpperCase(z)+#1, #1'JAN'#1'FEB'#1'MAR'#1'APR'#1'MAY'#1'JUN'#1'JUL'#1'AUG'#1'SEP'#1'OCT'#1'NOV'#1'DEC'#1);
+  if D.wMonth = 0 then Exit;
+  D.wMonth := (D.wMonth+3) div 4;
+  GetWrdD(s, z); Val(z, D.wYear, e); if e > 0 then Exit;
+  if D.wYear < 200 then
+  begin
+    if D.wYear < 50 then Inc(D.wYear, 2000) else Inc(D.wYear, 1900);
+  end;
+  GetWrdD(s, z); Val(z, D.wHour, e); if e > 0 then Exit;
+  GetWrdD(s, z); Val(z, D.wMinute, e); if e > 0 then Exit;
+  GetWrdD(s, z); Val(z, D.wSecond, e); if e > 0 then Exit;
+  if not SystemTimeToFileTime(D, T) then Exit;
+  Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
+end;
+
+// 'Sunday, 17-May-98 18:44:23 GMT; length=4956'
 
 constructor THTTPServerThread.Create;
 begin
@@ -383,6 +419,7 @@ begin
   if z = 'RANGE'               then Range              := s else // Section 14.36
   if z = 'REFERER'             then Referer            := s else // Section 14.37
   if z = 'USER-AGENT'          then UserAgent          := s else // Section 14.42
+  if z = 'COOKIE'              then Cookie             := s else
     Result := False
 end;
 
@@ -425,6 +462,10 @@ begin
   Add(s, ETag,            'ETag');              // Section 14.20
   Add(s, Expires,         'Expires');           // Section 14.21
   Add(s, LastModified,    'Last-Modified');     // Section 14.29
+  {This is two headers for file download by CGI}
+  Add(s, AcceptRanges,    'Accept-Ranges');    // Section 14.5
+  Add(s, ContentDisposition, 'Content-Disposition'); // Section 15.10
+  Add(s, SetCookie,       'Set-Cookie');
   Result := s;
 end;
 
@@ -465,8 +506,14 @@ begin
   if z = 'ETAG'             then ETag            := s else // 14.20
   if z = 'EXPIRES'          then Expires         := s else // 14.21
   if z = 'LAST-MODIFIED'    then LastModified    := s else // 14.29
-  if z = 'STATUS'           then CGIStatus       := s else
+  {This is two headers for file download by CGI}
+  if z = 'ACCEPT-RANGES'    then AcceptRanges    := s else // 14.5
+  if z = 'CONTENT-DISPOSITION' then ContentDisposition := s else // 15.10
+  if z = 'STATUS'           then
+  CGIStatus       := s
+  else
   if z = 'LOCATION'         then CGILocation     := s else
+  if z = 'SET-COOKIE'       then SetCookie       := s else
     Result := False;
 end;
 
@@ -510,25 +557,33 @@ end;
 
 function TCollector.Collect(var Buf: THTTPServerThreadBufer; j: Integer): Boolean;
 var
-  i: Integer;
+  i,l: Integer;
 begin
   if not CollectEntityBody then
-  for i := 0 to j-1 do
   begin
-    CollectStr := CollectStr + Buf[i];
-    if Copy(CollectStr, Length(CollectStr)-1, 2) = #13#10 then
+    l := Length(CollectStr);
+    for i := 0 to j-1 do
     begin
-      CollectStr := Copy(CollectStr, 1, Length(CollectStr)-2);
-      if CollectStr = '' then
+      if l <= CollectLen then
       begin
-        CollectEntityBody := True;
-        Dec(j, i+1);
-        if j > 0 then Move(Buf[i+1], Buf[0], j);
-        Break;
-      end else
+        Inc(l, j + 100);
+        SetLength(CollectStr, l);
+      end;
+      Inc(CollectLen);
+      CollectStr[CollectLen] := Buf[i];
+      if (CollectLen >= 2) and (CollectStr[CollectLen] = #10) and (CollectStr[CollectLen-1] = #13) then
       begin
-        Lines.Add(CollectStr);
-        CollectStr := '';
+        if CollectLen = 2 then
+        begin
+          CollectEntityBody := True;
+          Dec(j, i+1);
+          if j > 0 then Move(Buf[i+1], Buf[0], j);
+          Break;
+        end else
+        begin
+          Lines.Add(Copy(CollectStr, 1, CollectLen-2));
+          CollectLen := 0;
+        end;
       end;
     end;
   end;
@@ -550,6 +605,7 @@ constructor TCollector.Create;
 begin
   inherited Create;
   Lines := TStringColl.Create;
+//  Lines.LongString;
 end;
 
 destructor TCollector.Destroy;
@@ -561,9 +617,11 @@ end;
 
 procedure TPipeWriteStdThread.Execute;
 var
-  j: Integer;
+  j: DWORD;
+  slen: Integer;
 begin
-  WriteFile(HPipe, s[1], Length(s), j, nil);
+  slen := Length(s);
+  if slen > 0 then WriteFile(HPipe, s[1], slen, j, nil);
 end;
 
 function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader; j: Integer; Buffer: THTTPServerThreadBufer): Boolean;
@@ -596,27 +654,26 @@ end;
 procedure TPipeReadErrThread.Execute;
 var
   ss: ShortString;
-  j: Integer;
+  j: DWORD;
 begin
   repeat
-    if not ReadFile(HPipe, ss[1], 250, j, nil) then Break;
+    if (not ReadFile(HPipe, ss[1], 250, j, nil)) or (j=0) then Break;
     ss[0] := Char(j);
     s := s + ss;
-  until Terminated;
+  until False;
 end;
 
 
 procedure TPipeReadStdThread.Execute;
 var
-  j: Integer;
+  j: DWORD;
 begin
   repeat
-    if not ReadFile(HPipe, Buffer^, CHTTPServerThreadBufSize, j, nil) then Break;
+    if (not ReadFile(HPipe, Buffer^, CHTTPServerThreadBufSize, j, nil)) or (j = 0) then Break;
     Error := not DoCollect(Collector, EntityHeader, j, Buffer^);
     if Error then Break;
     if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then Break;
-  until Terminated ;
-  j := GetLastError
+  until False;
 end;
 
 function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr, AStdInStr: string; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: string): TEntityHeader;
@@ -624,7 +681,8 @@ var
   SI: TStartupInfo;
   PI: TProcessInformation;
   Security: TSecurityAttributes;
-  j, si_r, si_w, so_r, so_w, se_r, se_w: Integer;
+  Actually: DWORD;
+  si_r, si_w, so_r, so_w, se_r, se_w: THandle;
   b: Boolean;
   Collector: TCollector;
   EntityHeader: TEntityHeader;
@@ -632,9 +690,19 @@ var
   PipeWriteStdThread: TPipeWriteStdThread;
   PipeReadErrThread: TPipeReadErrThread;
   s: string;
+
+function ReportGUI: string;
+var
+  d, n, e: string;
+begin
+  FSPlit(AExecutable, d, n, e);
+  Result := n+e+' is a GUI application';
+end;
+
 begin
   Result := nil;
 
+  FillChar(Security, SizeOf(Security), 0);
   with Security do
   begin
     nLength := SizeOf(TSecurityAttributes);
@@ -648,20 +716,20 @@ begin
 
   FillChar(SI, SizeOf(SI), 0);
   SI.CB := SizeOf(SI);
-  SI.dwFlags := STARTF_USESTDHANDLES;
+  SI.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
   SI.hStdInput := si_r;
   SI.hStdOutput := so_w;
   SI.hStdError := se_w;
+  SI.wShowWindow := SW_HIDE;
   if AExecutable = AScript then s := AExecutable else s := AExecutable + ' ' + AScript;
   if AQueryParam <> '' then s := s + ' ' + AQueryParam;
-
+  s := DelSpaces(s);
   b := CreateProcess(
     nil,                     // pointer to name of executable module
-    PChar(DelSpaces(s)),  // pointer to command line string
+    PChar(s),                // pointer to command line string
     @Security,               // pointer to process security attributes
     @Security,               // pointer to thread security attributes
     True,                    // handle inheritance flag
-    DETACHED_PROCESS or
     CREATE_SUSPENDED,        // creation flags
     PChar(AEnvStr),          // pointer to new environment block
     PChar(APath),            // pointer to current directory name
@@ -669,9 +737,25 @@ begin
     PI                       // pointer to PROCESS_INFORMATION
   );
 
-  if not b then
+  if b then
+  begin
+    {--$IFDEF CHECK_GUI}
+    if WaitForInputIdle(PI.hProcess, 0) = WAIT_TIMEOUT then
+    begin
+      ErrorMsg := ReportGUI;
+      TerminateProcess(PI.hProcess, 0);
+      CloseHandle(PI.hThread);
+      CloseHandle(PI.hProcess);
+      b := False;
+    end;
+    {--$ENDIF}
+  end else
   begin
     ErrorMsg := SysErrorMsg(GetLastError);
+  end;
+
+  if not b then
+  begin
     CloseHandles([si_r, si_w, so_r, so_w, se_r, se_w]);
     Exit;
   end;
@@ -679,7 +763,6 @@ begin
   if AStdInStr = '' then
   begin
     PipeWriteStdThread := nil;
-    CloseHandle(si_w);
   end else
   begin
     PipeWriteStdThread := TPipeWriteStdThread.Create(True);
@@ -703,14 +786,17 @@ begin
   PipeReadStdThread.Suspended := False;
 
   SelfThr.Priority := tpLowest;
+
   ResumeThread(PI.hThread);
   WaitForSingleObject(PI.hProcess, INFINITE);
   CloseHandle(PI.hThread);
-  CloseHandle(PI.hProcess);
 
 // Close StdIn
   CloseHandle(si_r);
-  if PipeWriteStdThread <> nil then
+  if PipeWriteStdThread = nil then
+  begin
+    CloseHandle(si_w);
+  end else
   begin
     WaitForSingleObject(PipeWriteStdThread.Handle, INFINITE);
     PipeWriteStdThread.Terminate;
@@ -721,25 +807,26 @@ begin
 // Close StdErr
 
   CloseHandle(se_w);
-  PipeReadErrThread.Terminate;
   WaitForSingleObject(PipeReadErrThread.Handle, INFINITE);
+  PipeReadErrThread.Terminate;
   ErrorMsg := PipeReadErrThread.s;
   FreeObject(PipeReadErrThread);
   CloseHandle(se_r);
 
 // Close StdOut
-  PipeReadStdThread.Terminate;
   CloseHandle(so_w);
   WaitForSingleObject(PipeReadStdThread.Handle, INFINITE);
+  PipeReadStdThread.Terminate;
   SelfThr.Priority := tpNormal;
 
   while not PipeReadStdThread.Error do
   begin
-    if not ReadFile(so_r, Buffer, CHTTPServerThreadBufSize, j, nil) then Break;
-    PipeReadStdThread.Error := not DoCollect(Collector, EntityHeader, j, Buffer);
+    if (not ReadFile(so_r, Buffer, CHTTPServerThreadBufSize, Actually, nil)) or (Actually = 0) then Break;
+    PipeReadStdThread.Error := not DoCollect(Collector, EntityHeader, Actually, Buffer);
     if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then Break;
   end;
   CloseHandle(so_r);
+  CloseHandle(PI.hProcess);
 
   if PipeReadStdThread.Error or not Collector.GotEntityBody then FreeObject(Collector);
   FreeObject(PipeReadStdThread);
@@ -756,14 +843,18 @@ begin
   end;
 end;
 
+{$IFDEF LOGGING}
+
 procedure AddAgentLog(const AAgent: string);
 var
   s: string;
-  b: Integer;
+  b: DWORD;
+  slen: Integer;
 begin
   s := AAgent + #13#10;
   EnterCriticalSection(CSAgentLog);
-  WriteFile(HAgentLog, s[1], Length(s), b, nil);
+  slen := Length(s);
+  WriteFile(HAgentLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSAgentLog);
 end;
 
@@ -771,12 +862,14 @@ end;
 procedure AddRefererLog(const ARefererSrc, ARefererDst: string);
 var
   s: string;
-  b: Integer;
+  b: DWORD;
+  slen: Integer;
 begin
   if ARefererSrc = '' then Exit;
   s := ARefererSrc + ' -> ' + ARefererDst + #13#10;
   EnterCriticalSection(CSRefererLog);
-  WriteFile(HRefererLog, s[1], Length(s), b, nil);
+  slen := Length(s);
+  WriteFile(HRefererLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSRefererLog);
 end;
 
@@ -803,34 +896,42 @@ begin
         ']';
 end;
 
-procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion: string; AStatusCode, ALength: Integer);
+procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion, AUserName: string; AStatusCode, ALength: Integer);
 var
-  z,k: string;
-  b: Integer;
+  authuser,z,k: string;
+  b: DWORD;
+  slen: Integer;
 begin
   if ALength = -1 then z := '-' else z := ItoS(ALength);
   if AHTTPVersion = '' then k := '' else k := ' ' + AHTTPVersion;
-  z := ARemoteHost + ' - - '+CurTime+' "' +
-        ARequestLine + k +
-        '" ' +
-        ItoS(AStatusCode) + ' ' +
-        z+
+  if AUserName = '' then authuser := '-' else authuser := AUserName;
+  z := ARemoteHost +  // Remote hostname (or IP number if DNS hostname is not available)
+       ' - ' +        // rfc-931
+       authuser+' '+  // The username as which the user has authenticated himself
+       CurTime+' '+   // Date and time of the request
+       '"' + ARequestLine + k + '" ' +  // The request line exactly as it came from the client
+       ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
+       z+             // The content-length of the document transferred
        #13#10;
   EnterCriticalSection(CSAccessLog);
-  WriteFile(HAccessLog, z[1], Length(z), b, nil);
+  slen := Length(z);
+  WriteFile(HAccessLog, z[1], slen, b, nil);
   LeaveCriticalSection(CSAccessLog);
 end;
 
 procedure AddErrorLog(const AErr: string);
 var
   s: string;
-  b: Integer;
+  b: DWORD;
+  slen: Integer;
 begin
   s := CurTime + ' '+ AErr + #13#10;
   EnterCriticalSection(CSErrorLog);
-  WriteFile(HErrorLog, s[1], Length(s), b, nil);
+  slen := Length(s);
+  WriteFile(HErrorLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSErrorLog);
 end;
+{$ENDIF}
 
 constructor THttpResponseDataEntity.Create(AEntityHeader : TEntityHeader);
 begin
@@ -844,21 +945,45 @@ begin
   FErrorCode := AErrorCode;
 end;
 
-constructor THttpResponseDataFileHandle.Create(AHandle: Integer);
+constructor THttpResponseDataFileHandle.Create(AHandle: THandle);
 begin
   FHandle := AHandle
 end;
 
+
 function OpenRequestedFile(const AFName: string; thr: THttpServerThread; d: THttpData): TAbstractHttpResponseData;
 var
-  I, FHandle: Integer;
+  I: Integer;
+  FHandle: THandle;
   z: string;
+  fa: DWORD;
 begin
 // Try to open Requested file
+  z := LowerCase(AFName);
+  if Copy(z, 1, Length(ParamStr1)) <> LowerCase(ParamStr1) then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
+  if Copy(z, 1, Length(ParamStr1)+1+Length(ScriptsPath)+1) = ParamStr1+'\'+(ScriptsPath)+'\' then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
+  fa := GetFileAttributes(PChar(AFName));
+  if ((fa and FILE_ATTRIBUTE_DIRECTORY) <> 0) or
+       ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+       ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
   FHandle := _CreateFile(AFName, [cRead, cSequentialScan]);
   if FHandle = INVALID_HANDLE_VALUE then
   begin
+{$IFDEF LOGGING}
     AddErrorLog('access to '+AFName+' failed for '+thr.RemoteHost+', reason: '+SysErrorMsg(GetLastError));
+{$ENDIF}
     Result := THttpResponseErrorCode.Create(404);
     Exit;
   end;
@@ -881,9 +1006,10 @@ begin
   Result := THttpResponseDataFileHandle.Create(FHandle);
 end;
 
-function GetEnvStr(thr: THttpServerThread; d: THttpData): string;
+function GetEnvStr(thr: THttpServerThread; d: THttpData; const PathInfo: string): string;
 var
   s: string;
+  AuxS: string;
   p: PByteArray;
   j: Integer;
 
@@ -892,11 +1018,17 @@ var
 begin
   s := '';
   p := Pointer(GetEnvironmentStrings);
-  j := 0; while (p^[j]<>0) or (p^[j]<>0) do Inc(j);
+  j := 0; while (p^[j]<>0) or (p^[j+1]<>0) do Inc(j);
   Inc(j);
   SetLength(s, j);
   Move(p^, s[1], j);
   FreeEnvironmentStrings(Pointer(p));
+  AuxS := PathInfo;
+  Replace('\', '/', AuxS);
+  if AuxS <> '' then AuxS := '/' + AuxS;
+  Add('PATH_INFO', AuxS);
+  if AuxS <> '' then AuxS := ParamStr1+'\'+PathInfo;
+  Add('PATH_TRANSLATED', AuxS);
   Add('REMOTE_HOST', thr.RemoteHost);
   Add('REMOTE_ADDR', thr.RemoteAddr);
   Add('GATEWAY_INTERFACE', 'CGI/1.1');
@@ -910,13 +1042,17 @@ begin
   Add('HTTP_HOST', d.RequestRequestHeader.Host);                         // Section 14.23
   Add('HTTP_REFERER', d.RequestRequestHeader.Referer);                   // Section 14.37
   Add('HTTP_USER_AGENT', d.RequestRequestHeader.UserAgent);              // Section 14.42
+  Add('HTTP_COOKIE', d.RequestRequestHeader.Cookie);
   Add('QUERY_STRING', d.URIQuery);
   Add('SERVER_SOFTWARE', CServerName);
-  Add('SERVER_NAME', 'RIT Research Labs');
-  Add('SERVER_PROTOCOL', 'HTTP/1.0');
+  Add('SERVER_NAME', 'RITLABS S.R.L.');
+  Add('SERVER_PROTOCOL', d.HTTPVersion);
   Add('SERVER_PORT', ItoS(thr.Socket.FPort));
   Add('CONTENT_TYPE', d.RequestEntityHeader.ContentType);
   Add('CONTENT_LENGTH', d.RequestEntityHeader.ContentLength);
+  Add('USER_NAME', d.AuthUser);
+  Add('USER_PASSWORD', d.AuthPassword);
+  Add('AUTH_TYPE', d.AuthType);
   Result := s + #0;
 end;
 
@@ -931,21 +1067,362 @@ begin
   Result := Pos('://', s) > 0;
 end;
 
+type
+  TExecutableCache = class
+    LocalFName, sResult: string;
+    ReturnValue: HInst;
+  end;
+
+  TExecutableCacheColl = class(TSortedColl)
+    function Compare(Key1, Key2: Pointer): Integer; override;
+    function KeyOf(Item: Pointer): Pointer; override;
+  end;
+
+var
+  ExecutableCache: TExecutableCacheColl;
+
+function TExecutableCacheColl.Compare(Key1, Key2: Pointer): Integer;
+begin
+  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+end;
+
+function TExecutableCacheColl.KeyOf(Item: Pointer): Pointer;
+begin
+  Result := @TExecutableCache(Item).LocalFName;
+end;
+
+function FindExecutableCached(const LocalFName, sPath: string; var s: string): HInst;
+var
+  i: Integer;
+  c: TExecutableCache;
+begin
+  ExecutableCache.Enter;
+  if ExecutableCache.Search(@LocalFName, i) then
+  begin
+    c := ExecutableCache[i];
+    s := StrAsg(c.sResult);
+    Result := c.ReturnValue;
+  end else
+  begin
+    SetLength(s, 1000);
+    Result := FindExecutable(PChar(LocalFName), PChar(sPath), @s[1]);
+    c := TExecutableCache.Create;
+    c.ReturnValue := Result;
+    c.LocalFName := StrAsg(LocalFName);
+    if Result > 32 then
+    begin
+      SetLength(s, NulSearch(s[1]));
+      c.sResult := StrAsg(s);
+    end;
+    ExecutableCache.AtInsert(i, c);
+  end;
+  ExecutableCache.Leave;
+end;
+
+type
+  TRootCache = class
+    FURI, FResult: string;
+    IsCGI: Boolean;
+  end;
+
+  TRootCacheColl = class(TSortedColl)
+    function Compare(Key1, Key2: Pointer): Integer; override;
+    function KeyOf(Item: Pointer): Pointer; override;
+  end;
+
+var
+  RootCacheColl: TRootCacheColl;
+
+
+function TRootCacheColl.Compare(Key1, Key2: Pointer): Integer;
+begin
+  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+end;
+
+function TRootCacheColl.KeyOf(Item: Pointer): Pointer;
+begin
+  Result := @TRootCache(Item).FURI;
+end;
+
+
+function FindRootFileEx(const AURI: string; var IsCGI: Boolean): string;
+var
+  s, z: string;
+begin
+  IsCGI := False;
+  Result := ParamStr1 + AURI + 'index.html';
+  if FileExists(Result) then Exit;
+  Result := ParamStr1 + AURI + 'index.htm';
+  if FileExists(Result) then Exit;
+  Result := ParamStr1 + AURI + 'index.html';
+  s := GetEnvVariable('PATHEXT');
+  while s <> '' do
+  begin
+    GetWrd(s, z, ';');
+    if Length(z) < 2 then Continue;
+    if z[1] <> '.' then Continue;
+    z := ParamStr1+'\'+ScriptsPath+AURI+'index'+z;
+    if FileExists(z) then begin Result := z; IsCGI := True; Exit end;
+  end;
+end;
+
+function FindRootFile(const AURI: string; var IsCGI: Boolean): string;
+var
+  Found: Boolean;
+  I: Integer;
+  c: TRootCache;
+begin
+  RootCacheColl.Enter;
+  Found := RootCacheColl.Search(@AURI, I);
+  if Found then
+  begin
+    c := RootCacheColl[i];
+    IsCGI := c.IsCGI;
+    Result := StrAsg(c.FResult);
+  end;
+  RootCacheColl.Leave;
+  if Found then Exit;
+  Result := FindRootFileEx(AURI, IsCGI);
+  RootCacheColl.Enter;
+  if not RootCacheColl.Search(@AURI, I) then
+  begin
+    c := TRootCache.Create;
+    c.FURI := StrAsg(AURI);
+    c.FResult := StrAsg(Result);
+    c.IsCGI := IsCGI;
+    RootCacheColl.AtInsert(I, c);
+  end;
+  RootCacheColl.Leave;
+
+end;
+
+
+
+function FileIsRegular(const FN: string): Boolean;
+const
+  fDevices: string =
+    #1'CON'#1'LPT'#1'PRN'#1'NUL'#1'CLOCK$'#1'AUX'#1'COM1'#1'LPT1'#1'LPT2'#1'LPT3'#1'COM2'#1'COM3'#1'COM4'#1'CONIN$'#1'CONOUT$'
+    + #1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
+var
+  F: THandle;
+  FT: DWord;
+  I: Integer;
+  s: string;
+begin
+  s := UpperCase(ExtractFileName(FN));
+  if s = '' then
+  begin
+    Result := False;
+    Exit;
+  end;
+  I := Pos('.', s);
+  if I > 0 then
+    Delete(s, I, Length(s) - I + 1);
+  Result := (s = '') or (Pos(#1 + s + #1, fDevices) = 0);
+  if Result then
+  begin
+    F := Windows.CreateFile(PChar(ExpandFileName(FN)), 0,
+      FILE_SHARE_WRITE or FILE_SHARE_READ, nil, OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL, 0);
+    if F <> Invalid_Handle_Value then
+    begin
+      FT := GetFileType(F);
+      Result := (FT = FILE_TYPE_DISK) or (FT = FILE_TYPE_UNKNOWN);
+      CloseHandle(F);
+    end;
+  end;
+end;
+
+
+
+function LocalFNameSafe(const AFName: string): Boolean;
+var
+  ParentDir, Dir, FName: string;
+  fa: DWORD;
+begin
+  Result := True;
+  ParentDir := AFName;
+  repeat
+    Dir := ExtractFileDir(ParentDir);
+    if (Dir = ParentDir) or (not (Length(Dir) < Length(ParentDir))) then
+    begin
+      Result := False;
+      Break;
+    end;
+
+    if (Length(Dir) <= 4) and StrEnds(Dir, ':\') then
+    begin
+      Result := True;
+      Break;
+    end;
+
+    FName := ExtractFileName(ParentDir);
+    if (FName <> '') and (not FileIsRegular(FName)) then
+    begin
+      Result := False;
+      Break;
+    end;
+    fa := GetFileAttributes(PChar(Dir));
+    if fa = INVALID_HANDLE_VALUE then
+    begin
+      Result := False;
+      Break;
+    end;
+    if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
+       ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+       ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
+    begin
+      Result := False;
+      Break;
+    end;
+    ParentDir := Dir;
+
+  until False;
+end;
+
+
 function WebServerHttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
 var
-  s, z,
+  sPath, sName, sExt,
+  s: string;
   LocalFName: string;
-  i: Integer;
+  ii: HInst;
   ResponseEntityHeader: TEntityHeader;
+
+
+var
+  CgiFile: string;
+  PathInfo: string;
+
+  // Thanks to Nick McDaniel, Intranaut Inc. (21 January 1999)
+  // We were having problems with files that that had spaces in the name (C:\Program Files\).  The error that was being generated was "Internal Server Error: Can't open
+  // To alievate this problem, we added double quotes to executable and script name
+
+function QuoteSpaced(const s: string): string;
+begin
+// Thanks to Vladimir A. Bakhvaloff (30 January 2000)
+// parameters to Pos() function were improperly ordered
+  if Pos(' ', DelSpaces(s)) <= 0 then // Does the file name contain space cheracters inside?
+  begin
+    Result := s                 // No, return it as is
+  end else
+  begin
+    Result := '"'+s+'"';        // Yes, add quotes
+  end;
+end;
 
 procedure Exec;
 begin
-  ResponseEntityHeader := ExecuteScript(s, z, LocalFName, d.URIQueryParam, GetEnvStr(thr, d), d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
+  ResponseEntityHeader := ExecuteScript(QuoteSpaced(s), sPath, QuoteSpaced(CgiFile), d.URIQueryParam, GetEnvStr(thr, d, PathInfo), d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
 end;
 
+
+function CgiFileOK: Boolean;
+var
+  fa: DWord;
+  z,ts: string;
+begin
+  Result := False;
+  fa := GetFileAttributes(PChar(ParamStr1+'\'+ScriptsPath));
+  if fa = INVALID_HANDLE_VALUE then Exit;
+  if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
+     ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+     ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0)
+   then Exit;
+  CgiFile := Copy(LocalFName, 1, Length(ParamStr1)+1+Length(ScriptsPath));
+  PathInfo := CopyLeft(LocalFName, Length(CgiFile)+2);
+  ts := PathInfo;
+  repeat
+    GetWrd(ts, z, '\');
+    CgiFile := CgiFile + '\'+z;
+    fa := GetFileAttributes(PChar(CgiFile));
+    if fa = INVALID_HANDLE_VALUE then Exit;
+    if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) and
+       ((fa and FILE_ATTRIBUTE_HIDDEN) = 0) and
+       ((fa and FILE_ATTRIBUTE_SYSTEM) = 0) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  until False;
+end;
+
+procedure RunCGI;
+begin
+    FSplit(CgiFile, sPath, sName, sExt);
+    if UpperCase(sExt) = '.EXE' then
+    begin
+      s := CgiFile;
+      Exec;
+    end else
+    begin
+      ii := FindExecutableCached(CgiFile, sPath, s);
+      if ii > 32 then
+      begin
+        if not FileExists(s) then
+        begin
+          d.ErrorMsg := SysErrorMsg(GetLastError) + ' ('+s+')';
+        end else
+        begin
+          Exec;
+        end;
+      end else
+      begin
+        if ii = 31 then
+        begin
+          s := CgiFile;
+          Exec;
+        end else
+        begin
+          d.ErrorMsg := SysErrorMsg(ii);
+        end;
+      end;
+    end;
+end;
+
+procedure MakeHeaders;
+begin
+  if ResponseEntityHeader = nil then
+  begin
+    if d.ErrorMsg = '' then
+    begin
+      d.ErrorMsg := 'CGI script '+d.URIPath+' returned nothing';
+    end else
+    begin
+      d.ErrorMsg := 'Internal Server Error: '+d.ErrorMsg;
+    end;
+    Result := THttpResponseErrorCode.Create(500);
+  end else
+  begin
+    if ResponseEntityHeader.CGILocation <> '' then
+    begin
+      if IsURL(ResponseEntityHeader.CGILocation) then
+      begin
+        Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
+      end else
+      begin
+        Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
+      end;
+    end else
+    begin
+      Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
+    end;
+  end;
+end;
+
+
+var
+  IsCGI: Boolean;
+  CheckedURI: string;
 begin
   ResponseEntityHeader := nil;
   s := d.URIPath;
+
+  if Pos('\', s) > 0 then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
 
   Replace('/', '\', s);
   if (s='') or (s[1]<>'\') then
@@ -953,67 +1430,58 @@ begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
-  if (Pos('..', s)>0) or
+  if (Pos(#0, s)>0) or
+     (Pos('..', s)>0) or
      (Pos(':',s)>0) or
+     (Pos('\.\', s) > 0) or  // level #1 of protection from \.\
      (Pos('\\',s)>0) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
 
-  if s[Length(s)]='\' then s := s + CIndexFile else
-  if ExtractFileExt(s) = '' then
+  LocalFName := ExpandFileName(ParamStr1 + s);
+
+  if not StrEnds(LocalFName, s) then      // level #2 of protection from \.\
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
+
+  if not LocalFNameSafe(LocalFName) then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
+
+  CheckedURI := s;
+
+
+// Analyze file extension
+  if LowerCase(Copy(d.URIPath, 2, Length(ScriptsPath)+1)) = (ScriptsPath + '/') then
+  begin
+    if CgiFileOK then RunCGI else d.ErrorMsg := SysErrorMsg(GetLastError);
+    MakeHeaders;
+    Exit;
+  end;
+
+  if CheckedURI[Length(CheckedURI)]='\' then
+  begin
+    LocalFName := FindRootFile(CheckedURI, IsCGI);
+    if IsCGI then
+    begin
+      CgiFile := LocalFName;
+      RunCGI;
+      MakeHeaders;
+      Exit;
+    end;
+  end else
+  if ExtractFileExt(CheckedURI) = '' then
   begin
     Result := ReturnNewLocation(d.URIpath+'/', d);
     Exit;
   end;
-  LocalFName := ParamStr1 + s;
 
-// Analyze file extension
-  if Copy(d.URIPath, 1, Length(ScriptsPath)) = ScriptsPath then
-  begin
-    SetLength(s, 1000);
-    z := ExtractFilePath(LocalFName);
-    i := FindExecutable(PChar(ExtractFileName(LocalFName)), PChar(z), @s[1]);
-    if i > 32 then
-    begin
-      SetLength(s, NulSearch(s[1]));
-      Exec;
-    end else
-    begin
-      if i = 31 then
-      begin
-        s := LocalFName;
-        Exec;
-      end else
-      begin
-        d.ErrorMsg := SysErrorMsg(i);
-        Result := THttpResponseErrorCode.Create(500);
-        Exit;
-      end;
-    end;
-    if ResponseEntityHeader = nil then
-    begin
-      d.ErrorMsg := 'CGI script '+d.URIPath+' returned nothing';
-      Result := THttpResponseErrorCode.Create(500);
-    end else
-    begin
-      if ResponseEntityHeader.CGILocation <> '' then
-      begin
-        if IsURL(ResponseEntityHeader.CGILocation) then
-        begin
-          Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
-        end else
-        begin
-          Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
-        end;
-      end else
-      begin
-        Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
-      end;
-    end;
-    Exit;
-  end;
 
   Result := OpenRequestedFile(LocalFName, thr, d);
 
@@ -1056,12 +1524,19 @@ end;
 
 procedure THTTPServerThread.Execute;
 var
+  FPOS: DWORD;
   i, j: Integer;
-  s,z: string;
+  s,z,k: string;
   d: THTTPData;
   AbortConnection: Boolean;
+  Actually: DWORD;
 
 begin
+
+  {$IFDEF BEHIND_TUNNEL}
+  if recv(Socket.Handle, Socket.FAddr, 4, 0) <> 4 then Exit;
+  {$ENDIF}
+
 
   if not Socket.Handshake then Exit;
 
@@ -1074,7 +1549,7 @@ begin
     d.StatusCode := 400;
     d.ReportError := True;
     d.ResponseGeneralHeader := TGeneralHeader.Create;
-    d.ResponseResponseHeader := TResponseHeader.Create;
+    if d.ResponseResponseHeader = nil then d.ResponseResponseHeader := TResponseHeader.Create;
     s := '';
     with d do repeat
 
@@ -1130,7 +1605,6 @@ begin
         RequestCollector.SetContentLength(StoI(RequestEntityHeader.ContentLength));
       end;
 
-
       if not RequestCollector.GotEntityBody then Continue;
 
       // process intity body
@@ -1138,7 +1612,8 @@ begin
 
       FreeObject(RequestCollector);
 
-      KeepAlive := UpperCase(RequestGeneralHeader.Connection) = 'KEEP-ALIVE';
+      KeepAliveInRequest := UpperCase(RequestGeneralHeader.Connection) = 'KEEP-ALIVE';
+      KeepAliveInReply := KeepAliveInRequest;
 
       if (Method <> 'GET') and
          (Method <> 'POST') and
@@ -1151,9 +1626,6 @@ begin
 
     // Parse URI
         s := RequestURI;
-        {$IFDEF DEBUG}
-        if s = '/exit/now' then DebugExit := True;
-        {$ENDIF}
         i := Pos('?', s);
         if i > 0 then
         begin
@@ -1163,6 +1635,7 @@ begin
           begin
             URIQueryParam := URIQuery;
             if not UnpackPchars(URIQueryParam) then Break;
+            if Pos(#0, URIQueryParam)>0 then Break;
           end;
         end;
         i := Pos(';', s);
@@ -1174,9 +1647,10 @@ begin
         if not UnpackPchars(s) then Break;
         URIPath := s;
 
+{$IFDEF LOGGING}
         AddRefererLog(d.RequestRequestHeader.Referer, d.URIPath);
         AddAgentLog(d.RequestRequestHeader.UserAgent);
-
+{$ENDIF}
         PrepareResponse(d);
 
         Break;
@@ -1188,10 +1662,26 @@ begin
     begin
       if ResponseEntityHeader = nil then ResponseEntityHeader := TEntityHeader.Create;
 
+      if TransferFile and (RequestRequestHeader.IfModifiedSince <> '') then
+      begin
+        Actually := StrToFileTime(RequestRequestHeader.IfModifiedSince);
+        if (Actually <> INVALID_FILE_TIME) and (StrToFileTime(ResponseEntityHeader.LastModified) = Actually) then
+        begin
+          ZeroHandle(FHandle);
+          TransferFile := False;
+          StatusCode := 304;
+          ReportError := True;
+        end;
+      end;
+
       s := ResponseEntityHeader.CGIStatus;
       if s <> '' then
       begin
-        ReportError := True;
+	k := s;
+	GetWrd(k, z, ' ');
+        Val(z, StatusCode, i);
+    // Status code 200 was treated as error. Thanks to David Gommeren for pointing that out.
+	if StatusCode <> 200 then ReportError := True;
       end else
       begin
  // Get Status Line
@@ -1206,9 +1696,23 @@ begin
       end;
       if ReportError then
       begin
-        KeepAlive := False;
-        ResponseEntityHeader.ContentType := 'text/html';
-        ResponseEntityHeader.EntityBody :=
+        if StatusCode = 401 then 
+        begin
+          if ResponseResponseHeader.IsNormalAuthenticateAfterEmptyUsernamePassword then
+          begin
+            // don't close connection on "Unauthorized" error if the username and password were emplty - a normal way of authenticate on http
+          end else
+          begin
+            // invalid credentials - sleep from 0 to 5 seconds to prevent password checking
+            Sleep(Random(5001));  
+            KeepAliveInReply := False;
+          end;
+        end else 
+        begin
+          KeepAliveInReply := False;
+        end;
+        if ResponseEntityHeader.ContentType = '' then ResponseEntityHeader.ContentType := 'text/html';
+        if ResponseEntityHeader.EntityBody = '' then ResponseEntityHeader.EntityBody :=
           '<HTML>'+
           '<TITLE>'+s+'</TITLE>'+
           '<BODY><H1>'+ErrorMsg+'</H1></BODY>'+
@@ -1218,13 +1722,17 @@ begin
 
       ResponseEntityHeader.ContentLength := ItoS(ResponseEntityHeader.EntityLength);
 
-      if KeepAlive then ResponseGeneralHeader.Connection := 'Keep-Alive';
+      if KeepAliveInReply then ResponseGeneralHeader.Connection := 'Keep-Alive' else
+      begin
+        if KeepAliveInRequest then ResponseGeneralHeader.Connection := 'Close';
+      end;
 
       ResponseResponseHeader.Server := CServerName;
 
       if ReportError then i := -1 else i := ResponseEntityHeader.EntityLength;
-      AddAccessLog(RemoteHost, Method + ' ' + URIPath, HTTPVersion, StatusCode,  i);
-
+{$IFDEF LOGGING}
+      AddAccessLog(RemoteHost, Method + ' ' + URIPath, HTTPVersion, d.AuthUser, StatusCode,  i);
+{$ENDIF}
       s := 'HTTP/1.0 '+ s + #13#10+
         ResponseGeneralHeader.OutString+
         ResponseResponseHeader.OutString+
@@ -1234,22 +1742,22 @@ begin
       if TransferFile then
       begin
         Socket.WriteStr(s);
-        i := 0;
+        FPOS := 0;
         repeat
-          ReadFile(FHandle, Buffer, CHTTPServerThreadBufSize, j, nil);
-          Inc(i, j);
-          if i > FileNfo.Size then Break;
-          if j = 0 then Break;
-          j := Socket.Write(Buffer, j);
-        until (j < CHTTPServerThreadBufSize) or (Socket.Status <> 0);
-        if i <> FileNfo.Size then AbortConnection := True;
+          ReadFile(FHandle, Buffer, CHTTPServerThreadBufSize, Actually, nil);
+          Inc(FPOS, Actually);
+          if FPOS > FileNfo.Size then Break;
+          if Actually = 0 then Break;
+          Actually := Socket.Write(Buffer, Actually);
+        until (FPOS = FileNfo.Size) or (Actually < CHTTPServerThreadBufSize) or (Socket.Status <> 0);
+        if FPOS <> FileNfo.Size then AbortConnection := True;
         ZeroHandle(FHandle);
       end else
       begin
-        s := s + ResponseEntityHeader.EntityBody + #13#10;
+        s := s + ResponseEntityHeader.EntityBody;
         Socket.WriteStr(s);
       end;
-      AbortConnection := AbortConnection or not KeepAlive;
+      AbortConnection := AbortConnection or not KeepAliveInReply;
     end;
     FreeObject(d);
   until AbortConnection
@@ -1273,8 +1781,8 @@ var
   Buf: array[0..ClassBufSize] of Char;
   r: TContentType;
   s, z, t : string;
-  i,
   ec,
+  i: Integer;
   Key,
   SubKey,
   BufSize,                       // size of string buffer
@@ -1284,7 +1792,7 @@ var
   cValues,                       // number of value entries
   cchMaxValueName,               // longest value name length
   cbMaxValueData,                // longest value data length
-  cbSecurityDescriptor: Integer; // security descriptor length
+  cbSecurityDescriptor: DWORD;   // security descriptor length
   ftLastWriteTime: TFileTime;    // last write time
 begin
   Key := OpenRegKeyEx(CBase, KEY_QUERY_VALUE or KEY_ENUMERATE_SUB_KEYS);
@@ -1322,7 +1830,7 @@ begin
     if ec <> ERROR_SUCCESS then Continue;
     SetString(s, Buf, BufSize);
     SubKey := OpenRegKey(CBase+'\'+s);
-    if SubKey = -1 then Continue;
+    if SubKey = INVALID_REGISTRY_KEY then Continue;
     z := ReadRegString(SubKey, SubName);
     RegCloseKey(SubKey);
     if Swap then
@@ -1348,7 +1856,7 @@ type
   end;
 
 
-function _Adr2Int(const s: string): Integer;
+function _Adr2Int(const s: string): DWORD;
 
 var
   CPos: Integer;
@@ -1390,7 +1898,7 @@ begin
   A.B := Get;
   A.C := Get;
   A.D := Get;
-  if Error then Result := -1 else Result := PInteger(@A)^;
+  if Error then Result := DWORD(INADDR_NONE) else  Result := PInteger(@A)^;
 end;
 
 function Adr2Int(const s: string): Integer;
@@ -1400,24 +1908,25 @@ end;
 
 
 var
-  BindPort, BindAddr: Integer;
-
-procedure GetHomeDir;
+  BindPort, BindAddr: DWORD;
+  IsCGI: Boolean;
+function GetHomeDir: Boolean;
 var
   s: string;
-  i: Integer;
+  i: DWORD;
 begin
+  Result := False;
   if ParamCount < 1 then
   begin
     MessageBox(0, 'Path to home directory is absent!'#13#10+
-                  'See READ.ME for details.'#13#10#13#10+
+                  'See README.TXT for details.'#13#10#13#10+
                   CServerName+' service failed to start.',
                   CServerName, CMB_FAILED);
     Exit;
   end;
   ParamStr1 := ParamStr(1);
   if ParamStr1[Length(ParamStr1)] = '\' then Delete(ParamStr1, Length(ParamStr1), 1);
-  s := ParamStr1+'\'+CIndexFile;
+  s := FindRootFile('\', IsCGI);
   if not FileExists(s) then
   begin
     s := 'Access to "'+s+'" failed'#13#10'Reason: "'+SysErrorMsg(GetLastError)+'"'#13#10#13#10+
@@ -1425,20 +1934,20 @@ begin
     MessageBox(0, PChar(s), CServerName, CMB_FAILED);
     Exit;
   end;
-  BindPort := {$IFDEF DEF_SSL} 443 {$ELSE} 80 {$ENDIF};
+  BindPort := 80;
   BindAddr := _INADDR_ANY;
   if ParamCount > 1 then
   begin
     i := Vl(ParamStr(2));
-    if i <> -1 then BindPort := i;
+    if i <> INVALID_VALUE then BindPort := i;
   end;
   if ParamCount > 2 then
   begin
     i := Adr2Int(ParamStr(3));
-    if i <> -1 then BindAddr := i;
+    if i <> INVALID_VALUE then BindAddr := i;
   end;
+  Result := True;
 end;
-
 
 procedure ReadContentTypes;
 begin
@@ -1447,6 +1956,7 @@ begin
   GetContentTypes('SOFTWARE\Classes', 'Content Type', True);
 end;
 
+{$IFDEF LOGGING}
 procedure InitLogs;
 begin
   FAccessLog := 'access_log';
@@ -1462,7 +1972,7 @@ begin
   InitializeCriticalSection(CSErrorLog);
   InitializeCriticalSection(CSRefererLog);
 end;
-
+{$ENDIF}
 
 procedure InitReseterThread;
 begin
@@ -1470,17 +1980,205 @@ begin
   ResetterThread := TResetterThread.Create;
 end;
 
+procedure FreeDummyLibraries;
+var
+  I: Integer;
+begin
+  I := GetModuleHandle('OleAut32'); if I <> 0 then FreeLibrary(I); 
+  I := GetModuleHandle('Ole32'); if I <> 0 then FreeLibrary(I);
+  I := GetModuleHandle('RPCRT4'); if I <> 0 then FreeLibrary(I);
+  I := GetModuleHandle('AdvAPI32'); if I <> 0 then FreeLibrary(I);
+  I := GetModuleHandle('GDI32'); if I <> 0 then FreeLibrary(I);
+  I := GetModuleHandle('COMCTL32'); if I <> 0 then FreeLibrary(I);
+  I := GetModuleHandle('USER32'); if I <> 0 then FreeLibrary(I);
+end;
+
+type
+  TWndMethod = procedure(var Message: TMessage) of object;
+
+
+const
+  InstanceCount = 313;
+
+{ Object instance management }
+
+type
+  PObjectInstance = ^TObjectInstance;
+  TObjectInstance = packed record
+    Code: Byte;
+    Offset: Integer;
+    case Integer of
+      0: (Next: PObjectInstance);
+      1: (Method: TWndMethod);
+  end;
+
+type
+  PInstanceBlock = ^TInstanceBlock;
+  TInstanceBlock = packed record
+    Next: PInstanceBlock;
+    Code: array[1..2] of Byte;
+    WndProcPtr: Pointer;
+    Instances: array[0..InstanceCount] of TObjectInstance;
+  end;
+
+var
+  InstBlockList: PInstanceBlock;
+  InstFreeList: PObjectInstance;
+
+{ Standard window procedure }
+{ In    ECX = Address of method pointer }
+{ Out   EAX = Result }
+
+function StdWndProc(Window: HWND; Message, WParam: Longint;
+  LParam: Longint): Longint; stdcall; assembler;
+asm
+        XOR     EAX,EAX
+        PUSH    EAX
+        PUSH    LParam
+        PUSH    WParam
+        PUSH    Message
+        MOV     EDX,ESP
+        MOV     EAX,[ECX].Longint[4]
+        CALL    [ECX].Pointer
+        ADD     ESP,12
+        POP     EAX
+end;
+
+{ Allocate an object instance }
+
+function CalcJmpOffset(Src, Dest: Pointer): Longint;
+begin
+  Result := Longint(Dest) - (Longint(Src) + 5);
+end;
+
+function MakeObjectInstance(Method: TWndMethod): Pointer;
+const
+  BlockCode: array[1..2] of Byte = (
+    $59,       { POP ECX }
+    $E9);      { JMP StdWndProc }
+  PageSize = 4096;
+var
+  Block: PInstanceBlock;
+  Instance: PObjectInstance;
+begin
+  if InstFreeList = nil then
+  begin
+    Block := VirtualAlloc(nil, PageSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    Block^.Next := InstBlockList;
+    Move(BlockCode, Block^.Code, SizeOf(BlockCode));
+    Block^.WndProcPtr := Pointer(CalcJmpOffset(@Block^.Code[2], @StdWndProc));
+    Instance := @Block^.Instances;
+    repeat
+      Instance^.Code := $E8;  { CALL NEAR PTR Offset }
+      Instance^.Offset := CalcJmpOffset(Instance, @Block^.Code);
+      Instance^.Next := InstFreeList;
+      InstFreeList := Instance;
+      Inc(Longint(Instance), SizeOf(TObjectInstance));
+    until Longint(Instance) - Longint(Block) >= SizeOf(TInstanceBlock);
+    InstBlockList := Block;
+  end;
+  Result := InstFreeList;
+  Instance := InstFreeList;
+  InstFreeList := Instance^.Next;
+  Instance^.Method := Method;
+end;
+
+{ Free an object instance }
+
+procedure FreeObjectInstance(ObjectInstance: Pointer);
+begin
+  if ObjectInstance <> nil then
+  begin
+    PObjectInstance(ObjectInstance)^.Next := InstFreeList;
+    InstFreeList := ObjectInstance;
+  end;
+end;
+
+var
+  UtilWindowClass: TWndClass = (
+    style: 0;
+    lpfnWndProc: @DefWindowProc;
+    cbClsExtra: 0;
+    cbWndExtra: 0;
+    hInstance: 0;
+    hIcon: 0;
+    hCursor: 0;
+    hbrBackground: 0;
+    lpszMenuName: nil;
+    lpszClassName: 'TPUtilWindow');
+
+function AllocateHWnd(Method: TWndMethod): HWND;
+var
+  TempClass: TWndClass;
+  ClassRegistered: Boolean;
+begin
+  UtilWindowClass.hInstance := HInstance;
+  UtilWindowClass.lpfnWndProc := @DefWindowProc;
+  ClassRegistered := GetClassInfo(HInstance, UtilWindowClass.lpszClassName,
+    TempClass);
+  if not ClassRegistered or (TempClass.lpfnWndProc <> @DefWindowProc) then
+  begin
+    if ClassRegistered then
+      Windows.UnregisterClass(UtilWindowClass.lpszClassName, HInstance);
+    Windows.RegisterClass(UtilWindowClass);
+  end;
+  Result := CreateWindowEx(WS_EX_TOOLWINDOW, UtilWindowClass.lpszClassName,
+    '', WS_POPUP {!0}, 0, 0, 0, 0, 0, 0, HInstance, nil);
+  if Assigned(Method) then
+    SetWindowLong(Result, GWL_WNDPROC, Longint(MakeObjectInstance(Method)));
+end;
+
+procedure DeallocateHWnd(Wnd: HWND);
+var
+  Instance: Pointer;
+begin
+  Instance := Pointer(GetWindowLong(Wnd, GWL_WNDPROC));
+  DestroyWindow(Wnd);
+  if Instance <> @DefWindowProc then FreeObjectInstance(Instance);
+end;
+
+type
+  TWndProc = class
+    Handle: THandle;
+    procedure WndProc(var M: TMessage);
+    destructor Destroy; override;
+  end;
+
+destructor TWndProc.Destroy;
+begin
+  DeallocateHWnd(Handle);
+  inherited Destroy;
+end;
+
+var
+  Leave: Boolean;
+
+procedure TWndProc.WndProc(var M: TMessage);
+begin
+  if M.Msg = WM_QUIT then Leave := True;
+  M.Result := DefWindowProc(Handle, M.Msg, M.wParam, M.lParam);
+end;
+
+type
+  TMainThread = class(TThread)
+    procedure Execute; override;
+  end;
+
+var
+  ServerSocketHandle: WinSock.TSocket;
+
 
 procedure MainLoop;
 var
-  J, err, ServerSocketHandle: Integer;
-  NewSocketHandle: Integer;
+  J, err: Integer;
+  NewSocketHandle: WinSock.TSocket;
   NewSocket: TSocket;
   NewThread: THTTPServerThread;
   WData: TWSAData;
   Addr: TSockAddr;
   s: string;
 begin
+  Leave := False;
   err := WSAStartup(MakeWord(1,1), WData);
   if err <> 0 then
   begin
@@ -1501,38 +2199,46 @@ begin
   Addr.sin_addr.s_addr := BindAddr;
   if bind(ServerSocketHandle, Addr, SizeOf(Addr)) = SOCKET_ERROR then
   begin
-    S := 'Failed to bind the socket, error #'+ItoS(WSAGetLastError)+'.'#13#10#13#10+
-         'Probable reason is that another daemon is already running on the same port ('+ItoS(BindPort)+').';
-    MessageBox(0, PChar(S), CServerName, CMB_FAILED);
+    MessageBeep(MB_ICONEXCLAMATION);
+{$IFDEF LOGGING}
+    AddErrorLog(
+         'Failed to bind the socket, port #'+ItoS(BindPort)+', address='+AddrInet(BindAddr)+', error #'+ItoS(WSAGetLastError)+'.'#13#10#13#10+
+         'Probable reason is that another daemon is already running on the same port ('+ItoS(BindPort)+').');
+{$ENDIF}
     Halt;
   end;
 
 
-  {$IFDEF DEF_SSL}
-  xSSLeayInit;
-  {$ENDIF DEF_SSL}
-
 
   InitReseterThread;
 
-  listen(ServerSocketHandle, 5);
+  listen(ServerSocketHandle, 100);
+
+  FreeDummyLibraries;
 
   repeat
     J := SizeOf(Addr);
+    {$IFDEF VER90}
+    NewSocketHandle := accept(ServerSocketHandle, Addr, J);
+    {$ELSE}
     NewSocketHandle := accept(ServerSocketHandle, @Addr, @J);
-    if NewSocketHandle = INVALID_SOCKET then
-    begin
-      asm nop end;
-      Exit;
-    end;
-    NewSocket := {$IFDEF DEF_SSL}TSSLSocket{$ELSE}TSocket{$ENDIF}.Create;
+    {$ENDIF}
+    if NewSocketHandle = INVALID_SOCKET then Break;
+
+    if Leave then Break;
+
+    NewSocket := TSocket.Create;
     NewSocket.Handle := NewSocketHandle;
     NewSocket.FAddr := Addr.sin_addr.s_addr;
     NewSocket.FPort := Addr.sin_port;
     if not NewSocket.Startup then FreeObject(NewSocket) else
     begin
       SocketsColl.Enter;
-      if SocksCount = 0 then ResetterThread.Resume;
+      if SocksCount = 0 then
+      begin
+        ResetterThread.TimeToSleep := SleepQuant;
+        SetEvent(ResetterThread.oSleep);
+      end;
       Inc(SocksCount);
       SocketsColl.Leave;
       NewThread := THTTPServerThread.Create;
@@ -1541,49 +2247,98 @@ begin
       NewSocket.RegisterSelf;
       NewThread.Resume;
     end;
-  until {$IFDEF DEBUG}DebugExit{$ELSE}False{$ENDIF};
-  {$IFDEF DEBUG}
-  CloseSocket(ServerSocketHandle);
-  {$ENDIF}
+  until False;
+  if ServerSocketHandle <> INVALID_SOCKET then CloseSocket(ServerSocketHandle);
 end;
+
+
+procedure MessageLoop;
+var
+  M: TMsg;
+  WP: TWndProc;
+begin
+  WP := TWndProc.Create;
+  WP.Handle := AllocateHWnd(WP.WndProc);
+  repeat
+    GetMessage(M, 0, 0, 0);
+    if M.Message = WM_QUIT then
+    begin
+      Leave := True;
+      Break;
+    end;
+    TranslateMessage(M);
+    DispatchMessage(M);
+  until Leave;
+  WP.Free;
+end;
+
 
 procedure ComeOn;
 var
- i: Integer;
+  i: Integer;
+  MainThread: TMainThread;
 begin
+
 //--- Set Hight priority class
 //  SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
 
-//--- Get and validate a home directory
-  GetHomeDir;
+{$IFDEF ODBC}
+  InitializeCriticalSection(OdbcCS);
+{$endif}
 
 //--- Initialize xBase Module
   xBaseInit;
+
+  ExecutableCache := TExecutableCacheColl.Create;
+  ExecutableCache.Enter;
+  ExecutableCache.Leave;
+
+  RootCacheColl := TRootCacheColl.Create;
+  RootCacheColl.Enter;
+  RootCacheColl.Leave;
+
+//--- Get and validate a home directory
+  if not GetHomeDir then Exit;
+
+
 
 //--- Read content types from registry and associate with file extensions
   ReadContentTypes;
 
 // --- Open log files and initialize semaphores
+{$IFDEF LOGGING}
   InitLogs;
+{$ENDIF}
 
 // --- Perform main loop
-  MainLoop;
+  MainThread := TMainThread.Create(False);
+
+  MessageLoop;
+
+  CloseSocket(ServerSocketHandle);
+  ServerSocketHandle := INVALID_SOCKET;
+
+  MainThread.Terminate;
+  WaitForSingleObject(MainThread.Handle, INFINITE);
+  MainThread.Free;
+
 
 // Non-debug version never exits :-)
 
-{$IFDEF DEBUG}
   ResetterThread.Terminate;
   SetEvent(ResetterThread.oSleep);
   SocketsColl.Enter;
   for i := 0 to SocketsColl.Count-1 do shutdown(TSocket(SocketsColl[i]).Handle, 2);
   SocketsColl.Leave;
   while SocketsColl.Count > 0 do Sleep(1000);
-  ResetterThread.Resume;
+  ResetterThread.TimeToSleep := SleepQuant;
+  SetEvent(ResetterThread.oSleep);
   WaitForSingleObject(ResetterThread.Handle, INFINITE);
   FreeObject(ResetterThread);
   FreeObject(SocketsColl);
   FreeObject(ContentTypes);
   xBaseDone;
+{$IFDEF LOGGING}
   CloseHandle(HAccessLog);
   CloseHandle(HAgentLog);
   CloseHandle(HErrorLog);
@@ -1592,7 +2347,17 @@ begin
   DeleteCriticalSection(CSAgentLog);
   DeleteCriticalSection(CSErrorLog);
   DeleteCriticalSection(CSRefererLog);
-  {$ENDIF}
+{$ENDIF}
+end;
+
+{ TMsgThread }
+
+
+{ TMainThread }
+
+procedure TMainThread.Execute;
+begin
+  MainLoop;
 end;
 
 end.

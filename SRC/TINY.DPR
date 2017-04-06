@@ -1,6 +1,8 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  TinyWeb Copyright (C) 2000 RITLABS S.R.L.
+//  TinyWeb 
+//  Copyright (C) 1997-2000 RIT Research Labs
+//  Copyright (C) 2000-2017 RITLABS S.R.L.
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
