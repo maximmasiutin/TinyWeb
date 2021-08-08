@@ -5,88 +5,92 @@
 <h1>TinyWeb Revision History</h1>
 <br>
 <h2>0.5 (02 December 1997)</h2>
-<UL>
-<LI>Supported (but not tested enough) "Location" and "Status" CGI script output directives. Your feedback would be appreciated.</LI>
-<LI>Supported CGI command line options, mostly used for ISINDEX query.</LI>
-<LI>Changed the algorithm of determining requester's host name. Now the address resolved back an forward to produce a true picture.</LI>
-<LI>Fixed some minor bugs with launching CGI scripts and tested with ActivePerl by <A HREF="http://www.activestate.com/">ActiveState</A>.</LI>
-<LI>Introduced a resetter thread that shuts down the sockets that are completely inactive for 5 minutes.</LI>
-<LI>Duplicate binds are now reported.</LI>
-<LI>It is now possible to bind the daemon to specified port (secong command line parameter) and specified address (third commandline parameter).</LI>
-<LI>Now supports more CGI environment variables.</LI>
-</UL>
+<ul>
+<li>Supported (but not tested enough) "Location" and "Status" CGI script output directives. Your feedback would be appreciated.</li>
+<li>Supported CGI command line options, mostly used for ISINDEX query.</li>
+<li>Changed the algorithm of determining requester's host name. Now the address resolved back an forward to produce a true picture.</li>
+<li>Fixed some minor bugs with launching CGI scripts and tested with ActivePerl by <A HREF="http://www.activestate.com/">ActiveState</A>.</li>
+<li>Introduced a resetter thread that shuts down the sockets that are completely inactive for 5 minutes.</li>
+<li>Duplicate binds are now reported.</li>
+<li>It is now possible to bind the daemon to specified port (secong command line parameter) and specified address (third commandline parameter).</li>
+<li>Now supports more CGI environment variables.</li>
+</ul>
 <h2>0.6 (17 December 1997)</h2>
-<UL>
-<LI>Fixed a bug with pointer access violation after calling <CODE>gethostbyname()</CODE>.</LI>
-</UL>
+<ul>
+<li>Fixed a bug with pointer access violation after calling <CODE>gethostbyname()</CODE>.</li>
+</ul>
 <h2>0.7 (21 December 1997)</h2>
-<UL><LI>TinySSL gets available.</LI>
-</UL>
+<ul><li>TinySSL gets available.</li>
+</ul>
 <h2>0.7/SSL (2 May 1998)</h2>
-<UL><LI>TinySSL uses SSLeay DLLs v0.9.0.</LI>
-</UL>
+<ul><li>TinySSL uses SSLeay DLLs v0.9.0.</li>
+</ul>
 <h2>0.9 (18 May 1998)</h2>
-<UL>
-<LI>Fixed a bug that added extra CR/LF after CGI output.</LI>
-<LI>"GMT" abbreviation was not added after "Date:" and "Last-Modified:".</LI>
-<LI>Added "If-Modified-Since" support to be proxy-friendly and mirroring-friendly.</LI>
-<LI>Quick Tip: Don't cruise the cyberspace alone; go with a group! Use a caching proxy server.</LI>
-</UL>
+<ul>
+<li>Fixed a bug that added extra CR/LF after CGI output.</li>
+<li>"GMT" abbreviation was not added after "Date:" and "Last-Modified:".</li>
+<li>Added "If-Modified-Since" support to be proxy-friendly and mirroring-friendly.</li>
+<li>Quick Tip: Don't cruise the cyberspace alone; go with a group! Use a caching proxy server.</li>
+</ul>
 <h2>1.0 (1-Jun-1998)</h2>
-<UL>
-<LI>Fixed environment processing (thanks to Koos Lodewijkx)</LI>
-</UL>
+<ul>
+<li>Fixed environment processing (thanks to Koos Lodewijkx)</li>
+</ul>
 <h2>1.0a/SSL (26-Jun-1998)</h2>
-<UL><LI>TinySSL uses SSLeay DLLs v0.9.0a. You should upgrade from previous version to avoid PKCS#1 padding attack.</LI>
-</UL>
+<ul><li>TinySSL uses SSLeay DLLs v0.9.0a. You should upgrade from previous version to avoid PKCS#1 padding attack.</li>
+</ul>
 <h2>1.3 (12-Oct-1998)</h2>
-<UL>
-<LI>Now compiles with Delphi 2.0-4.0</LI>
-</UL>
+<ul>
+<li>Now compiles with Delphi 2.0-4.0</li>
+</ul>
 <h2>1.4 (17-Oct-1998)</h2>
-<UL>
-<LI>Fixed "CGI Script Returned Nothing" bug while trying to invoke non-existent .EXE application using CGI (thanks to Rainer W. Gerling).</LI>
-<LI>CGI applications are now executing with SW_HIDE instead of DETACHED_PROCESS. It allows to run .EXE application from perl scripts. See helloexe.pl example inside TinyWeb package (thanks to Ada Neznamov).</LI>
-</UL>
+<ul>
+<li>Fixed "CGI Script Returned Nothing" bug while trying to invoke non-existent .EXE application using CGI (thanks to Rainer W. Gerling).</li>
+<li>CGI applications are now executing with SW_HIDE instead of DETACHED_PROCESS. It allows to run .EXE application from perl scripts. See helloexe.pl example inside TinyWeb package (thanks to Ada Neznamov).</li>
+</ul>
 <h2>1.4/SSL (12 December 1998)</h2>
-<UL>
-<LI>Implemented <A HREF="#RFC2068">Basic Access Authentication</A> (rfc2068)</LI>
-</UL>
+<ul>
+<li>Implemented <A HREF="#RFC2068">Basic Access Authentication</A> (rfc2068)</li>
+</ul>
 <h2>1.5 (20 December 1998)</h2>
-<UL>
-<LI><CODE>PATH_INFO</CODE> &amp; <CODE>PATH_TRANSLATED</CODE> CGI variables.</LI>
-<LI>CGI executable cache.</LI>
-<LI>Added <CODE>WaitForInputIdle()</CODE> call to prevent from running GUI applications as CGI.</LI>
-</UL>
+<ul>
+<li><CODE>PATH_INFO</CODE> &amp; <CODE>PATH_TRANSLATED</CODE> CGI variables.</li>
+<li>CGI executable cache.</li>
+<li>Added <CODE>WaitForInputIdle()</CODE> call to prevent from running GUI applications as CGI.</li>
+</ul>
 <h2>1.6 (21 January 1999)</h2>
-<UL>
-<LI>Fixed problems with executing CGI, when script name or executable name contained space characters (thanks to Nick McDaniel).</LI>
-</UL>
+<ul>
+<li>Fixed problems with executing CGI, when script name or executable name contained space characters (thanks to Nick McDaniel).</li>
+</ul>
 <h2>1.4/SSL (23-Nov-1999)</h2>
-<UL>
-<LI>TinySSL is shipped again with 0.8.1 SSLeay DLLs as testing has shown them as most stable, though they were vulnerable to PKCS#1 padding attack. See <A HREF="http://www.openssl.org">www.openssl.org</A> for the developed versions of SSLeay library.</LI>
-</UL>
+<ul>
+<li>TinySSL is shipped again with 0.8.1 SSLeay DLLs as testing has shown them as most stable, though they were vulnerable to PKCS#1 padding attack. See <A HREF="http://www.openssl.org">www.openssl.org</A> for the developed versions of SSLeay library.</li>
+</ul>
 <h2>1.8 (14 January 2000)</h2>
-<UL>
-<LI>Improved <CODE>TCollector.Collect</CODE> routine, it's now 100 times (or even more) faster.</LI>
-<LI><A HREF="/en/products/tinyweb/features.php#CGIindex">CGI instead of index.html</A></LI>
-</UL>
+<ul>
+<li>Improved <CODE>TCollector.Collect</CODE> routine, it's now 100 times (or even more) faster.</li>
+<li><A HREF="/en/products/tinyweb/features.php#CGIindex">CGI instead of index.html</A></li>
+</ul>
 <h2>1.8/SSL (14 January 2000)</h2>
-<UL>
-<LI>TinySSL is shipped with <A HREF="http://www.openssl.org">OpenSSL</A> v0.9.4 DLLs</LI>
-</UL>
+<ul>
+<li>TinySSL is shipped with <A HREF="http://www.openssl.org">OpenSSL</A> v0.9.4 DLLs</li>
+</ul>
 <h2>1.8/SSL (3 March 2000)</h2>
-<UL>
-<LI>TinySSL is shipped with <A HREF="http://www.openssl.org">OpenSSL</A> v0.9.5 DLLs</LI>
-</UL>
+<ul>
+<li>TinySSL is shipped with <A HREF="http://www.openssl.org">OpenSSL</A> v0.9.5 DLLs</li>
+</ul>
 <h2>1.9 (11 May 2000)</h2>
-<UL>
-<LI>Martin Lafferty made a provision to run DOS CGI under WinNT</LI>
-</UL>
+<ul>
+<li>Martin Lafferty made a provision to run DOS CGI under WinNT</li>
+</ul>
 <h2>1.94 (06 April 2017)</h2>
-<UL>
-<LI>Added an additional check that the requested file name is safe (see LocalFNameSafe and FileIsRegular): that the file is a normal file rather than a device name, that the file is kept in a directory that does not have hidden or system attribute.</LI>
-<LI>When the sever wants to close the connection due to an error and the client did send the "Connection: Keep-Alive request" header, some clients thought that the connection should continue despite the server didn't send the "Connection: Keep-Alive" response header. Now, in these cases, the server explicitly send the "Connection: Close" response header.</LI>
-</UL>
+<ul>
+<li>Added an additional check that the requested file name is safe (see LocalFNameSafe and FileIsRegular): that the file is a normal file rather than a device name, that the file is kept in a directory that does not have hidden or system attribute.</li>
+<li>When the sever wants to close the connection due to an error and the client did send the "Connection: Keep-Alive request" header, some clients thought that the connection should continue despite the server didn't send the "Connection: Keep-Alive" response header. Now, in these cases, the server explicitly send the "Connection: Close" response header.</li>
+</ul>
+<h2>1.95 (08 August 2021)</h2>
+<ul>
+<li>TinyWeb now compiles under Delphi 10.3.</li>
+</ul>
 </body>
 </html>

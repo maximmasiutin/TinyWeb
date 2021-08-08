@@ -3,6 +3,7 @@
 //  TinyWeb 
 //  Copyright (C) 1997-2000 RIT Research Labs
 //  Copyright (C) 2000-2017 RITLABS S.R.L.
+//  Copyright (C) 2021 Maxim Masiutin
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
@@ -53,10 +54,6 @@ program Tiny;
 
 uses
   SrvMain in 'SrvMain.pas',
-  WinSock in '$(delphi)\source\rtl\win\winsock.pas',
-{$IFDEF ODBC}
-  OdbcAuth in 'OdbcAuth.pas',
-{$ENDIF}
   xBase in 'xBase.pas';
 
 begin

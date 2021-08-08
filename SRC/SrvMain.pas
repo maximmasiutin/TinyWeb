@@ -3,6 +3,7 @@
 //  TinyWeb 
 //  Copyright (C) 1997-2000 RIT Research Labs
 //  Copyright (C) 2000-2017 RITLABS S.R.L.
+//  Copyright (C) 2021 Maxim Masiutin
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
@@ -71,7 +72,7 @@ const
 
   CHTTPServerThreadBufSize = $2000;
   MaxStatusCodeIdx = 36;
-  StatusCodes : array[0..MaxStatusCodeIdx] of record Code: Integer; Msg: string end =
+  StatusCodes : array[0..MaxStatusCodeIdx] of record Code: Integer; Msg: AnsiString end =
   ((Code:100; Msg:'Continue'),
    (Code:101; Msg:'Switching Protocols'),
    (Code:200; Msg:'OK'),
@@ -119,7 +120,7 @@ type
 
   THttpResponseDataFileHandle = class(TAbstractHttpResponseData)
     FHandle: THandle;
-    constructor Create(AHandle: DWORD);
+    constructor Create(AHandle: THandle);
   end;
 
   THttpResponseDataEntity = class(TAbstractHttpResponseData)
@@ -133,7 +134,7 @@ type
   end;
 
   PHTTPServerThreadBufer = ^THTTPServerThreadBufer;
-  THTTPServerThreadBufer = array[0..CHTTPServerThreadBufSize-1] of Char;
+  THTTPServerThreadBufer = array[0..CHTTPServerThreadBufSize-1] of AnsiChar;
 
   TPipeReadStdThread = class(TThread)
     Error: Boolean;
@@ -146,19 +147,19 @@ type
 
   TPipeWriteStdThread = class(TThread)
     HPipe: DWORD;
-    s: string;
+    s: AnsiString;
     procedure Execute; override;
   end;
 
   TPipeReadErrThread = class(TThread)
     HPipe: DWORD;
-    s: string;
+    s: AnsiString;
     procedure Execute; override;
   end;
 
   TContentType = class
     ContentType,
-    Extension: string;
+    Extension: AnsiString;
   end;
 
   TContentTypeColl = class(TSortedColl)
@@ -170,7 +171,7 @@ type
 
   THTTPServerThread = class(TThread)
     RemoteHost,
-    RemoteAddr: string;
+    RemoteAddr: AnsiString;
     Buffer: THTTPServerThreadBufer;
     Socket: TSocket;
     constructor Create;
@@ -186,9 +187,9 @@ type
     Pragma,                  // Section 14.32
     TransferEncoding,        // Section 14.40
     Upgrade,                 // Section 14.41
-    Via : string;            // Section 14.44
-    function Filter(const z, s: string): Boolean;
-    function OutString: string;
+    Via : AnsiString;            // Section 14.44
+    function Filter(const z, s: AnsiString): Boolean;
+    function OutString: AnsiString;
   end;
 
 
@@ -202,9 +203,9 @@ type
     Vary,                   // Section 14.43
     Warning,                // Section 14.45
     WWWAuthenticate         // Section 14.46
-      : string;
+      : AnsiString;
     IsNormalAuthenticateAfterEmptyUsernamePassword: Boolean;
-    function OutString: string;
+    function OutString: AnsiString;
   end;
 
   TRequestHeader = class
@@ -225,25 +226,25 @@ type
     Range,                   // Section 14.36
     Referer,                 // Section 14.37
     UserAgent,               // Section 14.42
-    Cookie: string;          // rfc-2109
-    function Filter(const z, s: string): Boolean;
+    Cookie: AnsiString;          // rfc-2109
+    function Filter(const z, s: AnsiString): Boolean;
   end;
 
   TCollector = class
   private
     Parsed: Boolean;
     Lines: TStringColl;
-    CollectStr: string;
+    CollectStr: AnsiString;
     CollectLen: Integer;
     ContentLength: Integer;
   public
-    EntityBody: string;
+    EntityBody: AnsiString;
     GotEntityBody,
     CollectEntityBody: Boolean;
     function Collect(var Buf: THTTPServerThreadBufer; j: Integer): Boolean;
     constructor Create;
     destructor Destroy; override;
-    function GetNextLine: string;
+    function GetNextLine: AnsiString;
     function LineAvail: Boolean;
     procedure SetContentLength(i: Integer);
   end;
@@ -265,14 +266,14 @@ type
     {This is two headers for file download by CGI}
     AcceptRanges,            // Section 14.5
     ContentDisposition,      // Section 15.10
-    EntityBody: string;
+    EntityBody: AnsiString;
     EntityLength: Integer;
     SetCookie,
     CGIStatus,
-    CGILocation: string;
-    function Filter(const z, s: string): Boolean;
+    CGILocation: AnsiString;
+    function Filter(const z, s: AnsiString): Boolean;
     procedure CopyEntityBody(Collector: TCollector);
-    function OutString: string;
+    function OutString: AnsiString;
   end;
 
   THTTPData = class
@@ -291,7 +292,7 @@ type
 
     ErrorMsg,
     Method, RequestURI, HTTPVersion, AuthUser, AuthPassword, AuthType,
-    URIPath, URIParams, URIQuery, URIQueryParam : string;
+    URIPath, URIParams, URIQuery, URIQueryParam : AnsiString;
 
     ResponceObjective: TAbstractHttpResponseData;
 
@@ -310,13 +311,13 @@ type
 
 var
   ContentTypes: TContentTypeColl;
-  ParamStr1: string;
+  ParamStr1: AnsiString;
 
 {$IFDEF LOGGING}
   FAccessLog,
   FAgentLog,
   FErrorLog,
-  FRefererLog: string;
+  FRefererLog: AnsiString;
   CSAccessLog,
   CSAgentLog,
   CSErrorLog,
@@ -324,12 +325,12 @@ var
   HAccessLog,
   HAgentLog,
   HErrorLog,
-  HRefererLog: DWORD;
+  HRefererLog: Thandle;
 {$ENDIF}
 
-function FileTimeToStr(AT: DWORD): string;
+function FileTimeToStr(AT: DWORD): AnsiString;
 const
-  wkday: array[0..6] of string = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+  wkday: array[0..6] of AnsiString = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
 var
   D: TSystemTime;
   T: TFileTime;
@@ -346,29 +347,32 @@ begin
   ItoSz(D.wSecond, 2) + ' GMT';
 end;
 
-function StrToFileTime(AStr: string): DWORD;
+function StrToFileTime(AStr: AnsiString): DWORD;
+const
+  CPatterns: AnsiString = #1'JAN'#1'FEB'#1'MAR'#1'APR'#1'MAY'#1'JUN'#1'JUL'#1'AUG'#1'SEP'#1'OCT'#1'NOV'#1'DEC'#1;
 var
   D: TSystemTime;
   T: TFileTime;
-  s, z: string;
-  e: Integer;
+  s, z, LSubstring: AnsiString;
+  v: DWORD;
 begin
   Result := INVALID_FILE_TIME;
   Clear(D, SizeOf(D));
   s := AStr;
   GetWrd(s, z, ' ');
-  GetWrdD(s, z); Val(z, D.wDay, e); if e > 0 then Exit;
-  GetWrdA(s, z); D.wMonth := Pos(#1+UpperCase(z)+#1, #1'JAN'#1'FEB'#1'MAR'#1'APR'#1'MAY'#1'JUN'#1'JUL'#1'AUG'#1'SEP'#1'OCT'#1'NOV'#1'DEC'#1);
+  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wDay := v;
+  LSubstring := #1+UpperCase(z)+#1;
+  GetWrdA(s, z); D.wMonth := Pos(LSubstring, CPatterns);
   if D.wMonth = 0 then Exit;
   D.wMonth := (D.wMonth+3) div 4;
-  GetWrdD(s, z); Val(z, D.wYear, e); if e > 0 then Exit;
+  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wYear := v;
   if D.wYear < 200 then
   begin
     if D.wYear < 50 then Inc(D.wYear, 2000) else Inc(D.wYear, 1900);
   end;
-  GetWrdD(s, z); Val(z, D.wHour, e); if e > 0 then Exit;
-  GetWrdD(s, z); Val(z, D.wMinute, e); if e > 0 then Exit;
-  GetWrdD(s, z); Val(z, D.wSecond, e); if e > 0 then Exit;
+  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wHour := v;
+  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wMinute := v;
+  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wSecond := v;
   if not SystemTimeToFileTime(D, T) then Exit;
   Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
 end;
@@ -386,7 +390,7 @@ begin
   inherited Destroy;
 end;
 
-function TGeneralHeader.Filter(const z, s: string): Boolean;
+function TGeneralHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
   if z = 'CACHE-CONTROL'       then CacheControl       := s else // Section 14.9
@@ -399,7 +403,7 @@ begin
     Result := False;
 end;
 
-function TRequestHeader.Filter(const z, s: string): Boolean;
+function TRequestHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
   if z = 'ACCEPT'              then Accept             := s else // Section 14.1
@@ -423,14 +427,14 @@ begin
     Result := False
 end;
 
-procedure Add(var s, z: string; const a: string);
+procedure Add(var s, z: AnsiString; const a: AnsiString);
 begin
   if z <> '' then s := s + a + ': '+z+#13#10;
 end;
 
-function TResponseHeader.OutString: string;
+function TResponseHeader.OutString: AnsiString;
 var
-  s: string;
+  s: AnsiString;
 begin
   s := '';
   Add(s, Age,               'Age');                // Section 14.6
@@ -445,9 +449,9 @@ begin
   Result := s;
 end;
 
-function TEntityHeader.OutString: string;
+function TEntityHeader.OutString: AnsiString;
 var
-  s: string;
+  s: AnsiString;
 begin
   s := '';
   Add(s, Allow,           'Allow');             // Section 14.7
@@ -469,9 +473,9 @@ begin
   Result := s;
 end;
 
-function TGeneralHeader.OutString: string;
+function TGeneralHeader.OutString: AnsiString;
 var
-  s: string;
+  s: AnsiString;
 begin
   s := '';
   Add(s, CacheControl,     'Cache-Control');     // Section 14.9
@@ -491,7 +495,7 @@ begin
   EntityBody := Copy(Collector.EntityBody, 1, EntityLength);
 end;
 
-function TEntityHeader.Filter(const z, s: string): Boolean;
+function TEntityHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
   if z = 'ALLOW'            then Allow           := s else // 14.7
@@ -550,7 +554,7 @@ begin
   Result := Lines.Count > 0;
 end;
 
-function TCollector.GetNextLine: string;
+function TCollector.GetNextLine: AnsiString;
 begin
   Result := Lines[0]; Lines.AtFree(0);
 end;
@@ -576,7 +580,7 @@ begin
         if CollectLen = 2 then
         begin
           CollectEntityBody := True;
-          Dec(j, i+1);
+          j := j - (i+1);
           if j > 0 then Move(Buf[i+1], Buf[0], j);
           Break;
         end else
@@ -624,9 +628,9 @@ begin
   if slen > 0 then WriteFile(HPipe, s[1], slen, j, nil);
 end;
 
-function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader; j: Integer; Buffer: THTTPServerThreadBufer): Boolean;
+function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader; j: Integer; var Buffer: THTTPServerThreadBufer): Boolean;
 var
-  s,z: string;
+  s,z: AnsiString;
 begin
   Result := True;
   if not Collector.Collect(Buffer, j) then Result := False else
@@ -658,7 +662,7 @@ var
 begin
   repeat
     if (not ReadFile(HPipe, ss[1], 250, j, nil)) or (j=0) then Break;
-    ss[0] := Char(j);
+    ss[0] := AnsiChar(j);
     s := s + ss;
   until False;
 end;
@@ -676,9 +680,9 @@ begin
   until False;
 end;
 
-function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr, AStdInStr: string; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: string): TEntityHeader;
+function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr, AStdInStr: AnsiString; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: AnsiString): TEntityHeader;
 var
-  SI: TStartupInfo;
+  SI: TStartupInfoA;
   PI: TProcessInformation;
   Security: TSecurityAttributes;
   Actually: DWORD;
@@ -689,11 +693,11 @@ var
   PipeReadStdThread: TPipeReadStdThread;
   PipeWriteStdThread: TPipeWriteStdThread;
   PipeReadErrThread: TPipeReadErrThread;
-  s: string;
+  s: AnsiString;
 
-function ReportGUI: string;
+function ReportGUI: AnsiString;
 var
-  d, n, e: string;
+  d, n, e: AnsiString;
 begin
   FSPlit(AExecutable, d, n, e);
   Result := n+e+' is a GUI application';
@@ -724,18 +728,24 @@ begin
   if AExecutable = AScript then s := AExecutable else s := AExecutable + ' ' + AScript;
   if AQueryParam <> '' then s := s + ' ' + AQueryParam;
   s := DelSpaces(s);
-  b := CreateProcess(
-    nil,                     // pointer to name of executable module
-    PChar(s),                // pointer to command line string
-    @Security,               // pointer to process security attributes
-    @Security,               // pointer to thread security attributes
-    True,                    // handle inheritance flag
-    CREATE_SUSPENDED,        // creation flags
-    PChar(AEnvStr),          // pointer to new environment block
-    PChar(APath),            // pointer to current directory name
-    SI,                      // pointer to STARTUPINFO
-    PI                       // pointer to PROCESS_INFORMATION
-  );
+  if (s = '') or (AEnvStr = '') or (APath = '') then
+  begin
+    b := False;
+  end else
+  begin
+    b := CreateProcessA(
+      nil,                     // pointer to name of executable module
+      @(s[1]),                 // pointer to command line AnsiString
+      @Security,               // pointer to process security attributes
+      @Security,               // pointer to thread security attributes
+      True,                    // handle inheritance flag
+      CREATE_SUSPENDED,        // creation flags
+      @(AEnvStr[1]),           // pointer to new environment block
+      @(APath[1]),             // pointer to current directory name
+      SI,                      // pointer to STARTUPINFO
+      PI                       // pointer to PROCESS_INFORMATION
+    );
+  end;
 
   if b then
   begin
@@ -845,9 +855,9 @@ end;
 
 {$IFDEF LOGGING}
 
-procedure AddAgentLog(const AAgent: string);
+procedure AddAgentLog(const AAgent: AnsiString);
 var
-  s: string;
+  s: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
@@ -859,9 +869,9 @@ begin
 end;
 
 
-procedure AddRefererLog(const ARefererSrc, ARefererDst: string);
+procedure AddRefererLog(const ARefererSrc, ARefererDst: AnsiString);
 var
-  s: string;
+  s: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
@@ -873,11 +883,11 @@ begin
   LeaveCriticalSection(CSRefererLog);
 end;
 
-function CurTime: string;
+function CurTime: AnsiString;
 var
   lt: TSystemTime;
   b: Integer;
-  s: string;
+  s: AnsiString;
 begin
   GetLocalTime(lt);
   b := TimeZoneBias;
@@ -896,9 +906,9 @@ begin
         ']';
 end;
 
-procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion, AUserName: string; AStatusCode, ALength: Integer);
+procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion, AUserName: AnsiString; AStatusCode, ALength: Integer);
 var
-  authuser,z,k: string;
+  authuser,z,k: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
@@ -919,9 +929,9 @@ begin
   LeaveCriticalSection(CSAccessLog);
 end;
 
-procedure AddErrorLog(const AErr: string);
+procedure AddErrorLog(const AErr: AnsiString);
 var
-  s: string;
+  s: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
@@ -951,13 +961,18 @@ begin
 end;
 
 
-function OpenRequestedFile(const AFName: string; thr: THttpServerThread; d: THttpData): TAbstractHttpResponseData;
+function OpenRequestedFile(const AFName: AnsiString; thr: THttpServerThread; d: THttpData): TAbstractHttpResponseData;
 var
   I: Integer;
   FHandle: THandle;
-  z: string;
+  z: AnsiString;
   fa: DWORD;
 begin
+  if AFName = '' then
+  begin
+    Result := nil;
+    Exit;
+  end;
 // Try to open Requested file
   z := LowerCase(AFName);
   if Copy(z, 1, Length(ParamStr1)) <> LowerCase(ParamStr1) then
@@ -970,7 +985,7 @@ begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
-  fa := GetFileAttributes(PChar(AFName));
+  fa := GetFileAttributesA(@(AFName[1]));
   if ((fa and FILE_ATTRIBUTE_DIRECTORY) <> 0) or
        ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
        ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
@@ -1006,23 +1021,23 @@ begin
   Result := THttpResponseDataFileHandle.Create(FHandle);
 end;
 
-function GetEnvStr(thr: THttpServerThread; d: THttpData; const PathInfo: string): string;
+function GetEnvStr(thr: THttpServerThread; d: THttpData; const PathInfo: AnsiString): AnsiString;
 var
-  s: string;
-  AuxS: string;
-  p: PByteArray;
+  s: AnsiString;
+  AuxS: AnsiString;
+  p: PAnsiChar;
   j: Integer;
 
-  procedure Add(const Name, Value: string); begin s := s + Name+'='+Value+#0 end;
+  procedure Add(const Name, Value: AnsiString); begin s := s + Name+'='+Value+#0 end;
 
 begin
   s := '';
-  p := Pointer(GetEnvironmentStrings);
-  j := 0; while (p^[j]<>0) or (p^[j+1]<>0) do Inc(j);
+  p := GetEnvironmentStringsA;
+  j := 0; while (p[j]<>#0) or (p[j+1]<>#0) do Inc(j);
   Inc(j);
   SetLength(s, j);
   Move(p^, s[1], j);
-  FreeEnvironmentStrings(Pointer(p));
+  FreeEnvironmentStringsA(p);
   AuxS := PathInfo;
   Replace('\', '/', AuxS);
   if AuxS <> '' then AuxS := '/' + AuxS;
@@ -1056,20 +1071,22 @@ begin
   Result := s + #0;
 end;
 
-function ReturnNewLocation(const ALocation: string; d: THTTPData): TAbstractHttpResponseData;
+function ReturnNewLocation(const ALocation: AnsiString; d: THTTPData): TAbstractHttpResponseData;
 begin
   d.ResponseResponseHeader.Location := ALocation;
   Result := THttpResponseErrorCode.Create(302);
 end;
 
-function IsURL(const s: string): Boolean;
+function IsURL(const s: AnsiString): Boolean;
+const
+  Pattern: AnsiString = '://';
 begin
-  Result := Pos('://', s) > 0;
+  Result := Pos(Pattern, s) > 0;
 end;
 
 type
   TExecutableCache = class
-    LocalFName, sResult: string;
+    LocalFName, sResult: AnsiString;
     ReturnValue: HInst;
   end;
 
@@ -1083,7 +1100,7 @@ var
 
 function TExecutableCacheColl.Compare(Key1, Key2: Pointer): Integer;
 begin
-  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+  Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
 end;
 
 function TExecutableCacheColl.KeyOf(Item: Pointer): Pointer;
@@ -1091,11 +1108,16 @@ begin
   Result := @TExecutableCache(Item).LocalFName;
 end;
 
-function FindExecutableCached(const LocalFName, sPath: string; var s: string): HInst;
+function FindExecutableCached(const LocalFName, sPath: AnsiString; var s: AnsiString): HInst;
 var
   i: Integer;
   c: TExecutableCache;
 begin
+  if (LocalFName = '') or (sPath = '') then
+  begin
+    Result := 0;
+    Exit;
+  end;
   ExecutableCache.Enter;
   if ExecutableCache.Search(@LocalFName, i) then
   begin
@@ -1105,7 +1127,7 @@ begin
   end else
   begin
     SetLength(s, 1000);
-    Result := FindExecutable(PChar(LocalFName), PChar(sPath), @s[1]);
+    Result := FindExecutable(@(LocalFName[1]), @(sPath[1]), @s[1]);
     c := TExecutableCache.Create;
     c.ReturnValue := Result;
     c.LocalFName := StrAsg(LocalFName);
@@ -1121,7 +1143,7 @@ end;
 
 type
   TRootCache = class
-    FURI, FResult: string;
+    FURI, FResult: AnsiString;
     IsCGI: Boolean;
   end;
 
@@ -1136,7 +1158,7 @@ var
 
 function TRootCacheColl.Compare(Key1, Key2: Pointer): Integer;
 begin
-  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+  Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
 end;
 
 function TRootCacheColl.KeyOf(Item: Pointer): Pointer;
@@ -1145,9 +1167,9 @@ begin
 end;
 
 
-function FindRootFileEx(const AURI: string; var IsCGI: Boolean): string;
+function FindRootFileEx(const AURI: AnsiString; var IsCGI: Boolean): AnsiString;
 var
-  s, z: string;
+  s, z: AnsiString;
 begin
   IsCGI := False;
   Result := ParamStr1 + AURI + 'index.html';
@@ -1166,7 +1188,7 @@ begin
   end;
 end;
 
-function FindRootFile(const AURI: string; var IsCGI: Boolean): string;
+function FindRootFile(const AURI: AnsiString; var IsCGI: Boolean): AnsiString;
 var
   Found: Boolean;
   I: Integer;
@@ -1198,16 +1220,17 @@ end;
 
 
 
-function FileIsRegular(const FN: string): Boolean;
+function FileIsRegular(const FN: AnsiString): Boolean;
 const
-  fDevices: string =
+  CDot: AnsiChar = '.';
+  fDevices: AnsiString =
     #1'CON'#1'LPT'#1'PRN'#1'NUL'#1'CLOCK$'#1'AUX'#1'COM1'#1'LPT1'#1'LPT2'#1'LPT3'#1'COM2'#1'COM3'#1'COM4'#1'CONIN$'#1'CONOUT$'
     + #1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
 var
   F: THandle;
   FT: DWord;
   I: Integer;
-  s: string;
+  FileNameExpanded, s: AnsiString;
 begin
   s := UpperCase(ExtractFileName(FN));
   if s = '' then
@@ -1215,15 +1238,22 @@ begin
     Result := False;
     Exit;
   end;
-  I := Pos('.', s);
+  I := Pos(CDot, s);
   if I > 0 then
     Delete(s, I, Length(s) - I + 1);
   Result := (s = '') or (Pos(#1 + s + #1, fDevices) = 0);
   if Result then
   begin
-    F := Windows.CreateFile(PChar(ExpandFileName(FN)), 0,
-      FILE_SHARE_WRITE or FILE_SHARE_READ, nil, OPEN_EXISTING,
-      FILE_ATTRIBUTE_NORMAL, 0);
+    FileNameExpanded := ExpandFileName(FN);
+    if FileNameExpanded = '' then
+    begin
+      F := Invalid_Handle_Value
+    end else
+    begin
+      F := Windows.CreateFileA(@(FileNameExpanded[1]), 0,
+        FILE_SHARE_WRITE or FILE_SHARE_READ, nil, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL, 0);
+    end;
     if F <> Invalid_Handle_Value then
     begin
       FT := GetFileType(F);
@@ -1235,12 +1265,11 @@ end;
 
 
 
-function LocalFNameSafe(const AFName: string): Boolean;
+function LocalFNameSafe(const AFName: AnsiString): Boolean;
 var
-  ParentDir, Dir, FName: string;
+  ParentDir, Dir, FName: AnsiString;
   fa: DWORD;
 begin
-  Result := True;
   ParentDir := AFName;
   repeat
     Dir := ExtractFileDir(ParentDir);
@@ -1262,7 +1291,13 @@ begin
       Result := False;
       Break;
     end;
-    fa := GetFileAttributes(PChar(Dir));
+    if Dir = '' then
+    begin
+      fa := INVALID_HANDLE_VALUE;
+    end else
+    begin
+      fa := GetFileAttributesA(@(Dir[1]));
+    end;
     if fa = INVALID_HANDLE_VALUE then
     begin
       Result := False;
@@ -1284,25 +1319,28 @@ end;
 function WebServerHttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
 var
   sPath, sName, sExt,
-  s: string;
-  LocalFName: string;
+  s: AnsiString;
+  LocalFName: AnsiString;
   ii: HInst;
   ResponseEntityHeader: TEntityHeader;
 
 
 var
-  CgiFile: string;
-  PathInfo: string;
+  CgiFile: AnsiString;
+  PathInfo: AnsiString;
 
   // Thanks to Nick McDaniel, Intranaut Inc. (21 January 1999)
   // We were having problems with files that that had spaces in the name (C:\Program Files\).  The error that was being generated was "Internal Server Error: Can't open
   // To alievate this problem, we added double quotes to executable and script name
 
-function QuoteSpaced(const s: string): string;
+function QuoteSpaced(const s: AnsiString): AnsiString;
+var
+  CSpace: AnsiChar;
 begin
 // Thanks to Vladimir A. Bakhvaloff (30 January 2000)
 // parameters to Pos() function were improperly ordered
-  if Pos(' ', DelSpaces(s)) <= 0 then // Does the file name contain space cheracters inside?
+  CSpace := ' ';
+  if Pos(CSpace, DelSpaces(s)) <= 0 then // Does the file name contain space cheracters inside?
   begin
     Result := s                 // No, return it as is
   end else
@@ -1320,10 +1358,11 @@ end;
 function CgiFileOK: Boolean;
 var
   fa: DWord;
-  z,ts: string;
+  z,ts,comb: AnsiString;
 begin
   Result := False;
-  fa := GetFileAttributes(PChar(ParamStr1+'\'+ScriptsPath));
+  comb := ParamStr1+'\'+ScriptsPath;
+  fa := GetFileAttributesA(@(comb[1]));
   if fa = INVALID_HANDLE_VALUE then Exit;
   if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
      ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
@@ -1335,7 +1374,7 @@ begin
   repeat
     GetWrd(ts, z, '\');
     CgiFile := CgiFile + '\'+z;
-    fa := GetFileAttributes(PChar(CgiFile));
+    fa := GetFileAttributesA(@(CgiFile[1]));
     if fa = INVALID_HANDLE_VALUE then Exit;
     if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) and
        ((fa and FILE_ATTRIBUTE_HIDDEN) = 0) and
@@ -1412,29 +1451,37 @@ end;
 
 
 var
+  CForwardSlash, CBackSlash, CZero, CSemicolon: AnsiChar;
   IsCGI: Boolean;
-  CheckedURI: string;
+  CheckedURI, CDoubleDot, CDoubleBackslash, CDotEncosed: AnsiString;
 begin
+  CBackSlash := '\';
+  CForwardSlash := '/';
   ResponseEntityHeader := nil;
   s := d.URIPath;
 
-  if Pos('\', s) > 0 then
+  if Pos(CBackSlash, s) > 0 then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
 
-  Replace('/', '\', s);
-  if (s='') or (s[1]<>'\') then
+  Replace(CForwardSlash, CBackSlash, s);
+  if (s='') or (s[1]<>CBackSlash) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
-  if (Pos(#0, s)>0) or
-     (Pos('..', s)>0) or
-     (Pos(':',s)>0) or
-     (Pos('\.\', s) > 0) or  // level #1 of protection from \.\
-     (Pos('\\',s)>0) then
+  CZero := #0;
+  CSemicolon := ':';
+  CDoubleDot := '..';
+  CDoubleBackslash := '\\';
+  CDotEncosed := '\.\';
+  if (Pos(CZero, s)>0) or
+     (Pos(CDoubleDot, s)>0) or
+     (Pos(CSemicolon,s)>0) or
+     (Pos(CDotEncosed, s) > 0) or  // level #1 of protection from \.\
+     (Pos(CDoubleBackslash,s)>0) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -1526,11 +1573,11 @@ procedure THTTPServerThread.Execute;
 var
   FPOS: DWORD;
   i, j: Integer;
-  s,z,k: string;
+  s,z,k: AnsiString;
   d: THTTPData;
   AbortConnection: Boolean;
-  Actually: DWORD;
-
+  v, Actually: DWORD;
+  CQuestion, CEqual, CZero, CSemicolon: AnsiChar;
 begin
 
   {$IFDEF BEHIND_TUNNEL}
@@ -1626,19 +1673,23 @@ begin
 
     // Parse URI
         s := RequestURI;
-        i := Pos('?', s);
+        CQuestion := '?';
+        i := Pos(CQuestion, s);
         if i > 0 then
         begin
           URIQuery := CopyLeft(s, i+1);
           DeleteLeft(s, i);
-          if Pos('=', URIQuery) = 0 then
+          CEqual := '=';
+          if Pos(CEqual, URIQuery) = 0 then
           begin
             URIQueryParam := URIQuery;
             if not UnpackPchars(URIQueryParam) then Break;
-            if Pos(#0, URIQueryParam)>0 then Break;
+            CZero := #0;
+            if Pos(CZero, URIQueryParam)>0 then Break;
           end;
         end;
-        i := Pos(';', s);
+        CSemicolon := ';';
+        i := Pos(CSemicolon, s);
         if i > 0 then
         begin
           URIParams := CopyLeft(s, i+1);
@@ -1677,11 +1728,12 @@ begin
       s := ResponseEntityHeader.CGIStatus;
       if s <> '' then
       begin
-	k := s;
-	GetWrd(k, z, ' ');
-        Val(z, StatusCode, i);
+	      k := s;
+	      GetWrd(k, z, ' ');
+        v := Vl(z);
+        if (v <> INVALID_VALUE) and (v < 1000) and (v > 0) then StatusCode := v else StatusCode := 0;
     // Status code 200 was treated as error. Thanks to David Gommeren for pointing that out.
-	if StatusCode <> 200 then ReportError := True;
+      	if StatusCode <> 200 then ReportError := True;
       end else
       begin
  // Get Status Line
@@ -1696,7 +1748,7 @@ begin
       end;
       if ReportError then
       begin
-        if StatusCode = 401 then 
+        if StatusCode = 401 then
         begin
           if ResponseResponseHeader.IsNormalAuthenticateAfterEmptyUsernamePassword then
           begin
@@ -1704,10 +1756,10 @@ begin
           end else
           begin
             // invalid credentials - sleep from 0 to 5 seconds to prevent password checking
-            Sleep(Random(5001));  
+            Sleep(Random(5001));
             KeepAliveInReply := False;
           end;
-        end else 
+        end else
         begin
           KeepAliveInReply := False;
         end;
@@ -1766,7 +1818,7 @@ end;
 
 function TContentTypeColl.Compare(Key1, Key2: Pointer): Integer;
 begin
-  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+  Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
 end;
 
 function TContentTypeColl.KeyOf(Item: Pointer): Pointer;
@@ -1774,21 +1826,21 @@ begin
   Result := @TContentType(Item).Extension;
 end;
 
-procedure GetContentTypes(const CBase, SubName: string; Swap: Boolean);
+procedure GetContentTypes(const CBase, SubName: AnsiString; Swap: Boolean);
 const
   ClassBufSize = 1000;
 var
-  Buf: array[0..ClassBufSize] of Char;
+  Buf: array[0..ClassBufSize] of AnsiChar;
   r: TContentType;
-  s, z, t : string;
+  s, z, t : AnsiString;
   ec,
   i: Integer;
   Key,
   SubKey,
-  BufSize,                       // size of string buffer
+  BufSize,                       // size of AnsiString buffer
   cSubKeys,                      // number of subkeys
   cchMaxSubkey,                  // longest subkey name length
-  cchMaxClass,                   // longest class string length
+  cchMaxClass,                   // longest class AnsiString length
   cValues,                       // number of value entries
   cchMaxValueName,               // longest value name length
   cbMaxValueData,                // longest value data length
@@ -1797,9 +1849,9 @@ var
 begin
   Key := OpenRegKeyEx(CBase, KEY_QUERY_VALUE or KEY_ENUMERATE_SUB_KEYS);
   BufSize := ClassBufSize;
-  ec := RegQueryInfoKey(
+  ec := RegQueryInfoKeyA(
     Key,                        // handle of key to query
-    @Buf,
+    @(Buf[0]),
     @BufSize,
     nil,
     @cSubKeys,
@@ -1818,13 +1870,13 @@ begin
   for i := 0 to cSubKeys-1 do
   begin
     BufSize := ClassBufSize;
-    ec := RegEnumKeyEx(
+    ec := RegEnumKeyExA(
       Key,
       i,
       Buf,
       BufSize,
       nil,
-      nil, // address of buffer for class string
+      nil, // address of buffer for class AnsiString
       nil, // address for size of class buffer
       @ftLastWriteTime);
     if ec <> ERROR_SUCCESS then Continue;
@@ -1856,7 +1908,7 @@ type
   end;
 
 
-function _Adr2Int(const s: string): DWORD;
+function _Adr2Int(const s: AnsiString): DWORD;
 
 var
   CPos: Integer;
@@ -1864,7 +1916,7 @@ var
 
 function Get: Byte;
 var
-  C: Char;
+  C: AnsiChar;
   R: Integer;
   err: Boolean;
 begin
@@ -1901,7 +1953,7 @@ begin
   if Error then Result := DWORD(INADDR_NONE) else  Result := PInteger(@A)^;
 end;
 
-function Adr2Int(const s: string): Integer;
+function Adr2Int(const s: AnsiString): Integer;
 begin
   Result := _Adr2Int(s+'.');
 end;
@@ -1910,40 +1962,40 @@ end;
 var
   BindPort, BindAddr: DWORD;
   IsCGI: Boolean;
+
 function GetHomeDir: Boolean;
 var
-  s: string;
+  s: AnsiString;
   i: DWORD;
 begin
   Result := False;
   if ParamCount < 1 then
   begin
     MessageBox(0, 'Path to home directory is absent!'#13#10+
-                  'See README.TXT for details.'#13#10#13#10+
-                  CServerName+' service failed to start.',
+                  CServerName+' failed to start.',
                   CServerName, CMB_FAILED);
     Exit;
   end;
-  ParamStr1 := ParamStr(1);
+  ParamStr1 := UnicodeStringToRawByteString(ParamStr(1), GetACP);
   if ParamStr1[Length(ParamStr1)] = '\' then Delete(ParamStr1, Length(ParamStr1), 1);
   s := FindRootFile('\', IsCGI);
   if not FileExists(s) then
   begin
     s := 'Access to "'+s+'" failed'#13#10'Reason: "'+SysErrorMsg(GetLastError)+'"'#13#10#13#10+
-    CServerName+' service failed to start';
-    MessageBox(0, PChar(s), CServerName, CMB_FAILED);
+    CServerName+' failed to start';
+    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
     Exit;
   end;
   BindPort := 80;
   BindAddr := _INADDR_ANY;
   if ParamCount > 1 then
   begin
-    i := Vl(ParamStr(2));
+    i := Vl(UnicodeStringToRawByteString(ParamStr(2), GetACP));
     if i <> INVALID_VALUE then BindPort := i;
   end;
   if ParamCount > 2 then
   begin
-    i := Adr2Int(ParamStr(3));
+    i := Adr2Int(UnicodeStringToRawByteString(ParamStr(3), GetACP));
     if i <> INVALID_VALUE then BindAddr := i;
   end;
   Result := True;
@@ -2067,7 +2119,7 @@ begin
     Block^.Next := InstBlockList;
     Move(BlockCode, Block^.Code, SizeOf(BlockCode));
     Block^.WndProcPtr := Pointer(CalcJmpOffset(@Block^.Code[2], @StdWndProc));
-    Instance := @Block^.Instances;
+    Instance := @(Block^.Instances[0]);
     repeat
       Instance^.Code := $E8;  { CALL NEAR PTR Offset }
       Instance^.Offset := CalcJmpOffset(Instance, @Block^.Code);
@@ -2176,21 +2228,21 @@ var
   NewThread: THTTPServerThread;
   WData: TWSAData;
   Addr: TSockAddr;
-  s: string;
+  s: AnsiString;
 begin
   Leave := False;
   err := WSAStartup(MakeWord(1,1), WData);
   if err <> 0 then
   begin
     s := 'Failed to initialize WinSocket,error #'+ItoS(err);
-    MessageBox(0, PChar(s), CServerName, CMB_FAILED);
+    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
     Halt;
   end;
   ServerSocketHandle := socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if ServerSocketHandle = INVALID_SOCKET then
   begin
     s := 'Failed to create a socket, Error #'+ItoS(WSAGetLastError);
-    MessageBox(0, PChar(s), CServerName, CMB_FAILED);
+    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
     Halt;
   end;
 

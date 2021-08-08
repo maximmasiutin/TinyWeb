@@ -3,6 +3,7 @@
 //  TinyWeb 
 //  Copyright (C) 1997-2000 RIT Research Labs
 //  Copyright (C) 2000-2017 RITLABS S.R.L.
+//  Copyright (C) 2021 Maxim Masiutin
 //
 //  This programs is free for commercial and non-commercial use as long as
 //  the following conditions are aheared to.
@@ -48,22 +49,19 @@
 
 {$I DEFINE.INC}
 
-
 unit xBase;
 
 interface uses Windows, WinSock;
 
 const
-
-
   _INADDR_ANY = INADDR_ANY;
   INVALID_FILE_ATTRIBUTES = INVALID_FILE_SIZE;
   INVALID_FILE_TIME       = INVALID_FILE_SIZE;
   INVALID_REGISTRY_KEY    = INVALID_HANDLE_VALUE;
   INVALID_VALUE           = INVALID_HANDLE_VALUE;
 
-  rrLoHexChar: array[0..$F] of char='0123456789abcdef';
-  rrHiHexChar: array[0..$F] of char='0123456789ABCDEF';
+  rrLoHexChar: array[0..$F] of AnsiChar='0123456789abcdef';
+  rrHiHexChar: array[0..$F] of AnsiChar='0123456789ABCDEF';
 
   SleepQuant = 1*60*1000; // 1 minute
 
@@ -72,62 +70,62 @@ const
   MaxCollSize = $20000 div SizeOf(Pointer);
 
 const
-      MMaxChars = 250;
+  MMaxChars = 250;
 
 
 type
-    Str255 = String[255];
-    TByteTable = Array[Char] of Byte;
-    TBase64Table = (bsBase64, bsUUE, bsXXE);
-    TUUStr = String[MMaxChars];
+  Str255 = String[255];
+  TByteTable = Array[AnsiChar] of Byte;
+  TBase64Table = (bsBase64, bsUUE, bsXXE);
+  TUUStr = String[MMaxChars];
 
 
-    TMimeCoder = class
-      Table: string;
-      MaxChars: Byte;
-      Pad: Char;
-      XChars: TByteTable;
-      constructor Create(AType: TBase64Table);
-      procedure   InitTable;
-      function    Encode(const Buf; N: byte) : string;
-      function    EncodeBuf(const Buf; N: byte; var OutBuf) : Integer;
-      function    EncodeStr(const S: String): String;
-      function    Decode(const S : String; var Buf): Integer;
-      function    DecodeBuf(const SrcBuf; SrcLen: Integer; var Buf): Integer;
-    end;
+  TMimeCoder = class
+    Table: AnsiString;
+    MaxChars: Byte;
+    Pad: AnsiChar;
+    XChars: TByteTable;
+    constructor Create(AType: TBase64Table);
+    procedure   InitTable;
+    function    Encode(const Buf; N: byte) : AnsiString;
+    function    EncodeBuf(const Buf; N: byte; var OutBuf) : Integer;
+    function    EncodeStr(const S: AnsiString): AnsiString;
+    function    Decode(const S : AnsiString; var Buf): Integer;
+    function    DecodeBuf(const SrcBuf; SrcLen: Integer; var Buf): Integer;
+  end;
 
 
-    TSocketOption = (soBroadcast, soDebug, soDontLinger,
-                     soDontRoute, soKeepAlive, soOOBInLine,
-                     soReuseAddr, soNoDelay, soBlocking, soAcceptConn);
+  TSocketOption = (soBroadcast, soDebug, soDontLinger,
+                   soDontRoute, soKeepAlive, soOOBInLine,
+                   soReuseAddr, soNoDelay, soBlocking, soAcceptConn);
 
-    TSocketOptions = Set of TSocketOption;
+  TSocketOptions = Set of TSocketOption;
 
-    TSocketClass = class of TSocket;
+  TSocketClass = class of TSocket;
 
-    TSocket = class
-    public
-      Dead: Integer;
-      FPort: DWORD;
-      FAddr: DWORD;
-      Handle: DWORD;
-      Status: Integer;
-      Registered: Boolean;
-      procedure RegisterSelf;
-      procedure DeregisterSelf;
+  TSocket = class
+  public
+    Dead: Integer;
+    FPort: DWORD;
+    FAddr: DWORD;
+    Handle: THandle;
+    Status: Integer;
+    Registered: Boolean;
+    procedure RegisterSelf;
+    procedure DeregisterSelf;
 
-      function Startup: Boolean; virtual;
-      function Handshake: Boolean; virtual;
-      destructor Destroy; override;
+    function Startup: Boolean; virtual;
+    function Handshake: Boolean; virtual;
+    destructor Destroy; override;
 
-      function Read(var B; Size: DWORD): DWORD;
-      function Write(const B; Size: DWORD): DWORD;
-      function WriteStr(const s: string): DWORD;
+    function Read(var B; Size: DWORD): DWORD;
+    function Write(const B; Size: DWORD): DWORD;
+    function WriteStr(const s: AnsiString): DWORD;
 
-      function _Write(const B; Size: DWORD): DWORD; virtual;
-      function _Read(var B; Size: DWORD): DWORD; virtual;
+    function _Write(const B; Size: DWORD): DWORD; virtual;
+    function _Read(var B; Size: DWORD): DWORD; virtual;
 
-    end;
+  end;
 
   TObjProc = procedure of object;
   TForEachProc = procedure(P: Pointer) of object;
@@ -141,7 +139,7 @@ type
 
   TuFindData = record
     Info: TFileInfo;
-    FName: string;
+    FName: AnsiString;
   end;
 
   TCreateFileMode = (
@@ -183,13 +181,13 @@ type
 { Character set type }
 
   PCharSet = ^TCharSet;
-  TCharSet = set of Char;
+  TCharSet = set of AnsiChar;
 
 { General arrays }
 
 
   PCharArray = ^TCharArray;
-  TCharArray = array[0..MaxLongInt-1] of Char;
+  TCharArray = array[0..MaxLongInt-1] of AnsiChar;
 
   PByteArray = ^TByteArray;
   TByteArray = array[0..MaxLongInt-1] of Byte;
@@ -220,7 +218,7 @@ type
   TThread = class
   private
     FHandle: THandle;
-    FThreadID: THandle;
+    FThreadID: TThreadID;
     FTerminated: Boolean;
     FSuspended: Boolean;
     FFreeOnTerminate: Boolean;
@@ -243,7 +241,7 @@ type
     property Handle: THandle read FHandle;
     property Priority: TThreadPriority read GetPriority write SetPriority;
     property Suspended: Boolean read FSuspended write SetSuspended;
-    property ThreadID: THandle read FThreadID;
+    property ThreadID: TThreadID read FThreadID;
   end;
 
   TAdvObject = class;
@@ -316,105 +314,105 @@ type
 
   TStringColl = class(TSortedColl)
   protected
-    procedure SetString(Index: Integer; const Value: string);
-    function GetString(Index: Integer): string;
+    procedure SetString(Index: Integer; const Value: AnsiString);
+    function GetString(Index: Integer): AnsiString;
   public
     function KeyOf(Item: Pointer): Pointer; override;
     procedure FreeItem(Item: Pointer); override;
     function Compare(Key1, Key2: Pointer): Integer; override;
     function CopyItem(AItem: Pointer): Pointer; override;
     function Copy: Pointer; override;
-    procedure Ins(const S: string);
-    procedure Ins0(const S: string);
-    procedure Add(const S: string);
-    procedure AtIns(Index: Integer; const Item: string);
-    property Strings[Index: Integer]: string read GetString write SetString; default;
-    function  IdxOf(Item: string): Integer;
+    procedure Ins(const S: AnsiString);
+    procedure Ins0(const S: AnsiString);
+    procedure Add(const S: AnsiString);
+    procedure AtIns(Index: Integer; const Item: AnsiString);
+    property Strings[Index: Integer]: AnsiString read GetString write SetString; default;
+    function  IdxOf(Item: AnsiString): Integer;
     procedure AppendTo(AColl: TStringColl);
     procedure Concat(AColl: TStringColl);
     procedure AddStrings(Strings: TStringColl; Sort: Boolean);
-    procedure Fill(const AStrs: array of string);
-    function Found(const Str: string): Boolean;
-    function FoundU(const Str: string): Boolean;
-    function FoundUC(const Str: string): Boolean;
-    procedure FillEnum(Str: string; Delim: Char; Sorted: Boolean);
-    function LongString: string;
-    function LongStringD(c: char): string;
-    procedure SetTextStr(const Value: string);
+    procedure Fill(const AStrs: array of AnsiString);
+    function Found(const Str: AnsiString): Boolean;
+    function FoundU(const Str: AnsiString): Boolean;
+    function FoundUC(const Str: AnsiString): Boolean;
+    procedure FillEnum(Str: AnsiString; Delim: AnsiChar; Sorted: Boolean);
+    function LongString: AnsiString;
+    function LongStringD(c: AnsiChar): AnsiString;
+    procedure SetTextStr(const Value: AnsiString);
   end;
 
 
 { --- string routines }
 
-function  AddRightSpaces(const S: string; NumSpaces: Integer): string;
-procedure AddStr(var S: string ; C : char);
-procedure Add_Str(var S: ShortString ; C : char);
-function  CompareStr(const S1, S2: string): Integer; assembler;
-function  CopyLeft(const S: string; I: Integer): string;
-procedure DelDoubles(const St : string;var Source : string);
-procedure DelFC(var s: string);
-procedure DelLC(var s: string);
-function  DelLeft(const S: string): string;
-function  DelRight(const S: string): string;
-function  DelSpaces(const s: string): string;
-procedure DeleteLeft(var S: string; I: Integer);
-function  DigitsOnly(const AStr: string): Boolean;
-procedure DisposeStr(P: PString);
-function  ExpandFileName(const FileName: string): string;
-function  ExtractFilePath(const FileName: string): string;
-function  ExtractDir(const S: string): string;
-function  ExtractFileRoot(const FileName: string): string;
-function  ExtractFileExt(const FileName: string): string;
-function  ExtractFileName(const FileName: string): string;
-function  ExtractFileDrive(const FileName: string): string;
-function  ExtractFileDir(const FileName: string): string;
-procedure FSplit(const FName: string; var Path, Name, Ext: string);
-procedure FillCharSet(const AStr: string; var CharSet: TCharSet);
-function GetWrdStrictUC(var s,w:string): Boolean;
-function GetWrdStrict(var s,w:string): Boolean;
-function GetWrdD(var s,w:string): Boolean;
-function GetWrdA(var s,w:string): Boolean;
-function GetWrd(var s,w:string;c:char): Boolean;
-function  Hex2(a: Byte): string;
-function  Hex4(a: Word): string;
-function  Hex8(a: DWORD): string;
-function  Int2Hex(a: Integer): string;
-function  Int2Str(L: Integer): string;
-function  ItoS(I: Integer): string;
-function  ItoSz(I, Width: Integer): string;
-function  LastDelimiter(const Delimiters, S: string): Integer;
-function  LowerCase(const S: string): string;
-function  MakeFullDir(const D, S: string): string;
-function  MakeNormName(const Path, Name: string): string;
-function  MonthE(m: Integer): string;
-function  NewStr(const S: string): PString;
-function  Replace(const Pattern, ReplaceString: string; var S: string): Boolean;
-function  StoI(const S: string): Integer;
-function  StrEnds(const S1, S2: string): Boolean;
-function  StrRight(const S: string; Num: Integer): string;
-function  UpperCase(const S: string): string;
-function  WipeChars(const AStr, AWipeChars: string): string;
-function  _Val(const S: string; var V: Integer): Boolean;
+function  AddRightSpaces(const S: AnsiString; NumSpaces: Integer): AnsiString;
+procedure AddStr(var S: AnsiString ; C : AnsiChar);
+procedure Add_Str(var S: ShortString ; C : AnsiChar);
+function  CompareStr(const S1, S2: AnsiString): Integer; assembler;
+function  CopyLeft(const S: AnsiString; I: Integer): AnsiString;
+procedure DelDoubles(const St : AnsiString;var Source : AnsiString);
+procedure DelFC(var s: AnsiString);
+procedure DelLC(var s: AnsiString);
+function  DelLeft(const S: AnsiString): AnsiString;
+function  DelRight(const S: AnsiString): AnsiString;
+function  DelSpaces(const s: AnsiString): AnsiString;
+procedure DeleteLeft(var S: AnsiString; I: Integer);
+function  DigitsOnly(const AStr: AnsiString): Boolean;
+procedure DisposeStr(P: PAnsiString);
+function  ExpandFileName(const FileName: AnsiString): AnsiString;
+function  ExtractFilePath(const FileName: AnsiString): AnsiString;
+function  ExtractDir(const S: AnsiString): AnsiString;
+function  ExtractFileRoot(const FileName: AnsiString): AnsiString;
+function  ExtractFileExt(const FileName: AnsiString): AnsiString;
+function  ExtractFileName(const FileName: AnsiString): AnsiString;
+function  ExtractFileDrive(const FileName: AnsiString): AnsiString;
+function  ExtractFileDir(const FileName: AnsiString): AnsiString;
+procedure FSplit(const FName: AnsiString; var Path, Name, Ext: AnsiString);
+procedure FillCharSet(const AStr: AnsiString; var CharSet: TCharSet);
+function GetWrdStrictUC(var s,w:AnsiString): Boolean;
+function GetWrdStrict(var s,w:AnsiString): Boolean;
+function GetWrdD(var s,w:AnsiString): Boolean;
+function GetWrdA(var s,w:AnsiString): Boolean;
+function GetWrd(var s,w:AnsiString;c:AnsiChar): Boolean;
+function  Hex2(a: Byte): AnsiString;
+function  Hex4(a: Word): AnsiString;
+function  Hex8(a: DWORD): AnsiString;
+function  Int2Hex(a: Integer): AnsiString;
+function  Int2Str(L: Integer): AnsiString;
+function  ItoS(I: Integer): AnsiString;
+function  ItoSz(I, Width: Integer): AnsiString;
+function  LastDelimiter(const Delimiters, S: AnsiString): Integer;
+function  LowerCase(const S: AnsiString): AnsiString;
+function  MakeFullDir(const D, S: AnsiString): AnsiString;
+function  MakeNormName(const Path, Name: AnsiString): AnsiString;
+function  MonthE(m: Integer): AnsiString;
+function  NewStr(const S: AnsiString): PAnsiString;
+function  Replace(const Pattern, ReplaceString: AnsiString; var S: AnsiString): Boolean;
+function  StoI(const S: AnsiString): Integer;
+function  StrEnds(const S1, S2: AnsiString): Boolean;
+function  StrRight(const S: AnsiString; Num: Integer): AnsiString;
+function  UpperCase(const S: AnsiString): AnsiString;
+function  WipeChars(const AStr, AWipeChars: AnsiString): AnsiString;
+function  _Val(const S: AnsiString; var V: Integer): Boolean;
 
 { --- RFC Routines }
 
-function  ProcessQuotes(var s: string): Boolean;
-function  UnpackPchars(var s: string): Boolean;
-function  UnpackUchars(var s: string): Boolean;
-function  __alpha(c: char): Boolean;
-function  __ctl(c: char): Boolean;
-function  __digit(c: char): Boolean;
-function  __extra(c: char): Boolean;
-function  __national(c: char): Boolean;
-function  __pchar(c: char): Boolean;
-function  __reserved(c: char): Boolean;
-function  __safe(c: char): Boolean;
-function  __uchar(c: char): Boolean;
-function  __unsafe(c: char): Boolean;
+function  ProcessQuotes(var s: AnsiString): Boolean;
+function  UnpackPchars(var s: AnsiString): Boolean;
+function  UnpackUchars(var s: AnsiString): Boolean;
+function  __alpha(c: AnsiChar): Boolean;
+function  __ctl(c: AnsiChar): Boolean;
+function  __digit(c: AnsiChar): Boolean;
+function  __extra(c: AnsiChar): Boolean;
+function  __national(c: AnsiChar): Boolean;
+function  __pchar(c: AnsiChar): Boolean;
+function  __reserved(c: AnsiChar): Boolean;
+function  __safe(c: AnsiChar): Boolean;
+function  __uchar(c: AnsiChar): Boolean;
+function  __unsafe(c: AnsiChar): Boolean;
 
 { --- Basic Routines }
 
-function  Buf2Str(const Buffer): string;
+function  Buf2Str(const Buffer): AnsiString;
 procedure Clear(var Buf; Count: Integer);
 function  CompareMem(P1, P2: Pointer; Length: Integer): Boolean; assembler;
 procedure FreeObject(var O);
@@ -441,54 +439,53 @@ function  WaitEvtA(nCount: Integer; lpHandles: PWOHandleArray; Timeout: DWORD): 
 
 function  ClearHandle(var Handle: THandle): Boolean;
 procedure CloseHandles(const Handles: array of DWORD);
-function  FileExists(const FName: string): Boolean;
-function  FindExecutable(FileName, Directory: PChar; Result: PChar): HINST; stdcall;
-function  GetEnvVariable(const Name: string): string;
-function  GetFileNfo(const FName: string; var Info: TFileInfo; NeedAttr: Boolean): Boolean;
-function  GetFileNfoByHandle(Handle: DWORD; var Info: TFileInfo): Boolean;
+function  FileExists(const FName: AnsiString): Boolean;
+function  FindExecutable(FileName, Directory: PAnsiChar; Result: PAnsiChar): HINST; stdcall;
+function  GetEnvVariable(const Name: AnsiString): AnsiString;
+function  GetFileNfo(const FName: AnsiString; var Info: TFileInfo; NeedAttr: Boolean): Boolean;
+function  GetFileNfoByHandle(Handle: THandle; var Info: TFileInfo): Boolean;
 function  ZeroHandle(var Handle: THandle): Boolean;
 
-function  _CreateFile(const FName: string; Mode: TCreateFileModeSet): DWORD;
-function  _CreateFileSecurity(const FName: string; Mode: TCreateFileModeSet; lpSecurityAttributes: PSecurityAttributes): DWORD;
-function  _GetFileSize(const FName: string): DWORD;
+function  _CreateFile(const FName: AnsiString; Mode: TCreateFileModeSet): DWORD;
+function  _CreateFileSecurity(const FName: AnsiString; Mode: TCreateFileModeSet; lpSecurityAttributes: PSecurityAttributes): DWORD;
+function  _GetFileSize(const FName: AnsiString): DWORD;
 
-function _MatchMaskBody(AName, AMask: string; SupportPercent: Boolean): Boolean;
-function _MatchMask(const AName: string; AMask: string; SupportPercent: Boolean): Boolean;
-function MatchMask(const AName, AMask: string): Boolean;
+function _MatchMaskBody(AName, AMask: AnsiString; SupportPercent: Boolean): Boolean;
+function _MatchMask(const AName: AnsiString; AMask: AnsiString; SupportPercent: Boolean): Boolean;
+function MatchMask(const AName, AMask: AnsiString): Boolean;
 
-function  SysErrorMsg(ErrorCode: DWORD): string;
+function  SysErrorMsg(ErrorCode: DWORD): AnsiString;
 
 { --- Registry Routines }
 
-function  CreateRegKey(const AFName: string): HKey;
-function  OpenRegKeyEx(const AName: string; AMode: DWORD): HKey;
-function  OpenRegKey(const AName: string): DWORD;
-function  ReadRegBin(Key: DWORD; const rvn: string; Bin: Pointer; Sz: DWORD): Boolean;
-function  ReadRegInt(Key: DWORD; const AStrName: string): DWORD;
-function  ReadRegString(Key: DWORD; const AStrName: string): string;
-function  WriteRegBin(Key: DWORD; const rvn: string; Bin: Pointer; Sz: DWORD): Boolean;
-function  WriteRegInt(Key: DWORD; const AStrName: string; AValue: DWORD): Boolean;
-function  WriteRegString(Key: DWORD; const AStrName, AStr: string): Boolean;
+function  CreateRegKey(const AFName: AnsiString): HKey;
+function  OpenRegKeyEx(const AName: AnsiString; AMode: DWORD): HKey;
+function  OpenRegKey(const AName: AnsiString): DWORD;
+function  ReadRegBin(Key: DWORD; const rvn: AnsiString; Bin: Pointer; Sz: DWORD): Boolean;
+function  ReadRegInt(Key: DWORD; const AStrName: AnsiString): DWORD;
+function  ReadRegString(Key: DWORD; const AStrName: AnsiString): AnsiString;
+function  WriteRegBin(Key: DWORD; const rvn: AnsiString; Bin: Pointer; Sz: DWORD): Boolean;
+function  WriteRegInt(Key: DWORD; const AStrName: AnsiString; AValue: DWORD): Boolean;
+function  WriteRegString(Key: DWORD; const AStrName, AStr: AnsiString): Boolean;
 
 { --- Winsock tools }
 
-function  AddrInet(i: DWORD): string;
-function  GetHostNameByAddr(Addr: DWORD): string;
-function  Inet2addr(const s: string): DWORD;
-function  InetAddr(const s: string): DWORD;
+function  AddrInet(i: DWORD): AnsiString;
+function  GetHostNameByAddr(Addr: DWORD): AnsiString;
+function  Inet2addr(const s: AnsiString): DWORD;
 
 { --- Misc tools }
 
 procedure GlobalFail;
-function  _LogOK(const Name: string; var Handle: DWORD): Boolean;
+function  _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
 procedure xBaseDone;
 procedure xBaseInit;
 procedure uCvtSetFileTime(T: DWORD; var L, H: DWORD);
 function uCvtGetFileTime(L, H: DWORD): DWORD;
 function uGetSystemTime: DWORD;
-function Vl(const s: string): DWORD;
-function VlH(const s: string): DWORD;
-function StrAsg(const Src: string): string;
+function Vl(const s: AnsiString): DWORD;
+function VlH(const s: AnsiString): DWORD;
+function StrAsg(const Src: AnsiString): AnsiString;
 
 type
   TResetterThread = class(TThread)
@@ -500,6 +497,8 @@ type
   end;
 
 
+function UnicodeStringToRawByteString(const w: UnicodeString; CP: Integer): RawByteString;
+
 var
   ResetterThread: TResetterThread;
   TimeZoneBias: Integer;
@@ -507,7 +506,7 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '1.94';
+  CServerVersion = '1.95';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName+'/'+CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
@@ -599,7 +598,7 @@ begin
   Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
 end;
 
-function uSetFileTimeByHandle(Handle: DWORD; uTime: DWORD): Boolean;
+function uSetFileTimeByHandle(Handle: THandle; uTime: DWORD): Boolean;
 var
   F: TFileTime;
 begin
@@ -607,9 +606,9 @@ begin
   Result := SetFileTime(Handle, nil, nil, @F);
 end;
 
-function uSetFileTime(const FName: string; uTime: DWORD): Boolean;
+function uSetFileTime(const FName: AnsiString; uTime: DWORD): Boolean;
 var
-  Handle: DWORD;
+  Handle: THandle;
 begin
   Result := False;
   Handle := _CreateFile(FName, [cWrite, cExisting]);
@@ -618,7 +617,7 @@ begin
   CloseHandle(Handle);
 end;
 
-procedure CvtFD(const wf: TWin32FindData; var FindData: TuFindData);
+procedure CvtFD(const wf: TWin32FindDataA; var FindData: TuFindData);
 begin
   FindData.Info.Attr := wf.dwFileAttributes;
   FindData.Info.Time := uCvtGetFileTime(wf.ftLastWriteTime.dwLowDateTime, wf.ftLastWriteTime.dwHighDateTime);
@@ -626,23 +625,29 @@ begin
   FindData.FName := Buf2Str(wf.cFileName);
 end;
 
-function uFindFirst(const FName: string; var FindData: TuFindData): DWORD;
+function uFindFirst(const FName: AnsiString; var FindData: TuFindData): DWORD;
 var
-  wf: TWin32FindData;
+  wf: TWin32FindDataA;
 begin
-  Result := FindFirstFile(PChar(FName), wf);
-  if Result <> INVALID_HANDLE_VALUE then CvtFD(wf, FindData);
+  if FName = '' then
+  begin
+    Result := INVALID_HANDLE_VALUE
+  end else
+  begin
+    Result := FindFirstFileA(@(FName[1]), wf);
+    if Result <> INVALID_HANDLE_VALUE then CvtFD(wf, FindData);
+  end;
 end;
 
-function uFindNext(Handle: DWORD; var FindData: TuFindData): Boolean;
+function uFindNext(Handle: THandle; var FindData: TuFindData): Boolean;
 var
-  wf: TWin32FindData;
+  wf: TWin32FindDataA;
 begin
-  Result := FindNextFile(Handle, wf);
+  Result := FindNextFileA(Handle, wf);
   if Result then CvtFD(wf, FindData);
 end;
 
-function uFindClose(Handle: DWORD): Boolean;
+function uFindClose(Handle: THandle): Boolean;
 begin
   Result := Windows.FindClose(Handle);
 end;
@@ -651,17 +656,21 @@ end;
 
 ////////////////////////////////////////////////////////////////////////
 //                                                                    //
-//                         string Routines                            //
+//                         AnsiString Routines                            //
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
 
-function IsWild(const S: string): Boolean;
+function IsWild(const S: AnsiString): Boolean;
+var
+  A, Q: AnsiChar;
 begin
-  Result := (Pos('*',S)>0) or (Pos('?', S)>0);
+  A := '*';
+  Q := '?';
+  Result := (Pos(A,S)>0) or (Pos(Q, S)>0);
 end;
 
-function TrimZeros(S: string): string;
+function TrimZeros(S: AnsiString): AnsiString;
 var
   I, J : Integer;
 begin
@@ -674,7 +683,7 @@ begin
   TrimZeros := Copy(S, J, (I-J)+1);
 end;
 
-function BothKVC(const S: string): Boolean;
+function BothKVC(const S: AnsiString): Boolean;
 begin
   Result := (Copy(S, 1, 1)='"') and (Copy(S, Length(S), 1)='"');
 end;
@@ -709,16 +718,19 @@ begin
     begin Result[8-I] := rrLoHexChar[A and $F]; A := A shr 4; end;
 end;
 
-function Int2Hex(a: Integer): string;
+function Int2Hex(a: Integer): AnsiString;
 begin
   Result := Hex8(a);
   while (Length(Result)>1) and (Result[1]='0') do DelFC(Result);
 end;
 
-function MakeFullDir(const D, S: string): string;
+function MakeFullDir(const D, S: AnsiString): AnsiString;
+var
+  SC: AnsiChar;
 begin
-  if (Pos(':', S) > 0) or (Copy(S, 1, 2) = '\\') then Result := S else
-    if Copy(S, 1, 1) = '\' then Result := MakeNormName(Copy(D, 1, Pos(':',D)), Copy(S, 2, Length(S)-1)) else
+  SC := ':';
+  if (Pos(SC, S) > 0) or (Copy(S, 1, 2) = '\\') then Result := S else
+    if Copy(S, 1, 1) = '\' then Result := MakeNormName(Copy(D, 1, Pos(SC,D)), Copy(S, 2, Length(S)-1)) else
       Result := MakeNormName(D,S);
 end;
 
@@ -742,23 +754,24 @@ begin
   S := S + C;
 end;
 
-procedure Add_Str(var S: ShortString ; C : char);
+procedure Add_Str(var S: ShortString ; C : AnsiChar);
 var
   sl: Byte absolute S;
 begin
   Inc(sl); S[sl] := C;
 end;
 
-procedure FSplit(const FName: string; var Path, Name, Ext: string);
+procedure FSplit(const FName: AnsiString; var Path, Name, Ext: AnsiString);
 type
   TStep = (sExt, sName, sPath);
 var
   Step : TStep;
   I: Integer;
-  C: Char;
+  C, D: AnsiChar;
 begin
+  D := '.';
   I := Length(FName);
-  if Pos('.', FName) = 0 then Step := sName else Step := sExt;
+  if Pos(D, FName) = 0 then Step := sName else Step := sExt;
   Path := ''; Name := ''; Ext  := '';
   while I > 0 do
   begin
@@ -808,18 +821,18 @@ begin
   until False;
 end;
 
-function ItoS(I: Integer): string;
+function ItoS(I: Integer): AnsiString;
 begin
   Str(I, Result);
 end;
 
-function ItoSz(I, Width: Integer): string;
+function ItoSz(I, Width: Integer): AnsiString;
 begin
   Result := ItoS(I);
   while Length(Result)<Width do Result := '0'+Result;
 end;
 
-function DelLeft(const S: string): string;
+function DelLeft(const S: AnsiString): AnsiString;
 var
   I, L: Integer;
 begin
@@ -833,7 +846,7 @@ begin
   Result := Copy(S, I, L+1-I);
 end;
 
-function DelRight(const S: string): string;
+function DelRight(const S: AnsiString): AnsiString;
 var
   I: Integer;
 begin
@@ -846,17 +859,17 @@ begin
   Result := Copy(S, 1, I);
 end;
 
-function DelSpaces(const s: string): string;
+function DelSpaces(const s: AnsiString): AnsiString;
 begin
   Result := DelLeft(DelRight(s));
 end;
 
-procedure DelFC(var s: string);
+procedure DelFC(var s: AnsiString);
 begin
   Delete(s, 1, 1);
 end;
 
-procedure DelLC(var s: string);
+procedure DelLC(var s: AnsiString);
 var
   l: Integer;
 begin
@@ -868,7 +881,7 @@ begin
   end;
 end;
 
-function Int2Str(L: Integer): string;
+function Int2Str(L: Integer): AnsiString;
 var I: Integer;
 begin
   Result := ItoS(L);
@@ -880,9 +893,12 @@ begin
     end;
 end;
 
-function ExtractFileRoot(const FileName: string): string;
+function ExtractFileRoot(const FileName: AnsiString): AnsiString;
+var
+  SC: AnsiChar;
 begin
-  Result := Copy(FileName, 1, Pos(':',FileName)+1);
+  SC := ':';
+  Result := Copy(FileName, 1, Pos(SC,FileName)+1);
 end;
 
 function WipeChars;
@@ -893,7 +909,7 @@ begin
   for i := 1 to j do if Pos(AStr[I], AWipeChars) = 0 then AddStr(Result, AStr[I]);
 end;
 
-procedure FillCharSet(const AStr: string; var CharSet: TCharSet);
+procedure FillCharSet(const AStr: AnsiString; var CharSet: TCharSet);
 var
   i: Integer;
 begin
@@ -901,7 +917,7 @@ begin
   for i := 1 to Length(AStr) do Include(CharSet, AStr[i]);
 end;
 
-function DigitsOnly(const AStr: string): Boolean;
+function DigitsOnly(const AStr: AnsiString): Boolean;
 var
   i: Integer;
 begin
@@ -911,7 +927,7 @@ begin
   Result := True;
 end;
 
-function GetWrdD(var s,w:string): Boolean;
+function GetWrdD(var s,w:AnsiString): Boolean;
 begin
  Result := False;
  w:=''; if s='' then Exit;
@@ -921,7 +937,7 @@ begin
  Result := True;
 end;
 
-function GetWrdA(var s,w:string): Boolean;
+function GetWrdA(var s,w:AnsiString): Boolean;
 begin
  Result := False;
  w:=''; if s='' then Exit;
@@ -932,13 +948,15 @@ begin
 end;
 
 
-function  GetWrd(var s,w:string;c:char): Boolean;
+function  GetWrd(var s,w:AnsiString;c:AnsiChar): Boolean;
+const
+  Space: AnsiChar = ' ';
 var
   i, j: Integer;
 begin
  Result := False;
  w := ''; if s = '' then Exit;
- if (c = ' ') and (Pos(' ', s) > 0) then s := DelSpaces(s);
+ if (c = Space) and (Pos(Space, s) > 0) then s := DelSpaces(s);
  j := 0;
  for i := 1 to Length(s) do
  begin
@@ -951,7 +969,7 @@ begin
  if not Result then Delete(s, 1, 1);
 end;
 
-function GetWrdStrict(var s,w:string): Boolean;
+function GetWrdStrict(var s,w:AnsiString): Boolean;
 var
   i, j: Integer;
 begin
@@ -969,7 +987,7 @@ begin
  if not Result then Delete(s, 1, 1);
 end;
 
-function GetWrdStrictUC(var s,w:string): Boolean;
+function GetWrdStrictUC(var s,w:AnsiString): Boolean;
 var
   i, j: Integer;
 begin
@@ -987,22 +1005,22 @@ begin
  if not Result then Delete(s, 1, 1);
 end;
 
-function StrRight(const S: string; Num: Integer): string;
+function StrRight(const S: AnsiString; Num: Integer): AnsiString;
 begin
   Result := Copy(S, Length(S)-Num+1, Num);
 end;
 
-function StrEnds(const S1, S2: string): Boolean;
+function StrEnds(const S1, S2: AnsiString): Boolean;
 begin
   Result := StrRight(S1, Length(S2)) = S2;
 end;
 
-function CopyLeft(const S: string; I: Integer): string;
+function CopyLeft(const S: AnsiString; I: Integer): AnsiString;
 begin
   Result := Copy(S, I, Length(S)-I+1);
 end;
 
-procedure DeleteLeft(var S: string; I: Integer);
+procedure DeleteLeft(var S: AnsiString; I: Integer);
 begin
   Delete(S, I, Length(S)-I+1);
 end;
@@ -1097,7 +1115,7 @@ asm
   POP     EDI
 end;
 
-function Buf2Str(const Buffer): string;
+function Buf2Str(const Buffer): AnsiString;
 var
   I: Integer;
 begin
@@ -1173,9 +1191,9 @@ begin
   for i:=0 to High(Handles) do CloseHandle(Handles[i]);
 end;
 
-function FileExists(const FName: string): Boolean;
+function FileExists(const FName: AnsiString): Boolean;
 var
-  Handle: DWORD;
+  Handle: THandle;
 begin
   Result := False;
   Handle := _CreateFile(FName, [cRead, cShareAllowWrite]);
@@ -1185,14 +1203,14 @@ end;
 
 function GetFileNfo;
 var
-  Handle: DWORD;
+  Handle: THandle;
 begin
   Result := False;
   Handle := _CreateFile(FName, [cRead, cShareAllowWrite]);
   if Handle = INVALID_HANDLE_VALUE then Exit;
   Result := GetFileNfoByHandle(Handle, Info);
   CloseHandle(Handle);
-  if NeedAttr and Result and (Info.Attr = INVALID_FILE_ATTRIBUTES) then Result := GetFileAttributes(PChar(FName)) <> INVALID_FILE_ATTRIBUTES;
+  if NeedAttr and Result and (Info.Attr = INVALID_FILE_ATTRIBUTES) and (FName <> '') then Result := GetFileAttributesA(@(FName[1])) <> INVALID_FILE_ATTRIBUTES;
 end;
 
 function GetFileNfoByHandle;
@@ -1212,7 +1230,7 @@ begin
 end;
 
 
-function ClearHandle(var Handle: DWORD): Boolean;
+function ClearHandle(var Handle: THandle): Boolean;
 begin
   if Handle = INVALID_HANDLE_VALUE then Result := False else
   begin
@@ -1221,7 +1239,7 @@ begin
   end;
 end;
 
-function ZeroHandle(var Handle: DWORD): Boolean;
+function ZeroHandle(var Handle: THandle): Boolean;
 begin
   if (Handle = INVALID_HANDLE_VALUE) or
      (Handle = 0) then Result := False else
@@ -1261,6 +1279,11 @@ const
        (w:True;  n:False; t:True;  d:CREATE_ALWAYS),
        (w:True;  n:True;  t:True;  d:TRUNCATE_EXISTING) );
 begin
+  if FName = '' then
+  begin
+    Result := INVALID_HANDLE_VALUE;
+    Exit;
+  end;
 
 // Prepare Disp & Flags
 
@@ -1305,7 +1328,7 @@ begin
     if cShareDenyRead in Mode then Share := Share and not FILE_SHARE_READ;
   end;
 
-  Result := CreateFile(PChar(FName), Access, Share, lpSecurityAttributes, Disp, Flags, 0);
+  Result := CreateFileA(@(FName[1]), Access, Share, lpSecurityAttributes, Disp, Flags, 0);
 end;
 
 
@@ -1323,10 +1346,10 @@ end;
 
 
 
-function WindowsDirectory: string;
+function WindowsDirectory: AnsiString;
 begin
   SetLength(Result, MAX_PATH);
-  GetWindowsDirectory(PChar(Result), MAX_PATH);
+  GetWindowsDirectoryA(@(Result[1]), MAX_PATH);
   SetLength(Result, NulSearch(Result[1]));
 end;
 
@@ -1338,31 +1361,41 @@ end;
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-function OpenRegKeyEx(const AName: string; AMode: DWORD): HKey;
+function OpenRegKeyEx(const AName: AnsiString; AMode: DWORD): HKey;
 begin
-  if RegOpenKeyEx(
+  if AName = '' then
+  begin
+    Result := INVALID_REGISTRY_KEY;
+    Exit;
+  end;
+  if RegOpenKeyExA(
     HKEY_LOCAL_MACHINE,      // handle of an open key
-    PChar(AName),           // subkey name
+    @(AName[1]),             // subkey name
     0,                       // Reserved
     AMode,
     Result
   ) <> ERROR_SUCCESS then Result := INVALID_REGISTRY_KEY;
 end;
 
-function OpenRegKey(const AName: string): DWORD;
+function OpenRegKey(const AName: AnsiString): DWORD;
 begin
   Result := OpenRegKeyEx(AName, KEY_QUERY_VALUE);
 end;
 
-function CreateRegKey(const AFName: string): HKey;
+function CreateRegKey(const AFName: AnsiString): HKey;
 var
   Disp: DWORD;
 begin
-  if RegCreateKeyEx(
+  if AFName = '' then
+  begin
+    Result := INVALID_REGISTRY_KEY;
+    Exit;
+  end;
+  if RegCreateKeyExA(
     HKEY_LOCAL_MACHINE,      // handle of an open key
-    PChar(AFName),           // subkey name
+    @(AFName[1]),            // subkey name
     0,                       // reserved, must be zero
-    nil,                     // address of class string
+    nil,                     // address of class AnsiString
     REG_OPTION_NON_VOLATILE, // options flag
     KEY_WRITE,               // desired security access
     nil,                     // security attributes
@@ -1374,26 +1407,34 @@ begin
 
 end;
 
-function WriteRegString(Key: DWORD; const AStrName, AStr: string): Boolean;
+function WriteRegString(Key: DWORD; const AStrName, AStr: AnsiString): Boolean;
 begin
-  Result := RegSetValueEx(Key, PChar(AStrName), 0, REG_SZ, PChar(AStr), Length(AStr)+1) = ERROR_SUCCESS;
+  if (AStrName = '') or (AStr = '') then
+  begin
+    Result := False;
+  end else
+  begin
+    Result := RegSetValueExA(Key, @(AStrName[1]), 0, REG_SZ, @(AStr[1]), Length(AStr)+1) = ERROR_SUCCESS;
+  end;
 end;
 
 
-function ReadRegString(Key: DWORD; const AStrName: string): string;
+function ReadRegString(Key: DWORD; const AStrName: AnsiString): AnsiString;
 var
   l, t,e: DWORD;
-  z: ShortString;
+  z: AnsiString;
+  PDataBuf: PAnsiChar;
 begin
-  z[0] := #250;
   l := 250;
+  SetLength(z, l+1);
+  PDataBuf := @(z[1]);
   t := REG_SZ;
-  e := RegQueryValueEx(
+  e := RegQueryValueExA(
     Key,             // handle of key to query
-    PChar(AStrName), // value to query
+    PAnsiChar(AStrName), // value to query
     nil,             // reserved
     @t,              // value type
-    @z[1],           // data buffer
+    PByte(PDataBuf), // data buffer
     @l               // buffer size
   );
   if e <> ERROR_SUCCESS then Result := '' else
@@ -1402,43 +1443,67 @@ begin
   end;
 end;
 
-function WriteRegInt(Key: DWORD; const AStrName: string; AValue: DWORD): Boolean;
+function WriteRegInt(Key: DWORD; const AStrName: AnsiString; AValue: DWORD): Boolean;
 begin
-  Result := RegSetValueEx(Key, PChar(AStrName), 0, REG_DWORD, @AValue, SizeOf(AValue)) = ERROR_SUCCESS;
+  if AStrName = '' then
+  begin
+    Result := False;
+  end else
+  begin
+    Result := RegSetValueExA(Key, @(AStrName[1]), 0, REG_DWORD, @AValue, SizeOf(AValue)) = ERROR_SUCCESS;
+  end;
 end;
 
-function ReadRegInt(Key: DWORD; const AStrName: string): DWORD;
+function ReadRegInt(Key: DWORD; const AStrName: AnsiString): DWORD;
 var
   t, e, s: DWORD;
   b: Integer;
+  PDataBuf: PInteger;
 begin
+  if AStrName = '' then
+  begin
+    Result := INVALID_REGISTRY_KEY;
+    Exit;
+  end;
   t := REG_DWORD;;
   s := SizeOf(b);
-  e := RegQueryValueEx(
+  PDataBuf := @b;
+  e := RegQueryValueExA(
     Key,             // handle of key to query
-    PChar(AStrName), // value to query
+    @(AStrName[1]),  // value to query
     nil,             // reserved
     @t,              // value type
-    @b,              // data buffer
+    PByte(PDataBuf), // data buffer
     @s               // buffer size
   );
   if e <> ERROR_SUCCESS then Result := INVALID_REGISTRY_KEY else Result := b;
 end;
 
-function WriteRegBin(Key: DWORD; const rvn: string; Bin: Pointer; Sz: DWORD): Boolean;
+function WriteRegBin(Key: DWORD; const rvn: AnsiString; Bin: Pointer; Sz: DWORD): Boolean;
 begin
-  Result := RegSetValueEx(Key, PChar(rvn), 0, REG_BINARY, Bin, Sz) = ERROR_SUCCESS;
+  if rvn = '' then
+  begin
+    Result := False;
+  end else
+  begin
+    Result := RegSetValueExA(Key, @(rvn[1]), 0, REG_BINARY, Bin, Sz) = ERROR_SUCCESS;
+  end;
 end;
 
-function ReadRegBin(Key: DWORD; const rvn: string; Bin: Pointer; Sz: DWORD): Boolean;
+function ReadRegBin(Key: DWORD; const rvn: AnsiString; Bin: Pointer; Sz: DWORD): Boolean;
 var
   t, e, s: DWORD;
 begin
+  if rvn = '' then
+  begin
+    Result := False;
+    Exit;
+  end;
   t := REG_BINARY;;
   s := Sz;
-  e := RegQueryValueEx(
+  e := RegQueryValueExA(
     Key,             // handle of key to query
-    PChar(rvn),      // value to query
+    @(rvn[1]),       // value to query
     nil,             // reserved
     @t,              // value type
     Bin,             // data buffer
@@ -1454,12 +1519,12 @@ end;
 ////////////////////////////////////////////////////////////////////////
 
 
-function SysErrorMsg(ErrorCode: DWORD): string;
+function SysErrorMsg(ErrorCode: DWORD): AnsiString;
 var
   Len: Integer;
-  Buffer: array[0..255] of Char;
+  Buffer: array[0..255] of AnsiChar;
 begin
-  Len := FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM or
+  Len := FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM or
     FORMAT_MESSAGE_ARGUMENT_ARRAY, nil, ErrorCode, 0, Buffer,
     SizeOf(Buffer), nil);
   while (Len > 0) and (Buffer[Len - 1] in [#0..#32, '.']) do Dec(Len);
@@ -1746,7 +1811,7 @@ end;
 
 { TStringColl }
 
-function TStringColl.LongString: string;
+function TStringColl.LongString: AnsiString;
 var
   i: Integer;
 begin
@@ -1754,7 +1819,7 @@ begin
   for i := 0 to Count-1 do Result := Result + Strings[i] + #13#10;
 end;
 
-function TStringColl.LongStringD(c: char): string;
+function TStringColl.LongStringD(c: AnsiChar): AnsiString;
 var
   i: Integer;
 begin
@@ -1763,28 +1828,28 @@ begin
   for i := MaxI(0, Count-1) to Count-1 do Result := Result + Strings[i];
 end;
 
-procedure TStringColl.SetTextStr(const Value: string);
+procedure TStringColl.SetTextStr(const Value: AnsiString);
 var
-  P, Start: PChar;
-  S: string;
+  P, Start: PAnsiChar;
+  S: AnsiString;
 begin
-  P := Pointer(Value);
-  if P <> nil then
-    while P^ <> #0 do
-    begin
-      Start := P;
-      while not (P^ in [#0, #10, #13]) do Inc(P);
-      System.SetString(S, Start, P - Start);
-      Add(S);
-      if P^ = #13 then Inc(P);
-      if P^ = #10 then Inc(P);
-    end;
+  if Value = '' then Exit;
+  P := @(Value[1]);
+  while P^ <> #0 do
+  begin
+    Start := P;
+    while not (P^ in [#0, #10, #13]) do Inc(P);
+    System.SetString(S, Start, P - Start);
+    Add(S);
+    if P^ = #13 then Inc(P);
+    if P^ = #10 then Inc(P);
+  end;
 end;
 
 
-procedure TStringColl.FillEnum(Str: string; Delim: Char; Sorted: Boolean);
+procedure TStringColl.FillEnum(Str: AnsiString; Delim: AnsiChar; Sorted: Boolean);
 var
-  Z: string;
+  Z: AnsiString;
 begin
   while Str <> '' do
   begin
@@ -1794,14 +1859,14 @@ begin
 end;
 
 
-function TStringColl.Found(const Str: string): Boolean;
+function TStringColl.Found(const Str: AnsiString): Boolean;
 var
   i: Integer;
 begin
   Result := Search(@Str, I);
 end;
 
-function TStringColl.FoundU(const Str: string): Boolean;
+function TStringColl.FoundU(const Str: AnsiString): Boolean;
 var
   i: Integer;
 begin
@@ -1809,9 +1874,9 @@ begin
   for i := 0 to Count-1 do if Str = Strings[i] then begin Result := True; Exit end;
 end;
 
-function TStringColl.FoundUC(const Str: string): Boolean;
+function TStringColl.FoundUC(const Str: AnsiString): Boolean;
 var
-  us: string;
+  us: AnsiString;
   i: Integer;
 begin
   us := UpperCase(Str);
@@ -1827,7 +1892,7 @@ end;
 
 function TStringColl.CopyItem(AItem: Pointer): Pointer;
 begin
-  Result := NewStr(PString(AItem)^);
+  Result := NewStr(PAnsiString(AItem)^);
 end;
 
 
@@ -1851,7 +1916,7 @@ begin
   for i := 0 to Count - 1 do AColl.Add(Strings[i]);
 end;
 
-procedure TStringColl.Fill(const AStrs: array of string);
+procedure TStringColl.Fill(const AStrs: array of AnsiString);
 var
   i: Integer;
 begin
@@ -1867,25 +1932,25 @@ begin
     if Sort then Ins(Strings[i]) else Add(Strings[i]);
 end;
 
-function TStringColl.IdxOf(Item: string): Integer;
+function TStringColl.IdxOf(Item: AnsiString): Integer;
 begin
   Result := IndexOf(@Item);
 end;
 
-procedure TStringColl.SetString(Index: Integer; const Value: string);
+procedure TStringColl.SetString(Index: Integer; const Value: AnsiString);
 begin
   FreeItem(At(Index));
   AtPut(Index, NewStr(Value));
 end;
 
-function TStringColl.GetString(Index: Integer): string;
+function TStringColl.GetString(Index: Integer): AnsiString;
 begin
-  Result := PString(At(Index))^;
+  Result := PAnsiString(At(Index))^;
 end;
 
 function TStringColl.Compare(Key1, Key2: Pointer): Integer;
 begin
-  Compare := CompareStr(PString(Key1)^, PString(Key2)^);
+  Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
 end;
 
 procedure TStringColl.FreeItem(Item: Pointer);
@@ -1893,22 +1958,22 @@ begin
   DisposeStr(Item);
 end;
 
-procedure TStringColl.AtIns(Index: Integer; const Item: string);
+procedure TStringColl.AtIns(Index: Integer; const Item: AnsiString);
 begin
   AtInsert(Index, NewStr(Item));
 end;
 
-procedure TStringColl.Add(const S: string);
+procedure TStringColl.Add(const S: AnsiString);
 begin
   AtInsert(Count, NewStr(S));
 end;
 
-procedure TStringColl.Ins0(const S: string);
+procedure TStringColl.Ins0(const S: AnsiString);
 begin
   AtInsert(0, NewStr(S));
 end;
 
-procedure TStringColl.Ins(const S: string);
+procedure TStringColl.Ins(const S: AnsiString);
 begin
   Insert(NewStr(S));
 end;
@@ -1921,10 +1986,10 @@ begin
   if OP <> nil then begin OO.Free; OP := nil end;
 end;
 
-function DeleteEmptyDirInheritance(S: string; const StopOn: string): Integer;
+function DeleteEmptyDirInheritance(S: AnsiString; const StopOn: AnsiString): Integer;
 begin
   Result := 0;
-  while (S <> StopOn) and RemoveDirectory(PChar(S)) do
+  while (S <> StopOn) and (S <> '') and RemoveDirectoryA(@(S[1])) do
   begin
     Inc(Result);
     S := ExtractFileDir(S);
@@ -1935,7 +2000,7 @@ const
   CMonths = 'JanFebMarAprMayJunJulAugSepOctNovDec';
   Months: string[Length(CMonths)] = CMonths;
 
-function MonthE(m: Integer): string;
+function MonthE(m: Integer): AnsiString;
 begin
   Result := Copy(Months, 1+(m-1)*3, 3);
 end;
@@ -1956,7 +2021,7 @@ begin
   TColl(Result).Leave;
 end;
 
-procedure XorStr(P: PByteArray; Len: Integer; const S: string);
+procedure XorStr(P: PByteArray; Len: Integer; const S: AnsiString);
 var
   sl, i: Integer;
 begin
@@ -1967,14 +2032,19 @@ begin
   end;
 end;
 
-function GetEnvVariable(const Name: string): string;
+function GetEnvVariable(const Name: AnsiString): AnsiString;
 const
   BufSize = 128;
 var
-  Buf: array[0..BufSize] of Char;
+  Buf: array[0..BufSize] of AnsiChar;
   I: DWORD;
 begin
-  I := GetEnvironmentVariable(PChar(Name), Buf, BufSize);
+  if Name = '' then
+  begin
+    Result := '';
+    Exit;
+  end;
+  I := GetEnvironmentVariableA(@(Name[1]), Buf, BufSize);
   case I of
     1..BufSize:
       begin
@@ -1984,7 +2054,7 @@ begin
     BufSize+1..MaxInt:
       begin
         SetLength(Result, I+1);
-        GetEnvironmentVariable(PChar(Name), @Result[1], I);
+        GetEnvironmentVariableA(@(Name[1]), @Result[1], I);
         SetLength(Result, I);
       end;
     else
@@ -1994,21 +2064,23 @@ begin
    end;
 end;
 
-function LoadRS(Ident: Integer): string;
+function LoadRS(Ident: Integer): AnsiString;
 const
-   strbufsize = $10000;
+  strbufsize = $10000;
 var
-   strbuf: array[0..StrBufSize] of Char;
+  strbuf: array[0..StrBufSize] of AnsiChar;
+  BufPtr: PAnsiChar;
 begin
-  SetString(Result, PChar(@strbuf), LoadString(hInstance, Ident, @strbuf, strbufsize));
+  BufPtr := @(strbuf[0]);
+  SetString(Result, BufPtr, LoadStringA(hInstance, Ident, BufPtr, strbufsize));
 end;
 
-function StrBegins(const s1,s2:string):Boolean;
+function StrBegins(const s1,s2:AnsiString):Boolean;
 begin
   Result := Copy(s1, 1, Length(s2)) = s2;
 end;
 
-function DivideDash(const S: string): string;
+function DivideDash(const S: AnsiString): AnsiString;
 begin
   Result := S;
   Insert('-', Result, (Length(S) div 2)+1);
@@ -2022,16 +2094,21 @@ begin
 end;
 
 
-function TempFileName(const APath, APfx: string): string;
+function TempFileName(const APath, APfx: AnsiString): AnsiString;
 var
-  s: string;
+  s: AnsiString;
 begin
+  if (APath = '') or (APfx = '') then
+  begin
+    Result := '';
+    Exit;
+  end;
   SetLength(s, 1000);
-  GetTempFileName(PChar(APath), PChar(APfx), 0, @s[1]);
+  GetTempFileNameA(@(APath[1]), @(APfx[1]), 0, @(s[1]));
   Result := Copy(s, 1, NulSearch(s[1]));
 end;
 
-function CreateTempFile(const APath, APfx: string; var FName: string): DWORD;
+function CreateTempFile(const APath, APfx: AnsiString; var FName: AnsiString): DWORD;
 begin
   FName := TempFileName(APath, APfx);
   Result := _CreateFile(FName, [cWrite, cExisting]);
@@ -2054,12 +2131,14 @@ end;
 constructor TThread.Create(CreateSuspended: Boolean);
 var
   Flags: DWORD;
+  TF: Pointer;
 begin
   inherited Create;
   FSuspended := CreateSuspended;
   Flags := 0;
   if CreateSuspended then Flags := CREATE_SUSPENDED;
-  FHandle := BeginThread(nil, 0, @ThreadProc, Pointer(Self), Flags, FThreadID);
+  TF := @ThreadProc;
+  FHandle := BeginThread(nil, 0, TF, Pointer(Self), Flags, FThreadID);
 end;
 
 destructor TThread.Destroy;
@@ -2124,7 +2203,7 @@ end;
 
 
 
-function ExtractFilePath(const FileName: string): string;
+function ExtractFilePath(const FileName: AnsiString): AnsiString;
 var
   I: Integer;
 begin
@@ -2132,7 +2211,7 @@ begin
   Result := Copy(FileName, 1, I);
 end;
 
-function ExtractFileDir(const FileName: string): string;
+function ExtractFileDir(const FileName: AnsiString): AnsiString;
 var
   I: Integer;
 begin
@@ -2142,7 +2221,7 @@ begin
   Result := Copy(FileName, 1, I);
 end;
 
-function ExtractFileDrive(const FileName: string): string;
+function ExtractFileDrive(const FileName: AnsiString): AnsiString;
 var
   I, J: Integer;
 begin
@@ -2163,7 +2242,7 @@ begin
   end else Result := '';
 end;
 
-function LastDelimiter(const Delimiters, S: string): Integer;
+function LastDelimiter(const Delimiters, S: AnsiString): Integer;
 begin
   Result := Length(S);
   while Result > 0 do
@@ -2172,7 +2251,7 @@ begin
   end;
 end;
 
-function ExtractFileName(const FileName: string): string;
+function ExtractFileName(const FileName: AnsiString): AnsiString;
 var
   I: Integer;
 begin
@@ -2180,7 +2259,7 @@ begin
   Result := Copy(FileName, I + 1, MaxInt);
 end;
 
-function ExtractFileExt(const FileName: string): string;
+function ExtractFileExt(const FileName: AnsiString): AnsiString;
 var
   I: Integer;
 begin
@@ -2190,26 +2269,36 @@ begin
     Result := '';
 end;
 
-function ExpandFileName(const FileName: string): string;
+function ExpandFileName(const FileName: AnsiString): AnsiString;
 var
-  FName: PChar;
-  Buffer: array[0..MAX_PATH - 1] of Char;
+  FName: PAnsiChar;
+  Buffer: array[0..MAX_PATH - 1] of AnsiChar;
 begin
-  SetString(Result, Buffer, GetFullPathName(PChar(FileName), SizeOf(Buffer),
-    Buffer, FName));
+  if FileName = '' then
+  begin
+    Result := '';
+  end else
+  begin
+    SetString(Result, Buffer, GetFullPathNameA(@(FileName[1]), SizeOf(Buffer), Buffer, FName));
+  end;
 end;
 
 
-function UpperCase(const S: string): string;
+function UpperCase(const S: AnsiString): AnsiString;
 var
-  Ch: Char;
+  Ch: AnsiChar;
   L: Integer;
-  Source, Dest: PChar;
+  Source, Dest: PAnsiChar;
 begin
   L := Length(S);
+  if L < 1 then
+  begin
+    Result := '';
+    Exit;
+  end;
   SetLength(Result, L);
-  Source := Pointer(S);
-  Dest := Pointer(Result);
+  Source := @(S[1]);
+  Dest := @(Result[1]);
   while L <> 0 do
   begin
     Ch := Source^;
@@ -2221,16 +2310,21 @@ begin
   end;
 end;
 
-function LowerCase(const S: string): string;
+function LowerCase(const S: AnsiString): AnsiString;
 var
-  Ch: Char;
+  Ch: AnsiChar;
   L: Integer;
-  Source, Dest: PChar;
+  Source, Dest: PAnsiChar;
 begin
   L := Length(S);
+  if L < 1 then
+  begin
+    Result := '';
+    Exit;
+  end;
   SetLength(Result, L);
-  Source := Pointer(S);
-  Dest := Pointer(Result);
+  Source := @(S[1]);
+  Dest := @(Result[1]);
   while L <> 0 do
   begin
     Ch := Source^;
@@ -2243,10 +2337,10 @@ begin
 end;
 
 const
-  EmptyStr: string = '';
-  NullStr: PString = @EmptyStr;
+  EmptyStr: AnsiString = '';
+  NullStr: PAnsiString = @EmptyStr;
 
-function NewStr(const S: string): PString;
+function NewStr(const S: AnsiString): PAnsiString;
 begin
   if S = '' then Result := NullStr else
   begin
@@ -2255,12 +2349,12 @@ begin
   end;
 end;
 
-procedure DisposeStr(P: PString);
+procedure DisposeStr(P: PAnsiString);
 begin
   if (P <> nil) and (P^ <> '') then Dispose(P);
 end;
 
-function CompareStr(const S1, S2: string): Integer; assembler;
+function CompareStr(const S1, S2: AnsiString): Integer; assembler;
 asm
         PUSH    ESI
         PUSH    EDI
@@ -2377,7 +2471,7 @@ end;
 
 
 
-function TSocket.WriteStr(const s: string): DWORD;
+function TSocket.WriteStr(const s: AnsiString): DWORD;
 var
   slen: Integer;
 begin
@@ -2401,12 +2495,18 @@ begin
   if (i = SOCKET_ERROR) or (I < 0) then begin Status := WSAGetLastError; Result := 0 end else Result := i;
 end;
 
-function Inet2addr(const s: string): DWORD;
+function Inet2addr(const s: AnsiString): DWORD;
 begin
-  Result := inet_addr(PChar(s));
+  if s = '' then
+  begin
+    Result := 0;
+  end else
+  begin
+    Result := inet_addr(@(s[1]));
+  end;
 end;
 
-function __pchar(c: char): Boolean;
+function __pchar(c: AnsiChar): Boolean;
 begin
   case c of
     ':', '@', '&', '=', '+': Result := True
@@ -2414,12 +2514,12 @@ begin
   end;
 end;
 
-function __uchar(c: char): Boolean;
+function __uchar(c: AnsiChar): Boolean;
 begin
   Result := __alpha(c) or __digit(c) or __safe(c) or __extra(c) or __national(c)
 end;
 
-function __national(c: char): Boolean;
+function __national(c: AnsiChar): Boolean;
 begin
   case c of
     '0'..'9', 'A'..'Z', 'a'..'z': Result := False;
@@ -2427,7 +2527,7 @@ begin
   end;
 end;
 
-function __reserved(c: char): Boolean;
+function __reserved(c: AnsiChar): Boolean;
 begin
   case c of
     ';', '/', '?', ':', '@', '&', '=', '+' : Result := True
@@ -2435,7 +2535,7 @@ begin
   end;
 end;
 
-function __extra(c: char): Boolean;
+function __extra(c: AnsiChar): Boolean;
 begin
   case c of
     '!', '*', '''' ,'(', ')', ',' : Result := True
@@ -2443,7 +2543,7 @@ begin
   end;
 end;
 
-function __safe(c: char): Boolean;
+function __safe(c: AnsiChar): Boolean;
 begin
   case c of
     '$', '-', '_', '.' : Result := True
@@ -2451,7 +2551,7 @@ begin
   end;
 end;
 
-function __unsafe(c: char): Boolean;
+function __unsafe(c: AnsiChar): Boolean;
 begin
   case c of
       '"', '#', '%', '<', '>': Result := True;
@@ -2459,7 +2559,7 @@ begin
   end;
 end;
 
-function __alpha(c: char): Boolean;
+function __alpha(c: AnsiChar): Boolean;
 begin
   case c of
     'A'..'Z', 'a'..'z': Result := True
@@ -2467,7 +2567,7 @@ begin
   end;
 end;
 
-function __digit(c: char): Boolean;
+function __digit(c: AnsiChar): Boolean;
 begin
   case c of
     '0'..'9': Result := True
@@ -2475,7 +2575,7 @@ begin
   end;
 end;
 
-function __ctl(c: char): Boolean;
+function __ctl(c: AnsiChar): Boolean;
 begin
   case c of
     #0..#31, #127 : Result := True
@@ -2484,10 +2584,10 @@ begin
 end;
 
 
-function UnpackXchars(var s: string; p: Boolean): Boolean;
+function UnpackXchars(var s: AnsiString; p: Boolean): Boolean;
 var
-  r: string;
-  c: char;
+  r: AnsiString;
+  c: AnsiChar;
   i, h, l, sl: Integer;
 
 begin
@@ -2504,7 +2604,7 @@ begin
       l := Pos(UpCase(s[i+2]), rrHiHexChar)-1;
       h := Pos(UpCase(s[i+1]), rrHiHexChar)-1;
       if (h = -1) or (l = -1) then Exit;
-      r := r + Chr(h shl 4 or l);
+      r := r + AnsiChar(h shl 4 or l);
       Inc(i, 2);
       Continue;
     end;
@@ -2521,23 +2621,23 @@ begin
   Result := True;
 end;
 
-function UnpackUchars(var s: string): Boolean;
+function UnpackUchars(var s: AnsiString): Boolean;
 begin
   Result := UnpackXchars(s, False);
 end;
 
 
-function UnpackPchars(var s: string): Boolean;
+function UnpackPchars(var s: AnsiString): Boolean;
 begin
   Result := UnpackXchars(s, True);
 end;
 
-function ProcessQuotes(var s: string): Boolean;
+function ProcessQuotes(var s: AnsiString): Boolean;
 var
-  r: string;
+  r: AnsiString;
   i: Integer;
   KVC: Boolean;
-  c: Char;
+  c: AnsiChar;
 begin
   Result := False;
   KVC := False;
@@ -2554,10 +2654,10 @@ begin
   if Result then s := r;
 end;
 
-function _Val(const S: string; var V: Integer): Boolean;
+function _Val(const S: AnsiString; var V: Integer): Boolean;
 var
   I, R: Integer;
-  C: Char;
+  C: AnsiChar;
 begin
   Result := False;
   if S = '' then Exit;
@@ -2573,12 +2673,12 @@ begin
 end;
 
 
-function StoI(const S: string): Integer;
+function StoI(const S: AnsiString): Integer;
 begin
   if not _Val(S, Result) then Result := 0;
 end;
 
-function _LogOK(const Name: string; var Handle: DWORD): Boolean;
+function _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
 begin
   if Handle = 0 then
   begin
@@ -2588,12 +2688,7 @@ begin
   Result := Handle <> INVALID_HANDLE_VALUE;
 end;
 
-function InetAddr(const s: string): DWORD;
-begin
-  Result := inet_addr(PChar(s))
-end;
-
-function AddrInet(i: DWORD): string;
+function AddrInet(i: DWORD): AnsiString;
 var
   r: record a, b, c, d: Byte end absolute i;
 begin
@@ -2639,7 +2734,7 @@ end;
 type
   THostCache = class
     Addr: DWORD;
-    Name: string;
+    Name: AnsiString;
   end;
 
   THostCacheColl = class(TSortedColl)
@@ -2661,7 +2756,7 @@ begin
 end;
 
 
-function GetHostNameByAddr(Addr: DWORD): string;
+function GetHostNameByAddr(Addr: DWORD): AnsiString;
 var
   p: PHostEnt;
   i: Integer;
@@ -2669,7 +2764,7 @@ var
   c: THostCache;
   ok: Boolean;
   he: PHostEnt;
-  HostName: string;
+  HostName: AnsiString;
 begin
   HostCache.Enter;
   f := HostCache.Search(Pointer(Addr), i);
@@ -2681,7 +2776,13 @@ begin
   if p <> nil then
   begin // host name got - now get address of this name
     HostName := p^.h_name;
-    he := gethostbyname(PChar(HostName));
+    if HostName = '' then
+    begin
+      he := nil;
+    end else
+    begin
+      he := gethostbyname(@(HostName[1]));
+    end;
     if (he <> nil) and (he^.h_addr_list <> nil) then
     begin // address got - now compare it with the real one
       ok := PDwordArray(he^.h_addr_list^)^[0] = Addr;
@@ -2700,10 +2801,10 @@ begin
   HostCache.Leave;
 end;
 
-function Vl(const s: string): DWORD;
+function Vl(const s: AnsiString): DWORD;
 var
   a, i, l: Integer;
-  c: Char;
+  c: AnsiChar;
 begin
   Result := INVALID_VALUE;
   l := Length(s);
@@ -2718,10 +2819,10 @@ begin
   Result := a;
 end;
 
-function VlH(const s: string): DWORD;
+function VlH(const s: AnsiString): DWORD;
 var
   a, i, L, start: DWORD;
-  c: Char;
+  c: AnsiChar;
 begin
   Result := INVALID_VALUE;
   L := Length(s);
@@ -2798,7 +2899,7 @@ begin
 end;
 
 
-function CompareMask(const n, m: string; SupportPercent: Boolean): Boolean;
+function CompareMask(const n, m: AnsiString; SupportPercent: Boolean): Boolean;
 var
   i: Integer;
 begin
@@ -2814,7 +2915,7 @@ begin
   Result := True;
 end;
 
-function PosMask(const m, s: string; SupportPercent: Boolean): Integer;
+function PosMask(const m, s: AnsiString; SupportPercent: Boolean): Integer;
 var
   i: Integer;
 begin
@@ -2829,21 +2930,23 @@ begin
   end;
 end;
 
-function MatchMask(const AName, AMask: string): Boolean;
+function MatchMask(const AName, AMask: AnsiString): Boolean;
 begin
   Result := _MatchMask(AName, AMask, False);
 end;
 
-function _MatchMaskBody(AName, AMask: string; SupportPercent: Boolean): Boolean;
+function _MatchMaskBody(AName, AMask: AnsiString; SupportPercent: Boolean): Boolean;
 var
   i, j: Integer;
   Scan: Boolean;
+  CASterisk: AnsiChar;
 begin
   Result := False;
   Scan := False;
+  CASterisk := '*';
   while True do
   begin
-    i := Pos('*', AMask);
+    i := Pos(CAsterisk, AMask);
     if i = 0 then
     begin
       if AMask = '' then begin Result := True; Exit end;
@@ -2864,7 +2967,7 @@ begin
   end;
 end;
 
-function _MatchMask(const AName: string; AMask: string; SupportPercent: Boolean): Boolean;
+function _MatchMask(const AName: AnsiString; AMask: AnsiString; SupportPercent: Boolean): Boolean;
 begin
   Replace('?*', '*', AMask);
   Replace('*?', '*', AMask);
@@ -2872,7 +2975,7 @@ begin
   Result := _MatchMaskBody(UpperCase(AName), UpperCase(AMask), SupportPercent);
 end;
 
-function FromHex(C1, C2: Char): Char;
+function FromHex(C1, C2: AnsiChar): AnsiChar;
   var I1, I2: Byte;
 begin
   case C1 of
@@ -2887,7 +2990,7 @@ begin
     'a'..'f': I2 := Byte(C2)-87;
       else I2 := 0;
   end;
-  Result := Char(I1 shl 4 + I2);
+  Result := AnsiChar(I1 shl 4 + I2);
 end;
 
 constructor TMimeCoder.Create;
@@ -2927,7 +3030,7 @@ begin
     else Result := Encode(S[1], Length(S));
 end;
 
-function IsUUEStr(const S: String): Boolean;
+function IsUUEStr(const S: AnsiString): Boolean;
   var I: Integer;
 begin
   Result := False;
@@ -2946,7 +3049,7 @@ begin
   Move(Buf, B, N);
   L := N;
   if L mod 3 <> 0 then Inc(L, 3);
-  S[0] := Char((L div 3) * 4);
+  S[0] := AnsiChar((L div 3) * 4);
   FillChar(S[1], Length(S), Pad);
   I := 0; K := 1;
   while I < N do
@@ -3033,13 +3136,13 @@ begin
   FillChar(A, SizeOf(A), 0);
   for I := 0 to SrcLen-1 do
     begin
-      A[I] := XChars[Char(P^[I])];
+      A[I] := XChars[AnsiChar(P^[I])];
       if A[I] > 64 then Exit;
     end;
   J := SrcLen;
   Pdd := 3;
   if (Pad = '=') then
-    while (J>0) and (Char(p^[J-1]) = Pad) do begin Dec(Pdd); Dec(J) end;
+    while (J>0) and (AnsiChar(p^[J-1]) = Pad) do begin Dec(Pdd); Dec(J) end;
   Pdd := Pdd mod 3;
   Result := (J div 4) * 3 + Pdd;
   I := 0; K := 0;
@@ -3052,13 +3155,34 @@ begin
     end;
 end;
 
-function StrAsg(const Src: string): string;
+function StrAsg(const Src: AnsiString): AnsiString;
 begin
   if Src = '' then Result := '' else
   begin
     SetLength(Result, Length(Src));
     Move(Src[1], Result[1], Length(Src));
   end;
+end;
+
+function UnicodeStringToRawByteString(const w: UnicodeString; CP: Integer): RawByteString;
+var
+  P: PWideChar;
+  I, J: Integer;
+begin
+  Result := '';
+  if w = '' then
+    Exit;
+  P := @w[1];
+  I := WideCharToMultibyte(CP, 0, P, Length(w), nil, 0, nil, nil);
+  if I <= 0 then
+    Exit;
+  SetLength(Result, I);
+  J := WideCharToMultibyte(CP, 0, P, Length(w), @Result[1], I, nil, nil);
+  if I <> J then
+  begin
+    SetLength(Result, MinI(I, J));
+  end;
+  SetCodePage(Result, CP, False);
 end;
 
 

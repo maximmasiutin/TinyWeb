@@ -1,0 +1,8 @@
+__*
+*_log
+*.dcu
+*.dproj
+*.dproj.local
+*.exe
+*.identcache
+*.res
