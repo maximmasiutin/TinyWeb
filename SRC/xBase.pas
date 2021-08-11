@@ -429,16 +429,16 @@ procedure XChg(var Critical, Normal); assembler;
 
 { --- Win32 Events Extentions }
 
-function  CreateEvtA: DWORD;
-function  CreateEvt(Initial: Boolean): DWORD;
-function  SignaledEvt(id: DWORD): Boolean;
+function  CreateEvtA: THandle;
+function  CreateEvt(Initial: Boolean): THandle;
+function  SignaledEvt(id: THandle): Boolean;
 function  WaitEvt(const id: TWOHandleArray; Timeout: DWORD): DWORD;
 function  WaitEvtA(nCount: Integer; lpHandles: PWOHandleArray; Timeout: DWORD): DWORD;
 
 { --- Win32 API Hooks }
 
 function  ClearHandle(var Handle: THandle): Boolean;
-procedure CloseHandles(const Handles: array of DWORD);
+procedure CloseHandles(const Handles: array of THandle);
 function  FileExists(const FName: AnsiString): Boolean;
 function  FindExecutable(FileName, Directory: PAnsiChar; Result: PAnsiChar): HINST; stdcall;
 function  GetEnvVariable(const Name: AnsiString): AnsiString;
@@ -446,8 +446,8 @@ function  GetFileNfo(const FName: AnsiString; var Info: TFileInfo; NeedAttr: Boo
 function  GetFileNfoByHandle(Handle: THandle; var Info: TFileInfo): Boolean;
 function  ZeroHandle(var Handle: THandle): Boolean;
 
-function  _CreateFile(const FName: AnsiString; Mode: TCreateFileModeSet): DWORD;
-function  _CreateFileSecurity(const FName: AnsiString; Mode: TCreateFileModeSet; lpSecurityAttributes: PSecurityAttributes): DWORD;
+function  _CreateFile(const FName: AnsiString; Mode: TCreateFileModeSet): THandle;
+function  _CreateFileSecurity(const FName: AnsiString; Mode: TCreateFileModeSet; lpSecurityAttributes: PSecurityAttributes): THandle;
 function  _GetFileSize(const FName: AnsiString): DWORD;
 
 function _MatchMaskBody(AName, AMask: AnsiString; SupportPercent: Boolean): Boolean;

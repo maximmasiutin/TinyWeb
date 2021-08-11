@@ -1908,13 +1908,7 @@ type
   end;
 
 
-function _Adr2Int(const s: AnsiString): DWORD;
-
-var
-  CPos: Integer;
-  Error: Boolean;
-
-function Get: Byte;
+function Adr2IntGet(const s: AnsiString; var CPos: Integer; var Error: Boolean): Byte;
 var
   C: AnsiChar;
   R: Integer;
@@ -1941,15 +1935,19 @@ begin
   Result := R;
 end;
 
+
+function _Adr2Int(const s: AnsiString): DWORD;
 var
+  CPos: Integer;
+  Error: Boolean;
   A: TAdrB;
 begin
   Error := False;
   CPos := 1;
-  A.A := Get;
-  A.B := Get;
-  A.C := Get;
-  A.D := Get;
+  A.A := Adr2IntGet(s, CPos, Error);
+  A.B := Adr2IntGet(s, CPos, Error);
+  A.C := Adr2IntGet(s, CPos, Error);
+  A.D := Adr2IntGet(s, CPos, Error);
   if Error then Result := DWORD(INADDR_NONE) else  Result := PInteger(@A)^;
 end;
 
