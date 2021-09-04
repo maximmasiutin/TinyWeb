@@ -2173,7 +2173,7 @@ begin
   UtilWindowClass.lpfnWndProc := @DefWindowProc;
   ClassRegistered := GetClassInfo(HInstance, UtilWindowClass.lpszClassName,
     TempClass);
-  if not ClassRegistered or (TempClass.lpfnWndProc <> @DefWindowProc) then
+  if not ClassRegistered or ({$IFDEF FPC_DELPHI}@{$ENDIF}TempClass.lpfnWndProc <> @DefWindowProc) then
   begin
     if ClassRegistered then
       Windows.UnregisterClass(UtilWindowClass.lpszClassName, HInstance);
@@ -2316,7 +2316,7 @@ var
   WP: TWndProc;
 begin
   WP := TWndProc.Create;
-  WP.Handle := AllocateHWnd({$IFDEF FPC}@{$ENDIF}WP.WndProc);
+  WP.Handle := AllocateHWnd({$IFDEF FPC_OBJFPC}@{$ENDIF}WP.WndProc);
   repeat
     GetMessage(M, 0, 0, 0);
     if M.Message = WM_QUIT then
