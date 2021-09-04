@@ -625,7 +625,7 @@ begin
   FindData.FName := Buf2Str(wf.cFileName);
 end;
 
-function uFindFirst(const FName: AnsiString; var FindData: TuFindData): DWORD;
+function uFindFirst(const FName: AnsiString; var FindData: TuFindData): THandle;
 var
   wf: TWin32FindDataA;
 begin
@@ -1172,7 +1172,7 @@ begin
   Result := WaitEvtA(High(id)+1, @id, Timeout);
 end;
 
-function SignaledEvt(id: DWORD): Boolean;
+function SignaledEvt(id: THandle): Boolean;
 begin
   SignaledEvt := WaitForSingleObject(id, 0) = id;
 end;
@@ -1184,7 +1184,7 @@ end;
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-procedure CloseHandles(const Handles: array of DWORD);
+procedure CloseHandles(const Handles: array of THandle);
 var
   i: Integer;
 begin

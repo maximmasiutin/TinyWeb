@@ -1293,12 +1293,12 @@ begin
     end;
     if Dir = '' then
     begin
-      fa := INVALID_HANDLE_VALUE;
+      fa := INVALID_VALUE;
     end else
     begin
       fa := GetFileAttributesA(@(Dir[1]));
     end;
-    if fa = INVALID_HANDLE_VALUE then
+    if fa = INVALID_VALUE then
     begin
       Result := False;
       Break;
