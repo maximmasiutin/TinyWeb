@@ -1112,6 +1112,7 @@ function FindExecutableCached(const LocalFName, sPath: AnsiString; var s: AnsiSt
 var
   i: Integer;
   c: TExecutableCache;
+  p: Pointer;
 begin
   if (LocalFName = '') or (sPath = '') then
   begin
@@ -1121,7 +1122,8 @@ begin
   ExecutableCache.Enter;
   if ExecutableCache.Search(@LocalFName, i) then
   begin
-    c := ExecutableCache[i];
+    p := ExecutableCache[i];
+    c := TExecutableCache(p);
     s := StrAsg(c.sResult);
     Result := c.ReturnValue;
   end else
@@ -1193,12 +1195,14 @@ var
   Found: Boolean;
   I: Integer;
   c: TRootCache;
+  p: Pointer;
 begin
   RootCacheColl.Enter;
   Found := RootCacheColl.Search(@AURI, I);
   if Found then
   begin
-    c := RootCacheColl[i];
+    p := RootCacheColl[i];
+    c := TRootCache(p);
     IsCGI := c.IsCGI;
     Result := StrAsg(c.FResult);
   end;
@@ -2073,6 +2077,11 @@ var
   InstBlockList: PInstanceBlock;
   InstFreeList: PObjectInstance;
 
+{$IFDEF FPC}
+{$ASMMODE Intel}
+{$ENDIF}
+
+
 { Standard window procedure }
 { In    ECX = Address of method pointer }
 { Out   EAX = Result }
@@ -2178,11 +2187,12 @@ end;
 
 procedure DeallocateHWnd(Wnd: HWND);
 var
-  Instance: Pointer;
+  DefAddr, Instance: Pointer;
 begin
   Instance := Pointer(GetWindowLong(Wnd, GWL_WNDPROC));
   DestroyWindow(Wnd);
-  if Instance <> @DefWindowProc then FreeObjectInstance(Instance);
+  DefAddr := @DefWindowProc;
+  if Instance <> DefAddr then FreeObjectInstance(Instance);
 end;
 
 type
@@ -2306,7 +2316,7 @@ var
   WP: TWndProc;
 begin
   WP := TWndProc.Create;
-  WP.Handle := AllocateHWnd(WP.WndProc);
+  WP.Handle := AllocateHWnd({$IFDEF FPC}@{$ENDIF}WP.WndProc);
   repeat
     GetMessage(M, 0, 0, 0);
     if M.Message = WM_QUIT then

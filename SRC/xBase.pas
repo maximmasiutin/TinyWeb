@@ -340,7 +340,7 @@ type
     function  IdxOf(Item: AnsiString): Integer;
     procedure AppendTo(AColl: TStringColl);
     procedure Concat(AColl: TStringColl);
-    procedure AddStrings(Strings: TStringColl; Sort: Boolean);
+    procedure AddStrings(AStrings: TStringColl; ASort: Boolean);
     procedure Fill(const AStrs: array of AnsiString);
     function Found(const Str: AnsiString): Boolean;
     function FoundU(const Str: AnsiString): Boolean;
@@ -432,8 +432,8 @@ function  MaxI(A, B: Integer): Integer;
 function  MinI(A, B: Integer): Integer;
 function  MaxD(A, B: DWORD): DWORD;
 function  MinD(A, B: DWORD): DWORD;
-function  NulSearch(const Buffer): Integer;
-function  NumBits(I: Integer): Integer;
+function  NulSearch(const Buffer): Integer; assembler;
+function  NumBits(I: Integer): Integer; assembler;
 procedure XAdd(var Critical, Normal); assembler;
 procedure XChg(var Critical, Normal); assembler;
 
@@ -543,6 +543,10 @@ const
   cSecScale = 10000000;
   cAgeScale = 10000;
 
+{$IFDEF FPC}
+{$ASMMODE Intel}
+{$ENDIF}
+
 function uCvtGetFileTime(L, H: DWORD): DWORD; assembler;
 asm
   mov ecx, cSecScale
@@ -585,6 +589,7 @@ procedure uNix2WinTime(I: DWORD; var T: TSystemTime);
 var
   F: TFileTime;
 begin
+  FillChar(F, SizeOf(F), 0);
   uCvtSetFileTime(I, F.dwLowDateTime, F.dwHighDateTime);
   FileTimeToSystemTime(F, T);
 end;
@@ -593,21 +598,17 @@ function uWin2NixTime(const T: TSystemTime): DWORD;
 var
   F: TFileTime;
 begin
+  FillChar(F, SizeOf(F), 0);
   SystemTimeToFileTime(T, F);
   Result := uCvtGetFileTime(F.dwLowDateTime, F.dwHighDateTime);
 end;
 
 
-
-function uGetLocalTime: DWORD;
-begin
-  Result := uGetLocalTime;
-end;
-
 function uGetSystemTime: DWORD;
 var
   T: TFileTime;
 begin
+  FillChar(T, SizeOf(T), 0);
   GetSystemTimeAsFileTime(T);
   Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
 end;
@@ -616,6 +617,7 @@ function uSetFileTimeByHandle(Handle: THandle; uTime: DWORD): Boolean;
 var
   F: TFileTime;
 begin
+  FillChar(F, SizeOf(F), 0);
   uCvtSetFileTime(uTime, F.dwLowDateTime, F.dwHighDateTime);
   Result := SetFileTime(Handle, nil, nil, @F);
 end;
@@ -702,30 +704,32 @@ begin
   Result := (Copy(S, 1, 1)='"') and (Copy(S, Length(S), 1)='"');
 end;
 
-function AddRightSpaces;
+function AddRightSpaces(const S: AnsiString; NumSpaces: Integer): AnsiString;
 begin
   SetLength(Result, NumSpaces);
   FillChar(Result[1], NumSpaces, ' ');
   Move(S[1], Result[1], MinI(NumSpaces, Length(S)));
 end;
 
-function Hex2;
+function  Hex2(a: Byte): AnsiString;
 begin
   SetLength(Result, 2);
   Result[1] := rrLoHexChar[a shr 4];
   Result[2] := rrLoHexChar[a and $F];
 end;
 
-function Hex4;
-  var I: Integer;
+function  Hex4(a: Word): AnsiString;
+var
+  I: Integer;
 begin
   SetLength(Result, 4);
   for I := 0 to 3 do
     begin Result[4-I] := rrLoHexChar[A and $F]; A := A shr 4; end;
 end;
 
-function Hex8;
-  var I: DWORD;
+function Hex8(a: DWORD): AnsiString;
+var
+   I: DWORD;
 begin
   SetLength(Result, 8);
   for I := 0 to 7 do
@@ -748,7 +752,7 @@ begin
       Result := MakeNormName(D,S);
 end;
 
-function ExtractDir;
+function  ExtractDir(const S: AnsiString): AnsiString;
 var
   i: Integer;
 begin
@@ -756,14 +760,14 @@ begin
   if (i > 3) and (S[i] = '\') then DelLC(Result);
 end;
 
-function MakeNormName;
+function MakeNormName(const Path, Name: AnsiString): AnsiString;
 begin
   Result := Path;
   if (Result <> '') and (Result[Length(Result)] <> '\') then AddStr(Result, '\');
   Result := Result + Name;
 end;
 
-procedure AddStr;
+procedure AddStr(var S: AnsiString ; C : AnsiChar);
 begin
   S := S + C;
 end;
@@ -804,9 +808,10 @@ begin
 end;
 
 
-function Replace;
- var I, J: Integer;
-     LP, LR: Integer;
+function  Replace(const Pattern, ReplaceString: AnsiString; var S: AnsiString): Boolean;
+var
+  I, J: Integer;
+  LP, LR: Integer;
 begin
  Result := False;
  J := 1;
@@ -824,7 +829,7 @@ begin
  until I = 0;
 end;
 
-procedure DelDoubles;
+procedure DelDoubles(const St : AnsiString;var Source : AnsiString);
 var
   i: Integer;
 begin
@@ -915,7 +920,7 @@ begin
   Result := Copy(FileName, 1, Pos(SC,FileName)+1);
 end;
 
-function WipeChars;
+function  WipeChars(const AStr, AWipeChars: AnsiString): AnsiString;
 var
   i, j: Integer;
 begin
@@ -1051,7 +1056,7 @@ begin
   FillChar(Buf, Count, 0);
 end;
 
-function MemEqu(const A, B; Sz: Integer): Boolean;
+function MemEqu(const A, B; Sz: Integer): Boolean; assembler;
 asm
     push  ebx
     xchg  eax, ebx
@@ -1115,7 +1120,7 @@ asm
   mov  [edx], ecx
 end;
 
-function NulSearch; assembler;
+function  NulSearch(const Buffer): Integer; assembler;
 asm
   CLD
   PUSH    EDI
@@ -1159,14 +1164,12 @@ end;
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
-
-
-function CreateEvtA;
+function  CreateEvtA: THandle;
 begin
   Result := CreateEvent(nil, False, False, nil);
 end;
 
-function CreateEvt;
+function  CreateEvt(Initial: Boolean): THandle;
 begin
   CreateEvt := CreateEvent(nil,      // address of security attributes
                            True,     // flag for manual-reset event
@@ -1181,7 +1184,7 @@ begin
                      Result := WaitForMultipleObjects(nCount, lpHandles, False, Timeout);
 end;
 
-function WaitEvt;
+function WaitEvt(const id: TWOHandleArray; Timeout: DWORD): DWORD;
 begin
   Result := WaitEvtA(High(id)+1, @id, Timeout);
 end;
@@ -1215,7 +1218,7 @@ begin
   Result := ZeroHandle(Handle);
 end;
 
-function GetFileNfo;
+function  GetFileNfo(const FName: AnsiString; var Info: TFileInfo; NeedAttr: Boolean): Boolean;
 var
   Handle: THandle;
 begin
@@ -1227,7 +1230,7 @@ begin
   if NeedAttr and Result and (Info.Attr = INVALID_FILE_ATTRIBUTES) and (FName <> '') then Result := GetFileAttributesA(@(FName[1])) <> INVALID_FILE_ATTRIBUTES;
 end;
 
-function GetFileNfoByHandle;
+function  GetFileNfoByHandle(Handle: THandle; var Info: TFileInfo): Boolean;
 var
   i: TByHandleFileInformation;
 begin
@@ -1269,12 +1272,12 @@ begin
     GlobalFail;
 end;
 
-function _CreateFile;
+function  _CreateFile(const FName: AnsiString; Mode: TCreateFileModeSet): THandle;
 begin
   Result := _CreateFileSecurity(FName, Mode, nil);
 end;
 
-function _CreateFileSecurity;
+function  _CreateFileSecurity(const FName: AnsiString; Mode: TCreateFileModeSet; lpSecurityAttributes: PSecurityAttributes): THandle;
 var
   Access,Share,Disp,Flags: DWORD;
 
@@ -1346,7 +1349,7 @@ begin
 end;
 
 
-function _GetFileSize;
+function  _GetFileSize(const FName: AnsiString): DWORD;
 var
   H: DWORD;
 begin
@@ -1582,13 +1585,13 @@ begin
 end;
 
 
-function TColl.Copy;
+function TColl.Copy: Pointer;
 begin
   Result := TColl.Create;
   CopyItemsTo(TColl(Result));
 end;
 
-procedure TColl.CopyItemsTo;
+procedure TColl.CopyItemsTo(Coll: TColl);
 var
   i: Integer;
 begin
@@ -1749,7 +1752,7 @@ begin
   for I := FCount - 1 downto 0 do if Items[I] = nil then AtDelete(I);
 end;
 
-procedure TColl.SetCapacity;
+procedure TColl.SetCapacity(NewCapacity: Integer);
 begin
   if (NewCapacity < FCount) or (NewCapacity > MaxCollSize) then GlobalFail;
   if NewCapacity <> FCapacity then
@@ -1774,7 +1777,7 @@ end;
 
 { TSortedColl }
 
-function TSortedColl.KeyOf;
+function TSortedColl.KeyOf(Item: Pointer): Pointer;
 begin
   Result := Item;
 end;
@@ -1898,7 +1901,7 @@ begin
   for i := 0 to Count-1 do if us = UpperCase(Strings[i]) then begin Result := True; Exit end;
 end;
 
-function TStringColl.Copy;
+function TStringColl.Copy: Pointer;
 begin
   Result := TStringColl.Create;
   CopyItemsTo(TColl(Result));
@@ -1938,12 +1941,12 @@ begin
   for i := Low(AStrs) to High(AStrs) do Add(AStrs[i]);
 end;
 
-procedure TStringColl.AddStrings(Strings: TStringColl; Sort: Boolean);
+procedure TStringColl.AddStrings(AStrings: TStringColl; ASort: Boolean);
 var
   i: Integer;
 begin
-  for i := 0 to Strings.Count-1 do
-    if Sort then Ins(Strings[i]) else Add(Strings[i]);
+  for i := 0 to AStrings.Count-1 do
+    if ASort then Ins(AStrings[i]) else Add(AStrings[i]);
 end;
 
 function TStringColl.IdxOf(Item: AnsiString): Integer;
@@ -2130,10 +2133,12 @@ end;
 
 { TThread }
 
-function ThreadProc(Thread: TThread): DWORD;
+function ThreadProc(AThread: {$IFDEF FPC}Pointer{$ELSE}TThread{$ENDIF}): {$ifdef FPC}ptrint{$ELSE}DWORD{$ENDIF};
 var
   FreeThread: Boolean;
+  Thread: TThread;
 begin
+  Thread := {$IFDEF FPC}TThread{$ENDIF}(AThread);
   Thread.Execute;
   FreeThread := Thread.FFreeOnTerminate;
   Result := Thread.FReturnValue;
@@ -2145,7 +2150,7 @@ end;
 constructor TThread.Create(CreateSuspended: Boolean);
 var
   Flags: DWORD;
-  TF: Pointer;
+  TF: {$IFDEF FPC}tthreadfunc{$ELSE}Pointer{$ENDIF};
 begin
   inherited Create;
   FSuspended := CreateSuspended;
@@ -2714,7 +2719,7 @@ const
     shell32 = 'shell32.dll';
 
 
-function FindExecutable; external shell32 name 'FindExecutableA';
+function FindExecutable(FileName, Directory: PAnsiChar; Result: PAnsiChar): HINST; stdcall; external shell32 name 'FindExecutableA';
 
 
 procedure XAdd(var Critical, Normal); assembler;
@@ -2893,6 +2898,7 @@ const
 var
   i: Integer;
   s: TSocket;
+  p: Pointer;
 begin
   repeat
     WaitForSingleObject(oSleep, TimeToSleep);
@@ -2900,7 +2906,8 @@ begin
     SocketsColl.Enter;
     for i := 0 to SocketsColl.Count - 1 do
     begin
-      s := SocketsColl[i];
+      p := SocketsColl[i];
+      s := TSocket(p);
       if s.Dead < 0 then Continue; // Already shut down
       Inc(s.Dead);
       if s.Dead <= KillQuants then Continue; // This one shows activity - let him live
@@ -3007,7 +3014,7 @@ begin
   Result := AnsiChar(I1 shl 4 + I2);
 end;
 
-constructor TMimeCoder.Create;
+constructor TMimeCoder.Create(AType: TBase64Table);
 begin
   case AType of
     bsBase64: begin
@@ -3038,7 +3045,7 @@ begin
   if Pad = '`' then XChars[' '] := 0;
 end;
 
-function TMimeCoder.EncodeStr;
+function TMimeCoder.EncodeStr(const S: AnsiString): AnsiString;
 begin
   if S = '' then Result := ''
     else Result := Encode(S[1], Length(S));
@@ -3053,7 +3060,7 @@ begin
   Result := True;
 end;
 
-function TMimeCoder.Encode;
+function TMimeCoder.Encode(const Buf; N: byte) : AnsiString;
 var
   B: Array[0..MMaxChars] of Byte;
   I,K,L: Word;
@@ -3108,7 +3115,7 @@ end;
 
 
 
-function TMimeCoder.Decode;
+function TMimeCoder.Decode(const S : AnsiString; var Buf): Integer;
   var B: array [0..MMaxChars] of Byte absolute Buf;
       A: array [0..MMaxChars] of Byte;
       I,J,K, Pdd: Integer;
