@@ -215,6 +215,16 @@ type
   TThreadPriority = (tpIdle, tpLowest, tpLower, tpNormal, tpHigher, tpHighest,
     tpTimeCritical);
 
+{$IFDEF CONDITIONALEXPRESSIONS}
+  {$IF CompilerVersion >= 23.0}
+    {$DEFINE DELPHI_XE2_UP}
+  {$IFEND}
+{$ENDIF}
+
+{$IFNDEF DELPHI_XE2_UP}
+  TThreadID = DWORD;
+{$ENDIF}
+
   TThread = class
   private
     FHandle: THandle;
@@ -496,6 +506,10 @@ type
     destructor Destroy; override;
   end;
 
+{$IFNDEF UNICODE}
+  UnicodeString = WideString;
+  RawByteString = AnsiString;
+{$ENDIF}
 
 function UnicodeStringToRawByteString(const w: UnicodeString; CP: Integer): RawByteString;
 
@@ -3182,7 +3196,9 @@ begin
   begin
     SetLength(Result, MinI(I, J));
   end;
+{$IFDEF UNICODE}
   SetCodePage(Result, CP, False);
+{$ENDIF}
 end;
 
 

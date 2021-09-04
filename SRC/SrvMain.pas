@@ -1270,12 +1270,13 @@ var
   ParentDir, Dir, FName: AnsiString;
   fa: DWORD;
 begin
+  Result := False;
+
   ParentDir := AFName;
   repeat
     Dir := ExtractFileDir(ParentDir);
     if (Dir = ParentDir) or (not (Length(Dir) < Length(ParentDir))) then
     begin
-      Result := False;
       Break;
     end;
 
@@ -1288,7 +1289,6 @@ begin
     FName := ExtractFileName(ParentDir);
     if (FName <> '') and (not FileIsRegular(FName)) then
     begin
-      Result := False;
       Break;
     end;
     if Dir = '' then
@@ -1300,14 +1300,12 @@ begin
     end;
     if fa = INVALID_VALUE then
     begin
-      Result := False;
       Break;
     end;
     if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
        ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
        ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
     begin
-      Result := False;
       Break;
     end;
     ParentDir := Dir;
