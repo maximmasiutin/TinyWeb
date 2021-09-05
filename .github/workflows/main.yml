@@ -2,11 +2,7 @@ name: Build
 
 variables:
   - name: tinyweb_files
-    value:
-      - 'SRC/define.inc'
-      - 'SRC/SrvMain.pas'
-      - 'SRC/Tiny.dpr'
-      - 'SRC/xBase.pas'
+    value: ['SRC/define.inc', 'SRC/SrvMain.pas', 'SRC/Tiny.dpr', 'SRC/xBase.pas']
 
 # Controls when the workflow will run
 on:
