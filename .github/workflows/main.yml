@@ -1,12 +1,22 @@
 name: Build
 
+variables:
+  - name: tinyweb_files
+    value:
+      - 'SRC/define.inc'
+      - 'SRC/SrvMain.pas'
+      - 'SRC/Tiny.dpr'
+      - 'SRC/xBase.pas'
+
 # Controls when the workflow will run
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches: [ master ]
+    paths: ${{ variables.tinyweb_files }}
   pull_request:
     branches: [ master ]
+    paths: ${{ variables.tinyweb_files }}
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
