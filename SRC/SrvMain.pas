@@ -1,54 +1,53 @@
 //////////////////////////////////////////////////////////////////////////
 //
-//  TinyWeb 
-//  Copyright (C) 1997-2000 RIT Research Labs
-//  Copyright (C) 2000-2017 RITLABS S.R.L.
-//  Copyright (C) 2021 Maxim Masiutin
+// TinyWeb
+// Copyright (C) 1997-2000 RIT Research Labs
+// Copyright (C) 2000-2017 RITLABS S.R.L.
+// Copyright (C) 2021 Maxim Masiutin
 //
-//  This programs is free for commercial and non-commercial use as long as
-//  the following conditions are aheared to.
+// This programs is free for commercial and non-commercial use as long as
+// the following conditions are aheared to.
 //
-//  Copyright remains RITLABS S.R.L., and as such any Copyright notices
-//  in the code are not to be removed. If this package is used in a
-//  product, RITLABS S.R.L. should be given attribution as the owner
-//  of the parts of the library used. This can be in the form of a textual
-//  message at program startup or in documentation (online or textual)
-//  provided with the package.
+// Copyright remains RITLABS S.R.L., and as such any Copyright notices
+// in the code are not to be removed. If this package is used in a
+// product, RITLABS S.R.L. should be given attribution as the owner
+// of the parts of the library used. This can be in the form of a textual
+// message at program startup or in documentation (online or textual)
+// provided with the package.
 //
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions are
-//  met:
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
 //
-//  1. Redistributions of source code must retain the copyright
-//     notice, this list of conditions and the following disclaimer.
-//  2. Redistributions in binary form must reproduce the above copyright
-//     notice, this list of conditions and the following disclaimer in the
-//     documentation and/or other materials provided with the distribution.
-//  3. All advertising materials mentioning features or use of this software
-//     must display the following acknowledgement:
-//     "Based on TinyWeb Server by RITLABS S.R.L.."
+// 1. Redistributions of source code must retain the copyright
+// notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+// 3. All advertising materials mentioning features or use of this software
+// must display the following acknowledgement:
+// "Based on TinyWeb Server by RITLABS S.R.L.."
 //
-//  THIS SOFTWARE IS PROVIDED BY RITLABS S.R.L. "AS IS" AND ANY EXPRESS
-//  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-//  DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
-//  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-//  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-//  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-//  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-//  IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-//  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-//  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// THIS SOFTWARE IS PROVIDED BY RITLABS S.R.L. "AS IS" AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+// IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//  The licence and distribution terms for any publically available
-//  version or derivative of this code cannot be changed. i.e. this code
-//  cannot simply be copied and put under another distribution licence
-//  (including the GNU Public Licence).
+// The licence and distribution terms for any publically available
+// version or derivative of this code cannot be changed. i.e. this code
+// cannot simply be copied and put under another distribution licence
+// (including the GNU Public Licence).
 //
 //////////////////////////////////////////////////////////////////////////
 
 {$I DEFINE.INC}
-
 unit SrvMain;
 
 interface
@@ -58,9 +57,9 @@ procedure ComeOn;
 implementation
 
 uses
-  {$IFDEF ODBC}
+{$IFDEF ODBC}
   OdbcAuth,
-  {$ENDIF}
+{$ENDIF}
   WinSock,
   Windows,
   Messages,
@@ -72,44 +71,31 @@ const
 
   CHTTPServerThreadBufSize = $2000;
   MaxStatusCodeIdx = 36;
-  StatusCodes : array[0..MaxStatusCodeIdx] of record Code: Integer; Msg: AnsiString end =
-  ((Code:100; Msg:'Continue'),
-   (Code:101; Msg:'Switching Protocols'),
-   (Code:200; Msg:'OK'),
-   (Code:201; Msg:'Created'),
-   (Code:202; Msg:'Accepted'),
-   (Code:203; Msg:'Non-Authoritative Information'),
-   (Code:204; Msg:'No Content'),
-   (Code:205; Msg:'Reset Content'),
-   (Code:206; Msg:'Partial Content'),
-   (Code:300; Msg:'Multiple Choices'),
-   (Code:301; Msg:'Moved Permanently'),
-   (Code:302; Msg:'Moved Temporarily'),
-   (Code:303; Msg:'See Other'),
-   (Code:304; Msg:'Not Modified'),
-   (Code:305; Msg:'Use Proxy'),
-   (Code:400; Msg:'Bad Request'),
-   (Code:401; Msg:'Unauthorized'),
-   (Code:402; Msg:'Payment Required'),
-   (Code:403; Msg:'Forbidden'),
-   (Code:404; Msg:'Not Found'),
-   (Code:405; Msg:'Method Not Allowed'),
-   (Code:406; Msg:'Not Acceptable'),
-   (Code:407; Msg:'Proxy Authentication Required'),
-   (Code:408; Msg:'Request Time-out'),
-   (Code:409; Msg:'Conflict'),
-   (Code:410; Msg:'Gone'),
-   (Code:411; Msg:'Length Required'),
-   (Code:412; Msg:'Precondition Failed'),
-   (Code:413; Msg:'Request Entity Too Large'),
-   (Code:414; Msg:'Request-URI Too Large'),
-   (Code:415; Msg:'Unsupported Media Type'),
-   (Code:500; Msg:'Internal Server Error'),
-   (Code:501; Msg:'Not Implemented'),
-   (Code:502; Msg:'Bad Gateway'),
-   (Code:503; Msg:'Service Unavailable'),
-   (Code:504; Msg:'Gateway Time-out'),
-   (Code:505; Msg:'HTTP Version not supported'));
+StatusCodes:
+array [0 .. MaxStatusCodeIdx] of record Code: Integer;
+Msg:
+AnsiString
+end
+= ((Code: 100; Msg: 'Continue'), (Code: 101; Msg: 'Switching Protocols'),
+  (Code: 200; Msg: 'OK'), (Code: 201; Msg: 'Created'), (Code: 202;
+  Msg: 'Accepted'), (Code: 203; Msg: 'Non-Authoritative Information'),
+  (Code: 204; Msg: 'No Content'), (Code: 205; Msg: 'Reset Content'), (Code: 206;
+  Msg: 'Partial Content'), (Code: 300; Msg: 'Multiple Choices'), (Code: 301;
+  Msg: 'Moved Permanently'), (Code: 302; Msg: 'Moved Temporarily'), (Code: 303;
+  Msg: 'See Other'), (Code: 304; Msg: 'Not Modified'), (Code: 305;
+  Msg: 'Use Proxy'), (Code: 400; Msg: 'Bad Request'), (Code: 401;
+  Msg: 'Unauthorized'), (Code: 402; Msg: 'Payment Required'), (Code: 403;
+  Msg: 'Forbidden'), (Code: 404; Msg: 'Not Found'), (Code: 405;
+  Msg: 'Method Not Allowed'), (Code: 406; Msg: 'Not Acceptable'), (Code: 407;
+  Msg: 'Proxy Authentication Required'), (Code: 408; Msg: 'Request Time-out'),
+  (Code: 409; Msg: 'Conflict'), (Code: 410; Msg: 'Gone'), (Code: 411;
+  Msg: 'Length Required'), (Code: 412; Msg: 'Precondition Failed'), (Code: 413;
+  Msg: 'Request Entity Too Large'), (Code: 414; Msg: 'Request-URI Too Large'),
+  (Code: 415; Msg: 'Unsupported Media Type'), (Code: 500;
+  Msg: 'Internal Server Error'), (Code: 501; Msg: 'Not Implemented'),
+  (Code: 502; Msg: 'Bad Gateway'), (Code: 503; Msg: 'Service Unavailable'),
+  (Code: 504; Msg: 'Gateway Time-out'), (Code: 505;
+  Msg: 'HTTP Version not supported'));
 
 type
   TEntityHeader = class;
@@ -124,8 +110,8 @@ type
   end;
 
   THttpResponseDataEntity = class(TAbstractHttpResponseData)
-    FEntityHeader : TEntityHeader;
-    constructor Create(AEntityHeader : TEntityHeader);
+    FEntityHeader: TEntityHeader;
+    constructor Create(AEntityHeader: TEntityHeader);
   end;
 
   THttpResponseErrorCode = class(TAbstractHttpResponseData)
@@ -134,7 +120,8 @@ type
   end;
 
   PHTTPServerThreadBufer = ^THTTPServerThreadBufer;
-  THTTPServerThreadBufer = array[0..CHTTPServerThreadBufSize-1] of AnsiChar;
+  THTTPServerThreadBufer = array [0 .. CHTTPServerThreadBufSize - 1]
+    of AnsiChar;
 
   TPipeReadStdThread = class(TThread)
     Error: Boolean;
@@ -158,8 +145,7 @@ type
   end;
 
   TContentType = class
-    ContentType,
-    Extension: AnsiString;
+    ContentType, Extension: AnsiString;
   end;
 
   TContentTypeColl = class(TSortedColl)
@@ -170,8 +156,7 @@ type
   THTTPData = class;
 
   THTTPServerThread = class(TThread)
-    RemoteHost,
-    RemoteAddr: AnsiString;
+    RemoteHost, RemoteAddr: AnsiString;
     Buffer: THTTPServerThreadBufer;
     Socket: TSocket;
     constructor Create;
@@ -181,52 +166,51 @@ type
   end;
 
   TGeneralHeader = class
-    CacheControl,            // Section 14.9
-    Connection,              // Section 14.10
-    Date,                    // Section 14.19
-    Pragma,                  // Section 14.32
-    TransferEncoding,        // Section 14.40
-    Upgrade,                 // Section 14.41
-    Via : AnsiString;            // Section 14.44
+    CacheControl, // Section 14.9
+    Connection, // Section 14.10
+    Date, // Section 14.19
+    Pragma, // Section 14.32
+    TransferEncoding, // Section 14.40
+    Upgrade, // Section 14.41
+    Via: AnsiString; // Section 14.44
     function Filter(const z, s: AnsiString): Boolean;
     function OutString: AnsiString;
   end;
 
-
   TResponseHeader = class
-    Age,                    // Section 14.6
-    Location,               // Section 14.30
-    ProxyAuthenticate,      // Section 14.33
-    Public_,                // Section 14.35
-    RetryAfter,             // Section 14.38
-    Server,                 // Section 14.39
-    Vary,                   // Section 14.43
-    Warning,                // Section 14.45
-    WWWAuthenticate         // Section 14.46
+    Age, // Section 14.6
+    Location, // Section 14.30
+    ProxyAuthenticate, // Section 14.33
+    Public_, // Section 14.35
+    RetryAfter, // Section 14.38
+    Server, // Section 14.39
+    Vary, // Section 14.43
+    Warning, // Section 14.45
+    WWWAuthenticate // Section 14.46
       : AnsiString;
     IsNormalAuthenticateAfterEmptyUsernamePassword: Boolean;
     function OutString: AnsiString;
   end;
 
   TRequestHeader = class
-    Accept,                  // Section 14.1
-    AcceptCharset,           // Section 14.2
-    AcceptEncoding,          // Section 14.3
-    AcceptLanguage,          // Section 14.4
-    Authorization,           // Section 14.8
-    From,                    // Section 14.22
-    Host,                    // Section 14.23
-    IfModifiedSince,         // Section 14.24
-    IfMatch,                 // Section 14.25
-    IfNoneMatch,             // Section 14.26
-    IfRange,                 // Section 14.27
-    IfUnmodifiedSince,       // Section 14.28
-    MaxForwards,             // Section 14.31
-    ProxyAuthorization,      // Section 14.34
-    Range,                   // Section 14.36
-    Referer,                 // Section 14.37
-    UserAgent,               // Section 14.42
-    Cookie: AnsiString;          // rfc-2109
+    Accept, // Section 14.1
+    AcceptCharset, // Section 14.2
+    AcceptEncoding, // Section 14.3
+    AcceptLanguage, // Section 14.4
+    Authorization, // Section 14.8
+    From, // Section 14.22
+    Host, // Section 14.23
+    IfModifiedSince, // Section 14.24
+    IfMatch, // Section 14.25
+    IfNoneMatch, // Section 14.26
+    IfRange, // Section 14.27
+    IfUnmodifiedSince, // Section 14.28
+    MaxForwards, // Section 14.31
+    ProxyAuthorization, // Section 14.34
+    Range, // Section 14.36
+    Referer, // Section 14.37
+    UserAgent, // Section 14.42
+    Cookie: AnsiString; // rfc-2109
     function Filter(const z, s: AnsiString): Boolean;
   end;
 
@@ -239,8 +223,7 @@ type
     ContentLength: Integer;
   public
     EntityBody: AnsiString;
-    GotEntityBody,
-    CollectEntityBody: Boolean;
+    GotEntityBody, CollectEntityBody: Boolean;
     function Collect(var Buf: THTTPServerThreadBufer; j: Integer): Boolean;
     constructor Create;
     destructor Destroy; override;
@@ -249,28 +232,25 @@ type
     procedure SetContentLength(i: Integer);
   end;
 
-
   TEntityHeader = class
-    Allow,                   // Section 14.7
-    ContentBase,             // Section 14.11
-    ContentEncoding,         // Section 14.12
-    ContentLanguage,         // Section 14.13
-    ContentLength,           // Section 14.14
-    ContentLocation,         // Section 14.15
-    ContentMD5,              // Section 14.16
-    ContentRange,            // Section 14.17
-    ContentType,             // Section 14.18
-    ETag,                    // Section 14.20
-    Expires,                 // Section 14.21
-    LastModified,            // Section 14.29
-    {This is two headers for file download by CGI}
-    AcceptRanges,            // Section 14.5
-    ContentDisposition,      // Section 15.10
+    Allow, // Section 14.7
+    ContentBase, // Section 14.11
+    ContentEncoding, // Section 14.12
+    ContentLanguage, // Section 14.13
+    ContentLength, // Section 14.14
+    ContentLocation, // Section 14.15
+    ContentMD5, // Section 14.16
+    ContentRange, // Section 14.17
+    ContentType, // Section 14.18
+    ETag, // Section 14.20
+    Expires, // Section 14.21
+    LastModified, // Section 14.29
+    { This is two headers for file download by CGI }
+    AcceptRanges, // Section 14.5
+    ContentDisposition, // Section 15.10
     EntityBody: AnsiString;
     EntityLength: Integer;
-    SetCookie,
-    CGIStatus,
-    CGILocation: AnsiString;
+    SetCookie, CGIStatus, CGILocation: AnsiString;
     function Filter(const z, s: AnsiString): Boolean;
     procedure CopyEntityBody(Collector: TCollector);
     function OutString: AnsiString;
@@ -281,18 +261,12 @@ type
     FileNfo: TFileINfo;
 
     FHandle: THandle;
-    StatusCode,
-    HTTPVersionHi,
-    HTTPVersionLo: Integer;
+    StatusCode, HTTPVersionHi, HTTPVersionLo: Integer;
 
-    TransferFile,
-    ReportError,
-    KeepAliveInRequest,
-    KeepAliveInReply: Boolean;
+    TransferFile, ReportError, KeepAliveInRequest, KeepAliveInReply: Boolean;
 
-    ErrorMsg,
-    Method, RequestURI, HTTPVersion, AuthUser, AuthPassword, AuthType,
-    URIPath, URIParams, URIQuery, URIQueryParam : AnsiString;
+    ErrorMsg, Method, RequestURI, HTTPVersion, AuthUser, AuthPassword, AuthType,
+      URIPath, URIParams, URIQuery, URIQueryParam: AnsiString;
 
     ResponceObjective: TAbstractHttpResponseData;
 
@@ -314,66 +288,80 @@ var
   ParamStr1: AnsiString;
 
 {$IFDEF LOGGING}
-  FAccessLog,
-  FAgentLog,
-  FErrorLog,
-  FRefererLog: AnsiString;
-  CSAccessLog,
-  CSAgentLog,
-  CSErrorLog,
-  CSRefererLog: TRTLCriticalSection;
-  HAccessLog,
-  HAgentLog,
-  HErrorLog,
-  HRefererLog: Thandle;
+  FAccessLog, FAgentLog, FErrorLog, FRefererLog: AnsiString;
+  CSAccessLog, CSAgentLog, CSErrorLog, CSRefererLog: TRTLCriticalSection;
+  HAccessLog, HAgentLog, HErrorLog, HRefererLog: THandle;
 {$ENDIF}
 
 function FileTimeToStr(AT: DWORD): AnsiString;
 const
-  wkday: array[0..6] of AnsiString = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat');
+  wkday: array [0 .. 6] of AnsiString = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu',
+    'Fri', 'Sat');
 var
-  D: TSystemTime;
+  d: TSystemTime;
   T: TFileTime;
 begin
   uCvtSetFileTime(AT, T.dwLowDateTime, T.dwHighDateTime);
-  if FileTimeToSystemTime(T, D) then
-  Result :=
-  wkday[D.wDayOfWeek] + ', ' +
-  ItoSz(D.wDay, 2) + ' ' +
-  MonthE(D.wMonth) + ' ' +
-  ItoS(D.wYear) + ' ' +
-  ItoSz(D.wHour, 2) + ':' +
-  ItoSz(D.wMinute, 2) + ':' +
-  ItoSz(D.wSecond, 2) + ' GMT';
+  if FileTimeToSystemTime(T, d) then
+    Result := wkday[d.wDayOfWeek] + ', ' + ItoSz(d.wDay, 2) + ' ' +
+      MonthE(d.wMonth) + ' ' + ItoS(d.wYear) + ' ' + ItoSz(d.wHour, 2) + ':' +
+      ItoSz(d.wMinute, 2) + ':' + ItoSz(d.wSecond, 2) + ' GMT';
 end;
 
 function StrToFileTime(AStr: AnsiString): DWORD;
 const
-  CPatterns: AnsiString = #1'JAN'#1'FEB'#1'MAR'#1'APR'#1'MAY'#1'JUN'#1'JUL'#1'AUG'#1'SEP'#1'OCT'#1'NOV'#1'DEC'#1;
+  CPatterns: AnsiString =
+    #1'JAN'#1'FEB'#1'MAR'#1'APR'#1'MAY'#1'JUN'#1'JUL'#1'AUG'#1'SEP'#1'OCT'#1'NOV'#1'DEC'#1;
 var
-  D: TSystemTime;
+  d: TSystemTime;
   T: TFileTime;
   s, z, LSubstring: AnsiString;
   v: DWORD;
 begin
   Result := INVALID_FILE_TIME;
-  Clear(D, SizeOf(D));
+  Clear(d, SizeOf(d));
   s := AStr;
   GetWrd(s, z, ' ');
-  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wDay := v;
-  LSubstring := #1+UpperCase(z)+#1;
-  GetWrdA(s, z); D.wMonth := Pos(LSubstring, CPatterns);
-  if D.wMonth = 0 then Exit;
-  D.wMonth := (D.wMonth+3) div 4;
-  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wYear := v;
-  if D.wYear < 200 then
+  GetWrdD(s, z);
+  v := Vl(z);
+  if v = INVALID_VALUE then
+    Exit;
+  d.wDay := v;
+  LSubstring := #1 + UpperCase(z) + #1;
+  GetWrdA(s, z);
+  d.wMonth := Pos(LSubstring, CPatterns);
+  if d.wMonth = 0 then
+    Exit;
+  d.wMonth := (d.wMonth + 3) div 4;
+  GetWrdD(s, z);
+  v := Vl(z);
+  if v = INVALID_VALUE then
+    Exit;
+  d.wYear := v;
+  if d.wYear < 200 then
   begin
-    if D.wYear < 50 then Inc(D.wYear, 2000) else Inc(D.wYear, 1900);
+    if d.wYear < 50 then
+      Inc(d.wYear, 2000)
+    else
+      Inc(d.wYear, 1900);
   end;
-  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wHour := v;
-  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wMinute := v;
-  GetWrdD(s, z); v := Vl(z); if v = INVALID_VALUE then Exit; D.wSecond := v;
-  if not SystemTimeToFileTime(D, T) then Exit;
+  GetWrdD(s, z);
+  v := Vl(z);
+  if v = INVALID_VALUE then
+    Exit;
+  d.wHour := v;
+  GetWrdD(s, z);
+  v := Vl(z);
+  if v = INVALID_VALUE then
+    Exit;
+  d.wMinute := v;
+  GetWrdD(s, z);
+  v := Vl(z);
+  if v = INVALID_VALUE then
+    Exit;
+  d.wSecond := v;
+  if not SystemTimeToFileTime(d, T) then
+    Exit;
   Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
 end;
 
@@ -393,43 +381,94 @@ end;
 function TGeneralHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
-  if z = 'CACHE-CONTROL'       then CacheControl       := s else // Section 14.9
-  if z = 'CONNECTION'          then Connection         := s else // Section 14.10
-  if z = 'DATE'                then Date               := s else // Section 14.19
-  if z = 'PRAGMA'              then Pragma             := s else // Section 14.32
-  if z = 'TRANSFER-ENCODING'   then TransferEncoding   := s else // Section 14.40
-  if z = 'UPGRADE'             then Upgrade            := s else // Section 14.41
-  if z = 'VIA'                 then Via                := s else // Section 14.44
-    Result := False;
+  if z = 'CACHE-CONTROL' then
+    CacheControl := s
+  else // Section 14.9
+    if z = 'CONNECTION' then
+      Connection := s
+    else // Section 14.10
+      if z = 'DATE' then
+        Date := s
+      else // Section 14.19
+        if z = 'PRAGMA' then
+          Pragma := s
+        else // Section 14.32
+          if z = 'TRANSFER-ENCODING' then
+            TransferEncoding := s
+          else // Section 14.40
+            if z = 'UPGRADE' then
+              Upgrade := s
+            else // Section 14.41
+              if z = 'VIA' then
+                Via := s
+              else // Section 14.44
+                Result := False;
 end;
 
 function TRequestHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
-  if z = 'ACCEPT'              then Accept             := s else // Section 14.1
-  if z = 'ACCEPT-CHARSET'      then AcceptCharset      := s else // Section 14.2
-  if z = 'ACCEPT-ENCODING'     then AcceptEncoding     := s else // Section 14.3
-  if z = 'ACCEPT-LANGUAGE'     then AcceptLanguage     := s else // Section 14.4
-  if z = 'AUTHORIZATION'       then Authorization      := s else // Section 14.8
-  if z = 'FROM'                then From               := s else // Section 14.22
-  if z = 'HOST'                then Host               := s else // Section 14.23
-  if z = 'IF-MODIFIED-SINCE'   then IfModifiedSince    := s else // Section 14.24
-  if z = 'IF-MATCH'            then IfMatch            := s else // Section 14.25
-  if z = 'IF-NONE-MATCH'       then IfNoneMatch        := s else // Section 14.26
-  if z = 'IF-RANGE'            then IfRange            := s else // Section 14.27
-  if z = 'IF-UNMODIFIED-SINCE' then IfUnmodifiedSince  := s else // Section 14.28
-  if z = 'MAX-FORWARDS'        then MaxForwards        := s else // Section 14.31
-  if z = 'PROXY-AUTHORIZATION' then ProxyAuthorization := s else // Section 14.34
-  if z = 'RANGE'               then Range              := s else // Section 14.36
-  if z = 'REFERER'             then Referer            := s else // Section 14.37
-  if z = 'USER-AGENT'          then UserAgent          := s else // Section 14.42
-  if z = 'COOKIE'              then Cookie             := s else
-    Result := False
+  if z = 'ACCEPT' then
+    Accept := s
+  else // Section 14.1
+    if z = 'ACCEPT-CHARSET' then
+      AcceptCharset := s
+    else // Section 14.2
+      if z = 'ACCEPT-ENCODING' then
+        AcceptEncoding := s
+      else // Section 14.3
+        if z = 'ACCEPT-LANGUAGE' then
+          AcceptLanguage := s
+        else // Section 14.4
+          if z = 'AUTHORIZATION' then
+            Authorization := s
+          else // Section 14.8
+            if z = 'FROM' then
+              From := s
+            else // Section 14.22
+              if z = 'HOST' then
+                Host := s
+              else // Section 14.23
+                if z = 'IF-MODIFIED-SINCE' then
+                  IfModifiedSince := s
+                else // Section 14.24
+                  if z = 'IF-MATCH' then
+                    IfMatch := s
+                  else // Section 14.25
+                    if z = 'IF-NONE-MATCH' then
+                      IfNoneMatch := s
+                    else // Section 14.26
+                      if z = 'IF-RANGE' then
+                        IfRange := s
+                      else // Section 14.27
+                        if z = 'IF-UNMODIFIED-SINCE' then
+                          IfUnmodifiedSince := s
+                        else // Section 14.28
+                          if z = 'MAX-FORWARDS' then
+                            MaxForwards := s
+                          else // Section 14.31
+                            if z = 'PROXY-AUTHORIZATION' then
+                              ProxyAuthorization := s
+                            else // Section 14.34
+                              if z = 'RANGE' then
+                                Range := s
+                              else // Section 14.36
+                                if z = 'REFERER' then
+                                  Referer := s
+                                else // Section 14.37
+                                  if z = 'USER-AGENT' then
+                                    UserAgent := s
+                                  else // Section 14.42
+                                    if z = 'COOKIE' then
+                                      Cookie := s
+                                    else
+                                      Result := False
 end;
 
 procedure Add(var s, z: AnsiString; const a: AnsiString);
 begin
-  if z <> '' then s := s + a + ': '+z+#13#10;
+  if z <> '' then
+    s := s + a + ': ' + z + #13#10;
 end;
 
 function TResponseHeader.OutString: AnsiString;
@@ -437,15 +476,15 @@ var
   s: AnsiString;
 begin
   s := '';
-  Add(s, Age,               'Age');                // Section 14.6
-  Add(s, Location,          'Location');           // Section 14.30
+  Add(s, Age, 'Age'); // Section 14.6
+  Add(s, Location, 'Location'); // Section 14.30
   Add(s, ProxyAuthenticate, 'Proxy-Authenticate'); // Section 14.33
-  Add(s, Public_,           'Public');             // Section 14.35
-  Add(s, RetryAfter,        'Retry-After');        // Section 14.38
-  Add(s, Server,            'Server');             // Section 14.39
-  Add(s, Vary,              'Vary');               // Section 14.43
-  Add(s, Warning,           'Warning');            // Section 14.45
-  Add(s, WWWAuthenticate,   'WWW-Authenticate');   // Section 14.46
+  Add(s, Public_, 'Public'); // Section 14.35
+  Add(s, RetryAfter, 'Retry-After'); // Section 14.38
+  Add(s, Server, 'Server'); // Section 14.39
+  Add(s, Vary, 'Vary'); // Section 14.43
+  Add(s, Warning, 'Warning'); // Section 14.45
+  Add(s, WWWAuthenticate, 'WWW-Authenticate'); // Section 14.46
   Result := s;
 end;
 
@@ -454,22 +493,22 @@ var
   s: AnsiString;
 begin
   s := '';
-  Add(s, Allow,           'Allow');             // Section 14.7
-  Add(s, ContentBase,     'Content-Base');      // Section 14.11
-  Add(s, ContentEncoding, 'Content-Encoding');  // Section 14.12
-  Add(s, ContentLanguage, 'Content-Language');  // Section 14.13
-  Add(s, ContentLength,   'Content-Length');    // Section 14.14
-  Add(s, ContentLocation, 'Content-Location');  // Section 14.15
-  Add(s, ContentMD5,      'Content-MD5');       // Section 14.16
-  Add(s, ContentRange,    'Content-Range');     // Section 14.17
-  Add(s, ContentType,     'Content-Type');      // Section 14.18
-  Add(s, ETag,            'ETag');              // Section 14.20
-  Add(s, Expires,         'Expires');           // Section 14.21
-  Add(s, LastModified,    'Last-Modified');     // Section 14.29
-  {This is two headers for file download by CGI}
-  Add(s, AcceptRanges,    'Accept-Ranges');    // Section 14.5
+  Add(s, Allow, 'Allow'); // Section 14.7
+  Add(s, ContentBase, 'Content-Base'); // Section 14.11
+  Add(s, ContentEncoding, 'Content-Encoding'); // Section 14.12
+  Add(s, ContentLanguage, 'Content-Language'); // Section 14.13
+  Add(s, ContentLength, 'Content-Length'); // Section 14.14
+  Add(s, ContentLocation, 'Content-Location'); // Section 14.15
+  Add(s, ContentMD5, 'Content-MD5'); // Section 14.16
+  Add(s, ContentRange, 'Content-Range'); // Section 14.17
+  Add(s, ContentType, 'Content-Type'); // Section 14.18
+  Add(s, ETag, 'ETag'); // Section 14.20
+  Add(s, Expires, 'Expires'); // Section 14.21
+  Add(s, LastModified, 'Last-Modified'); // Section 14.29
+  { This is two headers for file download by CGI }
+  Add(s, AcceptRanges, 'Accept-Ranges'); // Section 14.5
   Add(s, ContentDisposition, 'Content-Disposition'); // Section 15.10
-  Add(s, SetCookie,       'Set-Cookie');
+  Add(s, SetCookie, 'Set-Cookie');
   Result := s;
 end;
 
@@ -478,13 +517,13 @@ var
   s: AnsiString;
 begin
   s := '';
-  Add(s, CacheControl,     'Cache-Control');     // Section 14.9
-  Add(s, Connection,       'Connection');        // Section 14.10
-  Add(s, Date,             'Date');              // Section 14.19
-  Add(s, Pragma,           'Pragma');            // Section 14.32
+  Add(s, CacheControl, 'Cache-Control'); // Section 14.9
+  Add(s, Connection, 'Connection'); // Section 14.10
+  Add(s, Date, 'Date'); // Section 14.19
+  Add(s, Pragma, 'Pragma'); // Section 14.32
   Add(s, TransferEncoding, 'Transfer-Encoding'); // Section 14.40
-  Add(s, Upgrade,          'Upgrade');           // Section 14.41
-  Add(s, Via,              'Via');               // Section 14.44
+  Add(s, Upgrade, 'Upgrade'); // Section 14.41
+  Add(s, Via, 'Via'); // Section 14.44
   Result := s;
 end;
 
@@ -498,27 +537,57 @@ end;
 function TEntityHeader.Filter(const z, s: AnsiString): Boolean;
 begin
   Result := True;
-  if z = 'ALLOW'            then Allow           := s else // 14.7
-  if z = 'CONTENT-BASE'     then ContentBase     := s else // 14.11
-  if z = 'CONTENT-ENCODING' then ContentEncoding := s else // 14.12
-  if z = 'CONTENT-LANGUAGE' then ContentLanguage := s else // 14.13
-  if z = 'CONTENT-LENGTH'   then ContentLength   := s else // 14.14
-  if z = 'CONTENT-LOCATION' then ContentLocation := s else // 14.15
-  if z = 'CONTENT-MD5'      then ContentMD5      := s else // 14.16
-  if z = 'CONTENT-RANGE'    then ContentRange    := s else // 14.17
-  if z = 'CONTENT-TYPE'     then ContentType     := s else // 14.18
-  if z = 'ETAG'             then ETag            := s else // 14.20
-  if z = 'EXPIRES'          then Expires         := s else // 14.21
-  if z = 'LAST-MODIFIED'    then LastModified    := s else // 14.29
-  {This is two headers for file download by CGI}
-  if z = 'ACCEPT-RANGES'    then AcceptRanges    := s else // 14.5
-  if z = 'CONTENT-DISPOSITION' then ContentDisposition := s else // 15.10
-  if z = 'STATUS'           then
-  CGIStatus       := s
-  else
-  if z = 'LOCATION'         then CGILocation     := s else
-  if z = 'SET-COOKIE'       then SetCookie       := s else
-    Result := False;
+  if z = 'ALLOW' then
+    Allow := s
+  else // 14.7
+    if z = 'CONTENT-BASE' then
+      ContentBase := s
+    else // 14.11
+      if z = 'CONTENT-ENCODING' then
+        ContentEncoding := s
+      else // 14.12
+        if z = 'CONTENT-LANGUAGE' then
+          ContentLanguage := s
+        else // 14.13
+          if z = 'CONTENT-LENGTH' then
+            ContentLength := s
+          else // 14.14
+            if z = 'CONTENT-LOCATION' then
+              ContentLocation := s
+            else // 14.15
+              if z = 'CONTENT-MD5' then
+                ContentMD5 := s
+              else // 14.16
+                if z = 'CONTENT-RANGE' then
+                  ContentRange := s
+                else // 14.17
+                  if z = 'CONTENT-TYPE' then
+                    ContentType := s
+                  else // 14.18
+                    if z = 'ETAG' then
+                      ETag := s
+                    else // 14.20
+                      if z = 'EXPIRES' then
+                        Expires := s
+                      else // 14.21
+                        if z = 'LAST-MODIFIED' then
+                          LastModified := s
+                        else // 14.29
+                          { This is two headers for file download by CGI }
+                          if z = 'ACCEPT-RANGES' then
+                            AcceptRanges := s
+                          else // 14.5
+                            if z = 'CONTENT-DISPOSITION' then
+                              ContentDisposition := s
+                            else // 15.10
+                              if z = 'STATUS' then
+                                CGIStatus := s
+                              else if z = 'LOCATION' then
+                                CGILocation := s
+                              else if z = 'SET-COOKIE' then
+                                SetCookie := s
+                              else
+                                Result := False;
 end;
 
 constructor THTTPData.Create;
@@ -556,17 +625,19 @@ end;
 
 function TCollector.GetNextLine: AnsiString;
 begin
-  Result := Lines[0]; Lines.AtFree(0);
+  Result := Lines[0];
+  Lines.AtFree(0);
 end;
 
-function TCollector.Collect(var Buf: THTTPServerThreadBufer; j: Integer): Boolean;
+function TCollector.Collect(var Buf: THTTPServerThreadBufer;
+  j: Integer): Boolean;
 var
-  i,l: Integer;
+  i, l: Integer;
 begin
   if not CollectEntityBody then
   begin
     l := Length(CollectStr);
-    for i := 0 to j-1 do
+    for i := 0 to j - 1 do
     begin
       if l <= CollectLen then
       begin
@@ -575,17 +646,20 @@ begin
       end;
       Inc(CollectLen);
       CollectStr[CollectLen] := Buf[i];
-      if (CollectLen >= 2) and (CollectStr[CollectLen] = #10) and (CollectStr[CollectLen-1] = #13) then
+      if (CollectLen >= 2) and (CollectStr[CollectLen] = #10) and
+        (CollectStr[CollectLen - 1] = #13) then
       begin
         if CollectLen = 2 then
         begin
           CollectEntityBody := True;
-          j := j - (i+1);
-          if j > 0 then Move(Buf[i+1], Buf[0], j);
+          j := j - (i + 1);
+          if j > 0 then
+            Move(Buf[i + 1], Buf[0], j);
           Break;
-        end else
+        end
+        else
         begin
-          Lines.Add(Copy(CollectStr, 1, CollectLen-2));
+          Lines.Add(Copy(CollectStr, 1, CollectLen - 2));
           CollectLen := 0;
         end;
       end;
@@ -594,11 +668,11 @@ begin
 
   if CollectEntityBody then
   begin
-    if (CollectEntityBody) and (j>0) then
+    if (CollectEntityBody) and (j > 0) then
     begin
       i := Length(EntityBody);
-      SetLength(EntityBody, i+j);
-      Move(Buf, EntityBody[i+1], j);
+      SetLength(EntityBody, i + j);
+      Move(Buf, EntityBody[i + 1], j);
     end;
     GotEntityBody := ContentLength <= Length(EntityBody);
   end;
@@ -609,7 +683,7 @@ constructor TCollector.Create;
 begin
   inherited Create;
   Lines := TStringColl.Create;
-//  Lines.LongString;
+  // Lines.LongString;
 end;
 
 destructor TCollector.Destroy;
@@ -618,41 +692,48 @@ begin
   inherited Destroy;
 end;
 
-
 procedure TPipeWriteStdThread.Execute;
 var
   j: DWORD;
   slen: Integer;
 begin
   slen := Length(s);
-  if slen > 0 then WriteFile(HPipe, s[1], slen, j, nil);
+  if slen > 0 then
+    WriteFile(HPipe, s[1], slen, j, nil);
 end;
 
-function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader; j: Integer; var Buffer: THTTPServerThreadBufer): Boolean;
+function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader;
+  j: Integer; var Buffer: THTTPServerThreadBufer): Boolean;
 var
-  s,z: AnsiString;
+  s, z: AnsiString;
 begin
   Result := True;
-  if not Collector.Collect(Buffer, j) then Result := False else
-  if Collector.CollectEntityBody then
-  if not Collector.Parsed then
-  begin
-    Collector.Parsed := True;
-    while Collector.LineAvail do
+  if not Collector.Collect(Buffer, j) then
+    Result := False
+  else if Collector.CollectEntityBody then
+    if not Collector.Parsed then
     begin
-      s := Collector.GetNextLine;
-      if Length(s)<4 then begin Result := False; Break end else
+      Collector.Parsed := True;
+      while Collector.LineAvail do
       begin
-        GetWrdStrictUC(s, z);
-        Delete(z, Length(z), 1);
-        if not EntityHeader.Filter(z, s) then
+        s := Collector.GetNextLine;
+        if Length(s) < 4 then
         begin
-          // New Feature !!!
+          Result := False;
+          Break
+        end
+        else
+        begin
+          GetWrdStrictUC(s, z);
+          Delete(z, Length(z), 1);
+          if not EntityHeader.Filter(z, s) then
+          begin
+            // New Feature !!!
+          end;
         end;
       end;
+      Collector.SetContentLength(StoI(EntityHeader.ContentLength));
     end;
-    Collector.SetContentLength(StoI(EntityHeader.ContentLength));
-  end;
 end;
 
 procedure TPipeReadErrThread.Execute;
@@ -661,26 +742,32 @@ var
   j: DWORD;
 begin
   repeat
-    if (not ReadFile(HPipe, ss[1], 250, j, nil)) or (j=0) then Break;
+    if (not ReadFile(HPipe, ss[1], 250, j, nil)) or (j = 0) then
+      Break;
     ss[0] := AnsiChar(j);
     s := s + ss;
   until False;
 end;
-
 
 procedure TPipeReadStdThread.Execute;
 var
   j: DWORD;
 begin
   repeat
-    if (not ReadFile(HPipe, Buffer^, CHTTPServerThreadBufSize, j, nil)) or (j = 0) then Break;
+    if (not ReadFile(HPipe, Buffer^, CHTTPServerThreadBufSize, j, nil)) or
+      (j = 0) then
+      Break;
     Error := not DoCollect(Collector, EntityHeader, j, Buffer^);
-    if Error then Break;
-    if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then Break;
+    if Error then
+      Break;
+    if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then
+      Break;
   until False;
 end;
 
-function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr, AStdInStr: AnsiString; Buffer: THTTPServerThreadBufer; SelfThr: TThread; var ErrorMsg: AnsiString): TEntityHeader;
+function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr,
+  AStdInStr: AnsiString; Buffer: THTTPServerThreadBufer; SelfThr: TThread;
+  var ErrorMsg: AnsiString): TEntityHeader;
 var
   SI: TStartupInfoA;
   PI: TProcessInformation;
@@ -695,13 +782,13 @@ var
   PipeReadErrThread: TPipeReadErrThread;
   s: AnsiString;
 
-function ReportGUI: AnsiString;
-var
-  d, n, e: AnsiString;
-begin
-  FSPlit(AExecutable, d, n, e);
-  Result := n+e+' is a GUI application';
-end;
+  function ReportGUI: AnsiString;
+  var
+    d, n, e: AnsiString;
+  begin
+    FSPlit(AExecutable, d, n, e);
+    Result := n + e + ' is a GUI application';
+  end;
 
 begin
   Result := nil;
@@ -725,31 +812,35 @@ begin
   SI.hStdOutput := so_w;
   SI.hStdError := se_w;
   SI.wShowWindow := SW_HIDE;
-  if AExecutable = AScript then s := AExecutable else s := AExecutable + ' ' + AScript;
-  if AQueryParam <> '' then s := s + ' ' + AQueryParam;
+  if AExecutable = AScript then
+    s := AExecutable
+  else
+    s := AExecutable + ' ' + AScript;
+  if AQueryParam <> '' then
+    s := s + ' ' + AQueryParam;
   s := DelSpaces(s);
   if (s = '') or (AEnvStr = '') or (APath = '') then
   begin
     b := False;
-  end else
+  end
+  else
   begin
-    b := CreateProcessA(
-      nil,                     // pointer to name of executable module
-      @(s[1]),                 // pointer to command line AnsiString
-      @Security,               // pointer to process security attributes
-      @Security,               // pointer to thread security attributes
-      True,                    // handle inheritance flag
-      CREATE_SUSPENDED,        // creation flags
-      @(AEnvStr[1]),           // pointer to new environment block
-      @(APath[1]),             // pointer to current directory name
-      SI,                      // pointer to STARTUPINFO
-      PI                       // pointer to PROCESS_INFORMATION
-    );
+    b := CreateProcessA(nil, // pointer to name of executable module
+      @(s[1]), // pointer to command line AnsiString
+      @Security, // pointer to process security attributes
+      @Security, // pointer to thread security attributes
+      True, // handle inheritance flag
+      CREATE_SUSPENDED, // creation flags
+      @(AEnvStr[1]), // pointer to new environment block
+      @(APath[1]), // pointer to current directory name
+      SI, // pointer to STARTUPINFO
+      PI // pointer to PROCESS_INFORMATION
+      );
   end;
 
   if b then
   begin
-    {--$IFDEF CHECK_GUI}
+    { --$IFDEF CHECK_GUI }
     if WaitForInputIdle(PI.hProcess, 0) = WAIT_TIMEOUT then
     begin
       ErrorMsg := ReportGUI;
@@ -758,8 +849,9 @@ begin
       CloseHandle(PI.hProcess);
       b := False;
     end;
-    {--$ENDIF}
-  end else
+    { --$ENDIF }
+  end
+  else
   begin
     ErrorMsg := SysErrorMsg(GetLastError);
   end;
@@ -773,7 +865,8 @@ begin
   if AStdInStr = '' then
   begin
     PipeWriteStdThread := nil;
-  end else
+  end
+  else
   begin
     PipeWriteStdThread := TPipeWriteStdThread.Create(True);
     PipeWriteStdThread.s := AStdInStr;
@@ -801,12 +894,13 @@ begin
   WaitForSingleObject(PI.hProcess, INFINITE);
   CloseHandle(PI.hThread);
 
-// Close StdIn
+  // Close StdIn
   CloseHandle(si_r);
   if PipeWriteStdThread = nil then
   begin
     CloseHandle(si_w);
-  end else
+  end
+  else
   begin
     WaitForSingleObject(PipeWriteStdThread.Handle, INFINITE);
     PipeWriteStdThread.Terminate;
@@ -814,7 +908,7 @@ begin
     CloseHandle(si_w);
   end;
 
-// Close StdErr
+  // Close StdErr
 
   CloseHandle(se_w);
   WaitForSingleObject(PipeReadErrThread.Handle, INFINITE);
@@ -823,7 +917,7 @@ begin
   FreeObject(PipeReadErrThread);
   CloseHandle(se_r);
 
-// Close StdOut
+  // Close StdOut
   CloseHandle(so_w);
   WaitForSingleObject(PipeReadStdThread.Handle, INFINITE);
   PipeReadStdThread.Terminate;
@@ -831,16 +925,23 @@ begin
 
   while not PipeReadStdThread.Error do
   begin
-    if (not ReadFile(so_r, Buffer, CHTTPServerThreadBufSize, Actually, nil)) or (Actually = 0) then Break;
-    PipeReadStdThread.Error := not DoCollect(Collector, EntityHeader, Actually, Buffer);
-    if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then Break;
+    if (not ReadFile(so_r, Buffer, CHTTPServerThreadBufSize, Actually, nil)) or
+      (Actually = 0) then
+      Break;
+    PipeReadStdThread.Error := not DoCollect(Collector, EntityHeader,
+      Actually, Buffer);
+    if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then
+      Break;
   end;
   CloseHandle(so_r);
   CloseHandle(PI.hProcess);
 
-  if PipeReadStdThread.Error or not Collector.GotEntityBody then FreeObject(Collector);
+  if PipeReadStdThread.Error or not Collector.GotEntityBody then
+    FreeObject(Collector);
   FreeObject(PipeReadStdThread);
-  if Collector = nil then FreeObject(EntityHeader) else
+  if Collector = nil then
+    FreeObject(EntityHeader)
+  else
   begin
     if Collector.ContentLength = 0 then
     begin
@@ -868,14 +969,14 @@ begin
   LeaveCriticalSection(CSAgentLog);
 end;
 
-
 procedure AddRefererLog(const ARefererSrc, ARefererDst: AnsiString);
 var
   s: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
-  if ARefererSrc = '' then Exit;
+  if ARefererSrc = '' then
+    Exit;
   s := ARefererSrc + ' -> ' + ARefererDst + #13#10;
   EnterCriticalSection(CSRefererLog);
   slen := Length(s);
@@ -891,38 +992,49 @@ var
 begin
   GetLocalTime(lt);
   b := TimeZoneBias;
-  if b < 0 then begin b := -b; s := s+'+' end else s := s + '-';
+  if b < 0 then
+  begin
+    b := -b;
+    s := s + '+'
+  end
+  else
+    s := s + '-';
   b := b div 60;
-  Result := '['+
-        ItoSz(lt.wDay, 2) + '/' +
-        MonthE(lt.wMonth) + '/' +
-        ItoS(lt.wYear) + ':' +
-        ItoSz(lt.wHour,2) + ':' +
-        ItoSz(lt.wMinute,2) + ':' +
-        ItoSz(lt.wSecond, 2) + ' ' +
-        s +
-        ItoSz(b div 60, 2) +
-        ItoSz(b mod 60, 2) +
-        ']';
+  Result := '[' + ItoSz(lt.wDay, 2) + '/' + MonthE(lt.wMonth) + '/' +
+    ItoS(lt.wYear) + ':' + ItoSz(lt.wHour, 2) + ':' + ItoSz(lt.wMinute, 2) + ':'
+    + ItoSz(lt.wSecond, 2) + ' ' + s + ItoSz(b div 60, 2) +
+    ItoSz(b mod 60, 2) + ']';
 end;
 
-procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion, AUserName: AnsiString; AStatusCode, ALength: Integer);
+procedure AddAccessLog(const ARemoteHost, ARequestLine, AHTTPVersion,
+  AUserName: AnsiString; AStatusCode, ALength: Integer);
 var
-  authuser,z,k: AnsiString;
+  AuthUser, z, k: AnsiString;
   b: DWORD;
   slen: Integer;
 begin
-  if ALength = -1 then z := '-' else z := ItoS(ALength);
-  if AHTTPVersion = '' then k := '' else k := ' ' + AHTTPVersion;
-  if AUserName = '' then authuser := '-' else authuser := AUserName;
-  z := ARemoteHost +  // Remote hostname (or IP number if DNS hostname is not available)
-       ' - ' +        // rfc-931
-       authuser+' '+  // The username as which the user has authenticated himself
-       CurTime+' '+   // Date and time of the request
-       '"' + ARequestLine + k + '" ' +  // The request line exactly as it came from the client
-       ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
-       z+             // The content-length of the document transferred
-       #13#10;
+  if ALength = -1 then
+    z := '-'
+  else
+    z := ItoS(ALength);
+  if AHTTPVersion = '' then
+    k := ''
+  else
+    k := ' ' + AHTTPVersion;
+  if AUserName = '' then
+    AuthUser := '-'
+  else
+    AuthUser := AUserName;
+  z := ARemoteHost +
+  // Remote hostname (or IP number if DNS hostname is not available)
+    ' - ' + // rfc-931
+    AuthUser + ' ' + // The username as which the user has authenticated himself
+    CurTime + ' ' + // Date and time of the request
+    '"' + ARequestLine + k + '" ' +
+  // The request line exactly as it came from the client
+    ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
+    z + // The content-length of the document transferred
+    #13#10;
   EnterCriticalSection(CSAccessLog);
   slen := Length(z);
   WriteFile(HAccessLog, z[1], slen, b, nil);
@@ -935,7 +1047,7 @@ var
   b: DWORD;
   slen: Integer;
 begin
-  s := CurTime + ' '+ AErr + #13#10;
+  s := CurTime + ' ' + AErr + #13#10;
   EnterCriticalSection(CSErrorLog);
   slen := Length(s);
   WriteFile(HErrorLog, s[1], slen, b, nil);
@@ -943,7 +1055,7 @@ begin
 end;
 {$ENDIF}
 
-constructor THttpResponseDataEntity.Create(AEntityHeader : TEntityHeader);
+constructor THttpResponseDataEntity.Create(AEntityHeader: TEntityHeader);
 begin
   inherited Create;
   FEntityHeader := AEntityHeader;
@@ -960,10 +1072,10 @@ begin
   FHandle := AHandle
 end;
 
-
-function OpenRequestedFile(const AFName: AnsiString; thr: THttpServerThread; d: THttpData): TAbstractHttpResponseData;
+function OpenRequestedFile(const AFName: AnsiString; thr: THTTPServerThread;
+  d: THTTPData): TAbstractHttpResponseData;
 var
-  I: Integer;
+  i: Integer;
   FHandle: THandle;
   z: AnsiString;
   fa: DWORD;
@@ -973,22 +1085,23 @@ begin
     Result := nil;
     Exit;
   end;
-// Try to open Requested file
+  // Try to open Requested file
   z := LowerCase(AFName);
   if Copy(z, 1, Length(ParamStr1)) <> LowerCase(ParamStr1) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
-  if Copy(z, 1, Length(ParamStr1)+1+Length(ScriptsPath)+1) = ParamStr1+'\'+(ScriptsPath)+'\' then
+  if Copy(z, 1, Length(ParamStr1) + 1 + Length(ScriptsPath) + 1) = ParamStr1 +
+    '\' + (ScriptsPath) + '\' then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
   fa := GetFileAttributesA(@(AFName[1]));
   if ((fa and FILE_ATTRIBUTE_DIRECTORY) <> 0) or
-       ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
-       ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
+    ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+    ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -997,7 +1110,8 @@ begin
   if FHandle = INVALID_HANDLE_VALUE then
   begin
 {$IFDEF LOGGING}
-    AddErrorLog('access to '+AFName+' failed for '+thr.RemoteHost+', reason: '+SysErrorMsg(GetLastError));
+    AddErrorLog('access to ' + AFName + ' failed for ' + thr.RemoteHost +
+      ', reason: ' + SysErrorMsg(GetLastError));
 {$ENDIF}
     Result := THttpResponseErrorCode.Create(404);
     Exit;
@@ -1007,12 +1121,16 @@ begin
     Result := THttpResponseErrorCode.Create(404);
     Exit;
   end;
-  z := LowerCase(CopyLeft(ExtractFileExt(AFName),2));
+  z := LowerCase(CopyLeft(ExtractFileExt(AFName), 2));
   if z <> '' then
   begin
-    if not ContentTypes.Search(@z, I) then z := '' else z := TContentType(ContentTypes.FList^[I]).ContentType;
+    if not ContentTypes.Search(@z, i) then
+      z := ''
+    else
+      z := TContentType(ContentTypes.FList^[i]).ContentType;
   end;
-  if z = '' then z := 'text/plain';
+  if z = '' then
+    z := 'text/plain';
   d.ResponseEntityHeader := TEntityHeader.Create;
   d.ResponseEntityHeader.ContentType := z;
   d.ResponseEntityHeader.EntityLength := d.FileNfo.Size;
@@ -1021,42 +1139,53 @@ begin
   Result := THttpResponseDataFileHandle.Create(FHandle);
 end;
 
-function GetEnvStr(thr: THttpServerThread; d: THttpData; const PathInfo: AnsiString): AnsiString;
+function GetEnvStr(thr: THTTPServerThread; d: THTTPData;
+  const PathInfo: AnsiString): AnsiString;
 var
   s: AnsiString;
   AuxS: AnsiString;
   p: PAnsiChar;
   j: Integer;
 
-  procedure Add(const Name, Value: AnsiString); begin s := s + Name+'='+Value+#0 end;
+  procedure Add(const Name, Value: AnsiString);
+  begin
+    s := s + Name + '=' + Value + #0
+  end;
 
 begin
   s := '';
   p := GetEnvironmentStringsA;
-  j := 0; while (p[j]<>#0) or (p[j+1]<>#0) do Inc(j);
+  j := 0;
+  while (p[j] <> #0) or (p[j + 1] <> #0) do
+    Inc(j);
   Inc(j);
   SetLength(s, j);
   Move(p^, s[1], j);
   FreeEnvironmentStringsA(p);
   AuxS := PathInfo;
   Replace('\', '/', AuxS);
-  if AuxS <> '' then AuxS := '/' + AuxS;
+  if AuxS <> '' then
+    AuxS := '/' + AuxS;
   Add('PATH_INFO', AuxS);
-  if AuxS <> '' then AuxS := ParamStr1+'\'+PathInfo;
+  if AuxS <> '' then
+    AuxS := ParamStr1 + '\' + PathInfo;
   Add('PATH_TRANSLATED', AuxS);
   Add('REMOTE_HOST', thr.RemoteHost);
   Add('REMOTE_ADDR', thr.RemoteAddr);
   Add('GATEWAY_INTERFACE', 'CGI/1.1');
   Add('SCRIPT_NAME', d.URIPath);
   Add('REQUEST_METHOD', d.Method);
-  Add('HTTP_ACCEPT', d.RequestRequestHeader.Accept);                     // Section 14.1
-  Add('HTTP_ACCEPT_CHARSET', d.RequestRequestHeader.AcceptCharset);      // Section 14.2
-  Add('HTTP_ACCEPT_ENCODING', d.RequestRequestHeader.AcceptEncoding);    // Section 14.3
-  Add('HTTP_ACCEPT_LANGUAGE', d.RequestRequestHeader.AcceptLanguage);    // Section 14.4
-  Add('HTTP_FROM', d.RequestRequestHeader.From);                         // Section 14.22
-  Add('HTTP_HOST', d.RequestRequestHeader.Host);                         // Section 14.23
-  Add('HTTP_REFERER', d.RequestRequestHeader.Referer);                   // Section 14.37
-  Add('HTTP_USER_AGENT', d.RequestRequestHeader.UserAgent);              // Section 14.42
+  Add('HTTP_ACCEPT', d.RequestRequestHeader.Accept); // Section 14.1
+  Add('HTTP_ACCEPT_CHARSET', d.RequestRequestHeader.AcceptCharset);
+  // Section 14.2
+  Add('HTTP_ACCEPT_ENCODING', d.RequestRequestHeader.AcceptEncoding);
+  // Section 14.3
+  Add('HTTP_ACCEPT_LANGUAGE', d.RequestRequestHeader.AcceptLanguage);
+  // Section 14.4
+  Add('HTTP_FROM', d.RequestRequestHeader.From); // Section 14.22
+  Add('HTTP_HOST', d.RequestRequestHeader.Host); // Section 14.23
+  Add('HTTP_REFERER', d.RequestRequestHeader.Referer); // Section 14.37
+  Add('HTTP_USER_AGENT', d.RequestRequestHeader.UserAgent); // Section 14.42
   Add('HTTP_COOKIE', d.RequestRequestHeader.Cookie);
   Add('QUERY_STRING', d.URIQuery);
   Add('SERVER_SOFTWARE', CServerName);
@@ -1071,7 +1200,8 @@ begin
   Result := s + #0;
 end;
 
-function ReturnNewLocation(const ALocation: AnsiString; d: THTTPData): TAbstractHttpResponseData;
+function ReturnNewLocation(const ALocation: AnsiString; d: THTTPData)
+  : TAbstractHttpResponseData;
 begin
   d.ResponseResponseHeader.Location := ALocation;
   Result := THttpResponseErrorCode.Create(302);
@@ -1108,7 +1238,8 @@ begin
   Result := @TExecutableCache(Item).LocalFName;
 end;
 
-function FindExecutableCached(const LocalFName, sPath: AnsiString; var s: AnsiString): HInst;
+function FindExecutableCached(const LocalFName, sPath: AnsiString;
+  var s: AnsiString): HInst;
 var
   i: Integer;
   c: TExecutableCache;
@@ -1126,7 +1257,8 @@ begin
     c := TExecutableCache(p);
     s := StrAsg(c.sResult);
     Result := c.ReturnValue;
-  end else
+  end
+  else
   begin
     SetLength(s, 1000);
     Result := FindExecutable(@(LocalFName[1]), @(sPath[1]), @s[1]);
@@ -1157,7 +1289,6 @@ type
 var
   RootCacheColl: TRootCacheColl;
 
-
 function TRootCacheColl.Compare(Key1, Key2: Pointer): Integer;
 begin
   Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
@@ -1168,37 +1299,45 @@ begin
   Result := @TRootCache(Item).FURI;
 end;
 
-
 function FindRootFileEx(const AURI: AnsiString; var IsCGI: Boolean): AnsiString;
 var
   s, z: AnsiString;
 begin
   IsCGI := False;
   Result := ParamStr1 + AURI + 'index.html';
-  if FileExists(Result) then Exit;
+  if FileExists(Result) then
+    Exit;
   Result := ParamStr1 + AURI + 'index.htm';
-  if FileExists(Result) then Exit;
+  if FileExists(Result) then
+    Exit;
   Result := ParamStr1 + AURI + 'index.html';
   s := GetEnvVariable('PATHEXT');
   while s <> '' do
   begin
     GetWrd(s, z, ';');
-    if Length(z) < 2 then Continue;
-    if z[1] <> '.' then Continue;
-    z := ParamStr1+'\'+ScriptsPath+AURI+'index'+z;
-    if FileExists(z) then begin Result := z; IsCGI := True; Exit end;
+    if Length(z) < 2 then
+      Continue;
+    if z[1] <> '.' then
+      Continue;
+    z := ParamStr1 + '\' + ScriptsPath + AURI + 'index' + z;
+    if FileExists(z) then
+    begin
+      Result := z;
+      IsCGI := True;
+      Exit
+    end;
   end;
 end;
 
 function FindRootFile(const AURI: AnsiString; var IsCGI: Boolean): AnsiString;
 var
   Found: Boolean;
-  I: Integer;
+  i: Integer;
   c: TRootCache;
   p: Pointer;
 begin
   RootCacheColl.Enter;
-  Found := RootCacheColl.Search(@AURI, I);
+  Found := RootCacheColl.Search(@AURI, i);
   if Found then
   begin
     p := RootCacheColl[i];
@@ -1207,22 +1346,21 @@ begin
     Result := StrAsg(c.FResult);
   end;
   RootCacheColl.Leave;
-  if Found then Exit;
+  if Found then
+    Exit;
   Result := FindRootFileEx(AURI, IsCGI);
   RootCacheColl.Enter;
-  if not RootCacheColl.Search(@AURI, I) then
+  if not RootCacheColl.Search(@AURI, i) then
   begin
     c := TRootCache.Create;
     c.FURI := StrAsg(AURI);
     c.FResult := StrAsg(Result);
     c.IsCGI := IsCGI;
-    RootCacheColl.AtInsert(I, c);
+    RootCacheColl.AtInsert(i, c);
   end;
   RootCacheColl.Leave;
 
 end;
-
-
 
 function FileIsRegular(const FN: AnsiString): Boolean;
 const
@@ -1232,8 +1370,8 @@ const
     + #1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
 var
   F: THandle;
-  FT: DWord;
-  I: Integer;
+  FT: DWORD;
+  i: Integer;
   FileNameExpanded, s: AnsiString;
 begin
   s := UpperCase(ExtractFileName(FN));
@@ -1242,23 +1380,23 @@ begin
     Result := False;
     Exit;
   end;
-  I := Pos(CDot, s);
-  if I > 0 then
-    Delete(s, I, Length(s) - I + 1);
+  i := Pos(CDot, s);
+  if i > 0 then
+    Delete(s, i, Length(s) - i + 1);
   Result := (s = '') or (Pos(#1 + s + #1, fDevices) = 0);
   if Result then
   begin
     FileNameExpanded := ExpandFileName(FN);
     if FileNameExpanded = '' then
     begin
-      F := Invalid_Handle_Value
-    end else
+      F := INVALID_HANDLE_VALUE
+    end
+    else
     begin
-      F := Windows.CreateFileA(@(FileNameExpanded[1]), 0,
-        FILE_SHARE_WRITE or FILE_SHARE_READ, nil, OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL, 0);
+      F := Windows.CreateFileA(@(FileNameExpanded[1]), 0, FILE_SHARE_WRITE or
+        FILE_SHARE_READ, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
     end;
-    if F <> Invalid_Handle_Value then
+    if F <> INVALID_HANDLE_VALUE then
     begin
       FT := GetFileType(F);
       Result := (FT = FILE_TYPE_DISK) or (FT = FILE_TYPE_UNKNOWN);
@@ -1266,8 +1404,6 @@ begin
     end;
   end;
 end;
-
-
 
 function LocalFNameSafe(const AFName: AnsiString): Boolean;
 var
@@ -1279,7 +1415,7 @@ begin
   ParentDir := AFName;
   repeat
     Dir := ExtractFileDir(ParentDir);
-    if (Dir = ParentDir) or (not (Length(Dir) < Length(ParentDir))) then
+    if (Dir = ParentDir) or (not(Length(Dir) < Length(ParentDir))) then
     begin
       Break;
     end;
@@ -1298,7 +1434,8 @@ begin
     if Dir = '' then
     begin
       fa := INVALID_VALUE;
-    end else
+    end
+    else
     begin
       fa := GetFileAttributesA(@(Dir[1]));
     end;
@@ -1307,8 +1444,8 @@ begin
       Break;
     end;
     if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
-       ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
-       ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
+      ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+      ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
     begin
       Break;
     end;
@@ -1317,15 +1454,13 @@ begin
   until False;
 end;
 
-
-function WebServerHttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
+function WebServerHttpResponse(thr: THTTPServerThread; d: THTTPData)
+  : TAbstractHttpResponseData;
 var
-  sPath, sName, sExt,
-  s: AnsiString;
+  sPath, sName, sExt, s: AnsiString;
   LocalFName: AnsiString;
   ii: HInst;
   ResponseEntityHeader: TEntityHeader;
-
 
 var
   CgiFile: AnsiString;
@@ -1335,122 +1470,134 @@ var
   // We were having problems with files that that had spaces in the name (C:\Program Files\).  The error that was being generated was "Internal Server Error: Can't open
   // To alievate this problem, we added double quotes to executable and script name
 
-function QuoteSpaced(const s: AnsiString): AnsiString;
-var
-  CSpace: AnsiChar;
-begin
-// Thanks to Vladimir A. Bakhvaloff (30 January 2000)
-// parameters to Pos() function were improperly ordered
-  CSpace := ' ';
-  if Pos(CSpace, DelSpaces(s)) <= 0 then // Does the file name contain space cheracters inside?
+  function QuoteSpaced(const s: AnsiString): AnsiString;
+  var
+    CSpace: AnsiChar;
   begin
-    Result := s                 // No, return it as is
-  end else
-  begin
-    Result := '"'+s+'"';        // Yes, add quotes
-  end;
-end;
-
-procedure Exec;
-begin
-  ResponseEntityHeader := ExecuteScript(QuoteSpaced(s), sPath, QuoteSpaced(CgiFile), d.URIQueryParam, GetEnvStr(thr, d, PathInfo), d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
-end;
-
-
-function CgiFileOK: Boolean;
-var
-  fa: DWord;
-  z,ts,comb: AnsiString;
-begin
-  Result := False;
-  comb := ParamStr1+'\'+ScriptsPath;
-  fa := GetFileAttributesA(@(comb[1]));
-  if fa = INVALID_HANDLE_VALUE then Exit;
-  if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
-     ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
-     ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0)
-   then Exit;
-  CgiFile := Copy(LocalFName, 1, Length(ParamStr1)+1+Length(ScriptsPath));
-  PathInfo := CopyLeft(LocalFName, Length(CgiFile)+2);
-  ts := PathInfo;
-  repeat
-    GetWrd(ts, z, '\');
-    CgiFile := CgiFile + '\'+z;
-    fa := GetFileAttributesA(@(CgiFile[1]));
-    if fa = INVALID_HANDLE_VALUE then Exit;
-    if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) and
-       ((fa and FILE_ATTRIBUTE_HIDDEN) = 0) and
-       ((fa and FILE_ATTRIBUTE_SYSTEM) = 0) then
+    // Thanks to Vladimir A. Bakhvaloff (30 January 2000)
+    // parameters to Pos() function were improperly ordered
+    CSpace := ' ';
+    if Pos(CSpace, DelSpaces(s)) <= 0 then
+    // Does the file name contain space cheracters inside?
     begin
-      Result := True;
-      Exit;
+      Result := s // No, return it as is
+    end
+    else
+    begin
+      Result := '"' + s + '"'; // Yes, add quotes
     end;
-  until False;
-end;
+  end;
 
-procedure RunCGI;
-begin
-    FSplit(CgiFile, sPath, sName, sExt);
+  procedure Exec;
+  begin
+    ResponseEntityHeader := ExecuteScript(QuoteSpaced(s), sPath,
+      QuoteSpaced(CgiFile), d.URIQueryParam, GetEnvStr(thr, d, PathInfo),
+      d.RequestEntityHeader.EntityBody, thr.Buffer, thr, d.ErrorMsg);
+  end;
+
+  function CgiFileOK: Boolean;
+  var
+    fa: DWORD;
+    z, ts, comb: AnsiString;
+  begin
+    Result := False;
+    comb := ParamStr1 + '\' + ScriptsPath;
+    fa := GetFileAttributesA(@(comb[1]));
+    if fa = INVALID_HANDLE_VALUE then
+      Exit;
+    if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) or
+      ((fa and FILE_ATTRIBUTE_HIDDEN) <> 0) or
+      ((fa and FILE_ATTRIBUTE_SYSTEM) <> 0) then
+      Exit;
+    CgiFile := Copy(LocalFName, 1, Length(ParamStr1) + 1 + Length(ScriptsPath));
+    PathInfo := CopyLeft(LocalFName, Length(CgiFile) + 2);
+    ts := PathInfo;
+    repeat
+      GetWrd(ts, z, '\');
+      CgiFile := CgiFile + '\' + z;
+      fa := GetFileAttributesA(@(CgiFile[1]));
+      if fa = INVALID_HANDLE_VALUE then
+        Exit;
+      if ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0) and
+        ((fa and FILE_ATTRIBUTE_HIDDEN) = 0) and
+        ((fa and FILE_ATTRIBUTE_SYSTEM) = 0) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    until False;
+  end;
+
+  procedure RunCGI;
+  begin
+    FSPlit(CgiFile, sPath, sName, sExt);
     if UpperCase(sExt) = '.EXE' then
     begin
       s := CgiFile;
       Exec;
-    end else
+    end
+    else
     begin
       ii := FindExecutableCached(CgiFile, sPath, s);
       if ii > 32 then
       begin
         if not FileExists(s) then
         begin
-          d.ErrorMsg := SysErrorMsg(GetLastError) + ' ('+s+')';
-        end else
+          d.ErrorMsg := SysErrorMsg(GetLastError) + ' (' + s + ')';
+        end
+        else
         begin
           Exec;
         end;
-      end else
+      end
+      else
       begin
         if ii = 31 then
         begin
           s := CgiFile;
           Exec;
-        end else
+        end
+        else
         begin
           d.ErrorMsg := SysErrorMsg(ii);
         end;
       end;
     end;
-end;
+  end;
 
-procedure MakeHeaders;
-begin
-  if ResponseEntityHeader = nil then
+  procedure MakeHeaders;
   begin
-    if d.ErrorMsg = '' then
+    if ResponseEntityHeader = nil then
     begin
-      d.ErrorMsg := 'CGI script '+d.URIPath+' returned nothing';
-    end else
-    begin
-      d.ErrorMsg := 'Internal Server Error: '+d.ErrorMsg;
-    end;
-    Result := THttpResponseErrorCode.Create(500);
-  end else
-  begin
-    if ResponseEntityHeader.CGILocation <> '' then
-    begin
-      if IsURL(ResponseEntityHeader.CGILocation) then
+      if d.ErrorMsg = '' then
       begin
-        Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
-      end else
+        d.ErrorMsg := 'CGI script ' + d.URIPath + ' returned nothing';
+      end
+      else
       begin
-        Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
+        d.ErrorMsg := 'Internal Server Error: ' + d.ErrorMsg;
       end;
-    end else
+      Result := THttpResponseErrorCode.Create(500);
+    end
+    else
     begin
-      Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
+      if ResponseEntityHeader.CGILocation <> '' then
+      begin
+        if IsURL(ResponseEntityHeader.CGILocation) then
+        begin
+          Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
+        end
+        else
+        begin
+          Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
+        end;
+      end
+      else
+      begin
+        Result := THttpResponseDataEntity.Create(ResponseEntityHeader);
+      end;
     end;
   end;
-end;
-
 
 var
   CForwardSlash, CBackSlash, CZero, CSemicolon: AnsiChar;
@@ -1469,7 +1616,7 @@ begin
   end;
 
   Replace(CForwardSlash, CBackSlash, s);
-  if (s='') or (s[1]<>CBackSlash) then
+  if (s = '') or (s[1] <> CBackSlash) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -1479,11 +1626,9 @@ begin
   CDoubleDot := '..';
   CDoubleBackslash := '\\';
   CDotEncosed := '\.\';
-  if (Pos(CZero, s)>0) or
-     (Pos(CDoubleDot, s)>0) or
-     (Pos(CSemicolon,s)>0) or
-     (Pos(CDotEncosed, s) > 0) or  // level #1 of protection from \.\
-     (Pos(CDoubleBackslash,s)>0) then
+  if (Pos(CZero, s) > 0) or (Pos(CDoubleDot, s) > 0) or (Pos(CSemicolon, s) > 0)
+    or (Pos(CDotEncosed, s) > 0) or // level #1 of protection from \.\
+    (Pos(CDoubleBackslash, s) > 0) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -1491,7 +1636,7 @@ begin
 
   LocalFName := ExpandFileName(ParamStr1 + s);
 
-  if not StrEnds(LocalFName, s) then      // level #2 of protection from \.\
+  if not StrEnds(LocalFName, s) then // level #2 of protection from \.\
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -1505,16 +1650,19 @@ begin
 
   CheckedURI := s;
 
-
-// Analyze file extension
-  if LowerCase(Copy(d.URIPath, 2, Length(ScriptsPath)+1)) = (ScriptsPath + '/') then
+  // Analyze file extension
+  if LowerCase(Copy(d.URIPath, 2, Length(ScriptsPath) + 1)) = (ScriptsPath + '/')
+  then
   begin
-    if CgiFileOK then RunCGI else d.ErrorMsg := SysErrorMsg(GetLastError);
+    if CgiFileOK then
+      RunCGI
+    else
+      d.ErrorMsg := SysErrorMsg(GetLastError);
     MakeHeaders;
     Exit;
   end;
 
-  if CheckedURI[Length(CheckedURI)]='\' then
+  if CheckedURI[Length(CheckedURI)] = '\' then
   begin
     LocalFName := FindRootFile(CheckedURI, IsCGI);
     if IsCGI then
@@ -1524,19 +1672,19 @@ begin
       MakeHeaders;
       Exit;
     end;
-  end else
-  if ExtractFileExt(CheckedURI) = '' then
+  end
+  else if ExtractFileExt(CheckedURI) = '' then
   begin
-    Result := ReturnNewLocation(d.URIpath+'/', d);
+    Result := ReturnNewLocation(d.URIPath + '/', d);
     Exit;
   end;
-
 
   Result := OpenRequestedFile(LocalFName, thr, d);
 
 end;
 
-function HttpResponse(thr: THttpServerThread; d: THTTPData): TAbstractHttpResponseData;
+function HttpResponse(thr: THTTPServerThread; d: THTTPData)
+  : TAbstractHttpResponseData;
 begin
   Result := WebServerHttpResponse(thr, d);
   Exit;
@@ -1550,24 +1698,27 @@ var
   rc: THttpResponseErrorCode absolute r;
 begin
   r := HttpResponse(Self, d);
-  if r = nil then GlobalFail;
+  if r = nil then
+    GlobalFail;
   if r is THttpResponseDataFileHandle then
   begin
     d.FHandle := rf.FHandle;
     d.TransferFile := True;
     d.ReportError := False;
     d.StatusCode := 200;
-  end else
-  if r is THttpResponseDataEntity then
+  end
+  else if r is THttpResponseDataEntity then
   begin
     d.ResponseEntityHeader := re.FEntityHeader;
     d.ReportError := False;
     d.StatusCode := 200;
-  end else
-  if r is THttpResponseErrorCode then
+  end
+  else if r is THttpResponseErrorCode then
   begin
     d.StatusCode := rc.FErrorCode;
-  end else GlobalFail;
+  end
+  else
+    GlobalFail;
   FreeObject(r);
 end;
 
@@ -1575,19 +1726,19 @@ procedure THTTPServerThread.Execute;
 var
   FPOS: DWORD;
   i, j: Integer;
-  s,z,k: AnsiString;
+  s, z, k: AnsiString;
   d: THTTPData;
   AbortConnection: Boolean;
   v, Actually: DWORD;
   CQuestion, CEqual, CZero, CSemicolon: AnsiChar;
 begin
 
-  {$IFDEF BEHIND_TUNNEL}
-  if recv(Socket.Handle, Socket.FAddr, 4, 0) <> 4 then Exit;
-  {$ENDIF}
-
-
-  if not Socket.Handshake then Exit;
+{$IFDEF BEHIND_TUNNEL}
+  if recv(Socket.Handle, Socket.FAddr, 4, 0) <> 4 then
+    Exit;
+{$ENDIF}
+  if not Socket.Handshake then
+    Exit;
 
   RemoteAddr := AddrInet(Socket.FAddr);
   RemoteHost := GetHostNameByAddr(Socket.FAddr);
@@ -1598,127 +1749,154 @@ begin
     d.StatusCode := 400;
     d.ReportError := True;
     d.ResponseGeneralHeader := TGeneralHeader.Create;
-    if d.ResponseResponseHeader = nil then d.ResponseResponseHeader := TResponseHeader.Create;
+    if d.ResponseResponseHeader = nil then
+      d.ResponseResponseHeader := TResponseHeader.Create;
     s := '';
-    with d do repeat
+    with d do
+      repeat
 
-      j := Socket.Read(Buffer, CHTTPServerThreadBufSize);
-      if (j <= 0) or (Socket.Status <> 0) then Break;
+        j := Socket.Read(Buffer, CHTTPServerThreadBufSize);
+        if (j <= 0) or (Socket.Status <> 0) then
+          Break;
 
-      if not RequestCollector.Collect(Buffer, j) then Break;
-      if not RequestCollector.CollectEntityBody then Continue;
+        if not RequestCollector.Collect(Buffer, j) then
+          Break;
+        if not RequestCollector.CollectEntityBody then
+          Continue;
 
-      if not RequestCollector.Parsed then
-      begin
-        if not RequestCollector.LineAvail then Break;
-        RequestCollector.Parsed := True;
-
-    // Parse the request
-        s := RequestCollector.GetNextLine;
-
-        if not ProcessQuotes(s) then Break;
-
-        GetWrdStrictUC(s, Method);    if s = '' then Break;
-        GetWrdStrict(s, RequestURI);  if s = '' then Break;
-        GetWrdStrict(s, HTTPVersion); if s <> '' then Break;
-
-    // Parse HTTP version
-        s := HTTPVersion;
-        GetWrd(s, z, '/'); if z <> 'HTTP' then Break;
-        GetWrd(s, z, '.');
-        if not DigitsOnly(s) or not DigitsOnly(z) then Break;
-        if not _Val(z, HttpVersionHi) then Break;
-        if not _Val(s, HttpVersionLo) then Break;
-
-        s := '';
-        z := '';
-
-        while RequestCollector.LineAvail do
+        if not RequestCollector.Parsed then
         begin
+          if not RequestCollector.LineAvail then
+            Break;
+          RequestCollector.Parsed := True;
+
+          // Parse the request
           s := RequestCollector.GetNextLine;
-          if Length(s)<4 then Break;
-          GetWrdStrictUC(s, z);
-          Delete(z, Length(z), 1);
-          if not RequestGeneralHeader.Filter(z, s) and
-             not RequestRequestHeader.Filter(z, s) and
-             not RequestEntityHeader.Filter(z, s) then
-          begin
-            // New Feature !!!
-          end;
+
+          if not ProcessQuotes(s) then
+            Break;
+
+          GetWrdStrictUC(s, Method);
+          if s = '' then
+            Break;
+          GetWrdStrict(s, RequestURI);
+          if s = '' then
+            Break;
+          GetWrdStrict(s, HTTPVersion);
+          if s <> '' then
+            Break;
+
+          // Parse HTTP version
+          s := HTTPVersion;
+          GetWrd(s, z, '/');
+          if z <> 'HTTP' then
+            Break;
+          GetWrd(s, z, '.');
+          if not DigitsOnly(s) or not DigitsOnly(z) then
+            Break;
+          if not _Val(z, HTTPVersionHi) then
+            Break;
+          if not _Val(s, HTTPVersionLo) then
+            Break;
 
           s := '';
           z := '';
-        end;
 
-        if (s <> '') or (z <> '') then Break;
-        RequestCollector.SetContentLength(StoI(RequestEntityHeader.ContentLength));
-      end;
-
-      if not RequestCollector.GotEntityBody then Continue;
-
-      // process intity body
-      RequestEntityHeader.CopyEntityBody(RequestCollector);
-
-      FreeObject(RequestCollector);
-
-      KeepAliveInRequest := UpperCase(RequestGeneralHeader.Connection) = 'KEEP-ALIVE';
-      KeepAliveInReply := KeepAliveInRequest;
-
-      if (Method <> 'GET') and
-         (Method <> 'POST') and
-         (Method <> 'HEAD') then
-      begin
-        StatusCode := 403;
-        Break;
-      end else
-      begin
-
-    // Parse URI
-        s := RequestURI;
-        CQuestion := '?';
-        i := Pos(CQuestion, s);
-        if i > 0 then
-        begin
-          URIQuery := CopyLeft(s, i+1);
-          DeleteLeft(s, i);
-          CEqual := '=';
-          if Pos(CEqual, URIQuery) = 0 then
+          while RequestCollector.LineAvail do
           begin
-            URIQueryParam := URIQuery;
-            if not UnpackPchars(URIQueryParam) then Break;
-            CZero := #0;
-            if Pos(CZero, URIQueryParam)>0 then Break;
+            s := RequestCollector.GetNextLine;
+            if Length(s) < 4 then
+              Break;
+            GetWrdStrictUC(s, z);
+            Delete(z, Length(z), 1);
+            if not RequestGeneralHeader.Filter(z, s) and
+              not RequestRequestHeader.Filter(z, s) and
+              not RequestEntityHeader.Filter(z, s) then
+            begin
+              // New Feature !!!
+            end;
+
+            s := '';
+            z := '';
           end;
+
+          if (s <> '') or (z <> '') then
+            Break;
+          RequestCollector.SetContentLength
+            (StoI(RequestEntityHeader.ContentLength));
         end;
-        CSemicolon := ';';
-        i := Pos(CSemicolon, s);
-        if i > 0 then
+
+        if not RequestCollector.GotEntityBody then
+          Continue;
+
+        // process intity body
+        RequestEntityHeader.CopyEntityBody(RequestCollector);
+
+        FreeObject(RequestCollector);
+
+        KeepAliveInRequest := UpperCase(RequestGeneralHeader.Connection)
+          = 'KEEP-ALIVE';
+        KeepAliveInReply := KeepAliveInRequest;
+
+        if (Method <> 'GET') and (Method <> 'POST') and (Method <> 'HEAD') then
         begin
-          URIParams := CopyLeft(s, i+1);
-          DeleteLeft(s, i);
-        end;
-        if not UnpackPchars(s) then Break;
-        URIPath := s;
+          StatusCode := 403;
+          Break;
+        end
+        else
+        begin
+
+          // Parse URI
+          s := RequestURI;
+          CQuestion := '?';
+          i := Pos(CQuestion, s);
+          if i > 0 then
+          begin
+            URIQuery := CopyLeft(s, i + 1);
+            DeleteLeft(s, i);
+            CEqual := '=';
+            if Pos(CEqual, URIQuery) = 0 then
+            begin
+              URIQueryParam := URIQuery;
+              if not UnpackPchars(URIQueryParam) then
+                Break;
+              CZero := #0;
+              if Pos(CZero, URIQueryParam) > 0 then
+                Break;
+            end;
+          end;
+          CSemicolon := ';';
+          i := Pos(CSemicolon, s);
+          if i > 0 then
+          begin
+            URIParams := CopyLeft(s, i + 1);
+            DeleteLeft(s, i);
+          end;
+          if not UnpackPchars(s) then
+            Break;
+          URIPath := s;
 
 {$IFDEF LOGGING}
-        AddRefererLog(d.RequestRequestHeader.Referer, d.URIPath);
-        AddAgentLog(d.RequestRequestHeader.UserAgent);
+          AddRefererLog(d.RequestRequestHeader.Referer, d.URIPath);
+          AddAgentLog(d.RequestRequestHeader.UserAgent);
 {$ENDIF}
-        PrepareResponse(d);
+          PrepareResponse(d);
 
-        Break;
-      end;
-    until False;
+          Break;
+        end;
+      until False;
 
-  // Send a response
+    // Send a response
     with d do
     begin
-      if ResponseEntityHeader = nil then ResponseEntityHeader := TEntityHeader.Create;
+      if ResponseEntityHeader = nil then
+        ResponseEntityHeader := TEntityHeader.Create;
 
       if TransferFile and (RequestRequestHeader.IfModifiedSince <> '') then
       begin
         Actually := StrToFileTime(RequestRequestHeader.IfModifiedSince);
-        if (Actually <> INVALID_FILE_TIME) and (StrToFileTime(ResponseEntityHeader.LastModified) = Actually) then
+        if (Actually <> INVALID_FILE_TIME) and
+          (StrToFileTime(ResponseEntityHeader.LastModified) = Actually) then
         begin
           ZeroHandle(FHandle);
           TransferFile := False;
@@ -1730,68 +1908,85 @@ begin
       s := ResponseEntityHeader.CGIStatus;
       if s <> '' then
       begin
-	      k := s;
-	      GetWrd(k, z, ' ');
+        k := s;
+        GetWrd(k, z, ' ');
         v := Vl(z);
-        if (v <> INVALID_VALUE) and (v < 1000) and (v > 0) then StatusCode := v else StatusCode := 0;
-    // Status code 200 was treated as error. Thanks to David Gommeren for pointing that out.
-      	if StatusCode <> 200 then ReportError := True;
-      end else
+        if (v <> INVALID_VALUE) and (v < 1000) and (v > 0) then
+          StatusCode := v
+        else
+          StatusCode := 0;
+        // Status code 200 was treated as error. Thanks to David Gommeren for pointing that out.
+        if StatusCode <> 200 then
+          ReportError := True;
+      end
+      else
       begin
- // Get Status Line
-        for i := 0 to MaxStatusCodeIdx do if StatusCode = StatusCodes[i].Code then
-        begin
-          s := StatusCodes[i].Msg;
-          Break;
-        end;
-        if s = '' then GlobalFail;
-        if ErrorMsg = '' then ErrorMsg := s;
-        s := ItoS(StatusCode)+ ' '+ s;
+        // Get Status Line
+        for i := 0 to MaxStatusCodeIdx do
+          if StatusCode = StatusCodes[i].Code then
+          begin
+            s := StatusCodes[i].Msg;
+            Break;
+          end;
+        if s = '' then
+          GlobalFail;
+        if ErrorMsg = '' then
+          ErrorMsg := s;
+        s := ItoS(StatusCode) + ' ' + s;
       end;
       if ReportError then
       begin
         if StatusCode = 401 then
         begin
-          if ResponseResponseHeader.IsNormalAuthenticateAfterEmptyUsernamePassword then
+          if ResponseResponseHeader.IsNormalAuthenticateAfterEmptyUsernamePassword
+          then
           begin
             // don't close connection on "Unauthorized" error if the username and password were emplty - a normal way of authenticate on http
-          end else
+          end
+          else
           begin
             // invalid credentials - sleep from 0 to 5 seconds to prevent password checking
             Sleep(Random(5001));
             KeepAliveInReply := False;
           end;
-        end else
+        end
+        else
         begin
           KeepAliveInReply := False;
         end;
-        if ResponseEntityHeader.ContentType = '' then ResponseEntityHeader.ContentType := 'text/html';
-        if ResponseEntityHeader.EntityBody = '' then ResponseEntityHeader.EntityBody :=
-          '<HTML>'+
-          '<TITLE>'+s+'</TITLE>'+
-          '<BODY><H1>'+ErrorMsg+'</H1></BODY>'+
-          '</HTML>';
-        ResponseEntityHeader.EntityLength := Length(ResponseEntityHeader.EntityBody);
+        if ResponseEntityHeader.ContentType = '' then
+          ResponseEntityHeader.ContentType := 'text/html';
+        if ResponseEntityHeader.EntityBody = '' then
+          ResponseEntityHeader.EntityBody := '<HTML>' + '<TITLE>' + s +
+            '</TITLE>' + '<BODY><H1>' + ErrorMsg + '</H1></BODY>' + '</HTML>';
+        ResponseEntityHeader.EntityLength :=
+          Length(ResponseEntityHeader.EntityBody);
       end;
 
-      ResponseEntityHeader.ContentLength := ItoS(ResponseEntityHeader.EntityLength);
+      ResponseEntityHeader.ContentLength :=
+        ItoS(ResponseEntityHeader.EntityLength);
 
-      if KeepAliveInReply then ResponseGeneralHeader.Connection := 'Keep-Alive' else
+      if KeepAliveInReply then
+        ResponseGeneralHeader.Connection := 'Keep-Alive'
+      else
       begin
-        if KeepAliveInRequest then ResponseGeneralHeader.Connection := 'Close';
+        if KeepAliveInRequest then
+          ResponseGeneralHeader.Connection := 'Close';
       end;
 
       ResponseResponseHeader.Server := CServerName;
 
-      if ReportError then i := -1 else i := ResponseEntityHeader.EntityLength;
+      if ReportError then
+        i := -1
+      else
+        i := ResponseEntityHeader.EntityLength;
 {$IFDEF LOGGING}
-      AddAccessLog(RemoteHost, Method + ' ' + URIPath, HTTPVersion, d.AuthUser, StatusCode,  i);
+      AddAccessLog(RemoteHost, Method + ' ' + URIPath, HTTPVersion, d.AuthUser,
+        StatusCode, i);
 {$ENDIF}
-      s := 'HTTP/1.0 '+ s + #13#10+
-        ResponseGeneralHeader.OutString+
-        ResponseResponseHeader.OutString+
-        ResponseEntityHeader.OutString+
-        #13#10;
+      s := 'HTTP/1.0 ' + s + #13#10 + ResponseGeneralHeader.OutString +
+        ResponseResponseHeader.OutString +
+        ResponseEntityHeader.OutString + #13#10;
 
       if TransferFile then
       begin
@@ -1800,13 +1995,18 @@ begin
         repeat
           ReadFile(FHandle, Buffer, CHTTPServerThreadBufSize, Actually, nil);
           Inc(FPOS, Actually);
-          if FPOS > FileNfo.Size then Break;
-          if Actually = 0 then Break;
+          if FPOS > FileNfo.Size then
+            Break;
+          if Actually = 0 then
+            Break;
           Actually := Socket.Write(Buffer, Actually);
-        until (FPOS = FileNfo.Size) or (Actually < CHTTPServerThreadBufSize) or (Socket.Status <> 0);
-        if FPOS <> FileNfo.Size then AbortConnection := True;
+        until (FPOS = FileNfo.Size) or (Actually < CHTTPServerThreadBufSize) or
+          (Socket.Status <> 0);
+        if FPOS <> FileNfo.Size then
+          AbortConnection := True;
         ZeroHandle(FHandle);
-      end else
+      end
+      else
       begin
         s := s + ResponseEntityHeader.EntityBody;
         Socket.WriteStr(s);
@@ -1814,608 +2014,618 @@ begin
       AbortConnection := AbortConnection or not KeepAliveInReply;
     end;
     FreeObject(d);
-  until AbortConnection
-end;
+  until AbortConnection end;
 
-
-function TContentTypeColl.Compare(Key1, Key2: Pointer): Integer;
-begin
-  Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
-end;
-
-function TContentTypeColl.KeyOf(Item: Pointer): Pointer;
-begin
-  Result := @TContentType(Item).Extension;
-end;
-
-procedure GetContentTypes(const CBase, SubName: AnsiString; Swap: Boolean);
-const
-  ClassBufSize = 1000;
-var
-  Buf: array[0..ClassBufSize] of AnsiChar;
-  r: TContentType;
-  s, z, t : AnsiString;
-  ec,
-  i: Integer;
-  Key,
-  SubKey,
-  BufSize,                       // size of AnsiString buffer
-  cSubKeys,                      // number of subkeys
-  cchMaxSubkey,                  // longest subkey name length
-  cchMaxClass,                   // longest class AnsiString length
-  cValues,                       // number of value entries
-  cchMaxValueName,               // longest value name length
-  cbMaxValueData,                // longest value data length
-  cbSecurityDescriptor: DWORD;   // security descriptor length
-  ftLastWriteTime: TFileTime;    // last write time
-begin
-  Key := OpenRegKeyEx(CBase, KEY_QUERY_VALUE or KEY_ENUMERATE_SUB_KEYS);
-  BufSize := ClassBufSize;
-  ec := RegQueryInfoKeyA(
-    Key,                        // handle of key to query
-    @(Buf[0]),
-    @BufSize,
-    nil,
-    @cSubKeys,
-    @cchMaxSubkey,
-    @cchMaxClass,
-    @cValues,
-    @cchMaxValueName,
-    @cbMaxValueData,
-    @cbSecurityDescriptor,
-    @ftLastWriteTime);
-  if ec <> ERROR_SUCCESS then
+  function TContentTypeColl.Compare(Key1, Key2: Pointer): Integer;
   begin
-    RegCloseKey(Key);
-    Exit
+    Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
   end;
-  for i := 0 to cSubKeys-1 do
+
+  function TContentTypeColl.KeyOf(Item: Pointer): Pointer;
   begin
+    Result := @TContentType(Item).Extension;
+  end;
+
+  procedure GetContentTypes(const CBase, SubName: AnsiString; Swap: Boolean);
+  const
+    ClassBufSize = 1000;
+  var
+    Buf: array [0 .. ClassBufSize] of AnsiChar;
+    r: TContentType;
+    s, z, T: AnsiString;
+    ec, i: Integer;
+    Key, SubKey, BufSize, // size of AnsiString buffer
+    cSubKeys, // number of subkeys
+    cchMaxSubkey, // longest subkey name length
+    cchMaxClass, // longest class AnsiString length
+    cValues, // number of value entries
+    cchMaxValueName, // longest value name length
+    cbMaxValueData, // longest value data length
+    cbSecurityDescriptor: DWORD; // security descriptor length
+    ftLastWriteTime: TFileTime; // last write time
+  begin
+    Key := OpenRegKeyEx(CBase, KEY_QUERY_VALUE or KEY_ENUMERATE_SUB_KEYS);
     BufSize := ClassBufSize;
-    ec := RegEnumKeyExA(
-      Key,
-      i,
-      Buf,
-      BufSize,
-      nil,
-      nil, // address of buffer for class AnsiString
-      nil, // address for size of class buffer
+    ec := RegQueryInfoKeyA(Key, // handle of key to query
+      @(Buf[0]), @BufSize, nil, @cSubKeys, @cchMaxSubkey, @cchMaxClass,
+      @cValues, @cchMaxValueName, @cbMaxValueData, @cbSecurityDescriptor,
       @ftLastWriteTime);
-    if ec <> ERROR_SUCCESS then Continue;
-    SetString(s, Buf, BufSize);
-    SubKey := OpenRegKey(CBase+'\'+s);
-    if SubKey = INVALID_REGISTRY_KEY then Continue;
-    z := ReadRegString(SubKey, SubName);
-    RegCloseKey(SubKey);
-    if Swap then
+    if ec <> ERROR_SUCCESS then
     begin
-      t := s;
-      s := z;
-      z := t;
+      RegCloseKey(Key);
+      Exit
     end;
-    z := LowerCase(CopyLeft(z,2));
-    if (z = '') or (s = '') then Continue;
-    if ContentTypes.Search(@z, ec) then Continue;
-    r := TContentType.Create;
-    r.ContentType := s;
-    r.Extension := z;
-    ContentTypes.AtInsert(ec, r);
+    for i := 0 to cSubKeys - 1 do
+    begin
+      BufSize := ClassBufSize;
+      ec := RegEnumKeyExA(Key, i, Buf, BufSize, nil, nil,
+        // address of buffer for class AnsiString
+        nil, // address for size of class buffer
+        @ftLastWriteTime);
+      if ec <> ERROR_SUCCESS then
+        Continue;
+      SetString(s, Buf, BufSize);
+      SubKey := OpenRegKey(CBase + '\' + s);
+      if SubKey = INVALID_REGISTRY_KEY then
+        Continue;
+      z := ReadRegString(SubKey, SubName);
+      RegCloseKey(SubKey);
+      if Swap then
+      begin
+        T := s;
+        s := z;
+        z := T;
+      end;
+      z := LowerCase(CopyLeft(z, 2));
+      if (z = '') or (s = '') then
+        Continue;
+      if ContentTypes.Search(@z, ec) then
+        Continue;
+      r := TContentType.Create;
+      r.ContentType := s;
+      r.Extension := z;
+      ContentTypes.AtInsert(ec, r);
+    end;
+    RegCloseKey(Key);
   end;
-  RegCloseKey(Key);
-end;
 
-type
-  TAdrB = packed record
-    A, B, C, D: Byte;
-  end;
+  type
+    TAdrB = packed record
+      a, b, c, d: Byte;
+    end;
 
-
-function Adr2IntGet(const s: AnsiString; var CPos: Integer; var Error: Boolean): Byte;
-var
-  C: AnsiChar;
-  R: Integer;
-  err: Boolean;
-begin
-  Result := 0;
-  if Error then Exit;
-  err := False;
-  R := Ord(S[CPos])-48;
-  Inc(CPos);
-  C := S[CPos];
-  if (C >= '0') and (C <= '9') then
+  function Adr2IntGet(const s: AnsiString; var CPos: Integer;
+    var Error: Boolean): Byte;
+  var
+    c: AnsiChar;
+    r: Integer;
+    err: Boolean;
   begin
-    R := R * 10 + (Ord(C)-48); Inc(CPos);
-    C := S[CPos];
-    if (C >= '0') and (C <= '9') then begin R := R * 10 + (Ord(C)-48); Inc(CPos) end else err := C <> '.';
-  end else err := C <> '.';
-  if (R > 255) or (err) then
-  begin
-    Error := True;
-    Exit;
+    Result := 0;
+    if Error then
+      Exit;
+    err := False;
+    r := Ord(s[CPos]) - 48;
+    Inc(CPos);
+    c := s[CPos];
+    if (c >= '0') and (c <= '9') then
+    begin
+      r := r * 10 + (Ord(c) - 48);
+      Inc(CPos);
+      c := s[CPos];
+      if (c >= '0') and (c <= '9') then
+      begin
+        r := r * 10 + (Ord(c) - 48);
+        Inc(CPos)
+      end
+      else
+        err := c <> '.';
+    end
+    else
+      err := c <> '.';
+    if (r > 255) or (err) then
+    begin
+      Error := True;
+      Exit;
+    end;
+    Inc(CPos);
+    Result := r;
   end;
-  Inc(CPos);
-  Result := R;
-end;
 
-
-function _Adr2Int(const s: AnsiString): DWORD;
-var
-  CPos: Integer;
-  Error: Boolean;
-  A: TAdrB;
-begin
-  Error := False;
-  CPos := 1;
-  A.A := Adr2IntGet(s, CPos, Error);
-  A.B := Adr2IntGet(s, CPos, Error);
-  A.C := Adr2IntGet(s, CPos, Error);
-  A.D := Adr2IntGet(s, CPos, Error);
-  if Error then Result := DWORD(INADDR_NONE) else  Result := PInteger(@A)^;
-end;
-
-function Adr2Int(const s: AnsiString): Integer;
-begin
-  Result := _Adr2Int(s+'.');
-end;
-
-
-var
-  BindPort, BindAddr: DWORD;
-  IsCGI: Boolean;
-
-function GetHomeDir: Boolean;
-var
-  s: AnsiString;
-  i: DWORD;
-begin
-  Result := False;
-  if ParamCount < 1 then
+  function _Adr2Int(const s: AnsiString): DWORD;
+  var
+    CPos: Integer;
+    Error: Boolean;
+    a: TAdrB;
   begin
-    MessageBox(0, 'Path to home directory is absent!'#13#10+
-                  CServerName+' failed to start.',
-                  CServerName, CMB_FAILED);
-    Exit;
+    Error := False;
+    CPos := 1;
+    a.a := Adr2IntGet(s, CPos, Error);
+    a.b := Adr2IntGet(s, CPos, Error);
+    a.c := Adr2IntGet(s, CPos, Error);
+    a.d := Adr2IntGet(s, CPos, Error);
+    if Error then
+      Result := DWORD(INADDR_NONE)
+    else
+      Result := PInteger(@a)^;
   end;
-  ParamStr1 := UnicodeStringToRawByteString(ParamStr(1), GetACP);
-  if ParamStr1[Length(ParamStr1)] = '\' then Delete(ParamStr1, Length(ParamStr1), 1);
-  s := FindRootFile('\', IsCGI);
-  if not FileExists(s) then
-  begin
-    s := 'Access to "'+s+'" failed'#13#10'Reason: "'+SysErrorMsg(GetLastError)+'"'#13#10#13#10+
-    CServerName+' failed to start';
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
-    Exit;
-  end;
-  BindPort := 80;
-  BindAddr := _INADDR_ANY;
-  if ParamCount > 1 then
-  begin
-    i := Vl(UnicodeStringToRawByteString(ParamStr(2), GetACP));
-    if i <> INVALID_VALUE then BindPort := i;
-  end;
-  if ParamCount > 2 then
-  begin
-    i := Adr2Int(UnicodeStringToRawByteString(ParamStr(3), GetACP));
-    if i <> INVALID_VALUE then BindAddr := i;
-  end;
-  Result := True;
-end;
 
-procedure ReadContentTypes;
-begin
-  ContentTypes := TContentTypeColl.Create;
-  GetContentTypes('SOFTWARE\Classes\MIME\Database\Content Type', 'Extension', False);
-  GetContentTypes('SOFTWARE\Classes', 'Content Type', True);
-end;
+  function Adr2Int(const s: AnsiString): Integer;
+  begin
+    Result := _Adr2Int(s + '.');
+  end;
+
+  var
+    BindPort, BindAddr: DWORD;
+    IsCGI: Boolean;
+
+  function GetHomeDir: Boolean;
+  var
+    s: AnsiString;
+    i: DWORD;
+  begin
+    Result := False;
+    if ParamCount < 1 then
+    begin
+      MessageBox(0, 'Path to home directory is absent!'#13#10 + CServerName +
+        ' failed to start.', CServerName, CMB_FAILED);
+      Exit;
+    end;
+    ParamStr1 := UnicodeStringToRawByteString(ParamStr(1), GetACP);
+    if ParamStr1[Length(ParamStr1)] = '\' then
+      Delete(ParamStr1, Length(ParamStr1), 1);
+    s := FindRootFile('\', IsCGI);
+    if not FileExists(s) then
+    begin
+      s := 'Access to "' + s + '" failed'#13#10'Reason: "' +
+        SysErrorMsg(GetLastError) + '"'#13#10#13#10 + CServerName +
+        ' failed to start';
+      MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+      Exit;
+    end;
+    BindPort := 80;
+    BindAddr := _INADDR_ANY;
+    if ParamCount > 1 then
+    begin
+      i := Vl(UnicodeStringToRawByteString(ParamStr(2), GetACP));
+      if i <> INVALID_VALUE then
+        BindPort := i;
+    end;
+    if ParamCount > 2 then
+    begin
+      i := Adr2Int(UnicodeStringToRawByteString(ParamStr(3), GetACP));
+      if i <> INVALID_VALUE then
+        BindAddr := i;
+    end;
+    Result := True;
+  end;
+
+  procedure ReadContentTypes;
+  begin
+    ContentTypes := TContentTypeColl.Create;
+    GetContentTypes('SOFTWARE\Classes\MIME\Database\Content Type',
+      'Extension', False);
+    GetContentTypes('SOFTWARE\Classes', 'Content Type', True);
+  end;
 
 {$IFDEF LOGGING}
-procedure InitLogs;
-begin
-  FAccessLog := 'access_log';
-  FAgentLog := 'agent_log';
-  FErrorLog := 'error_log';
-  FRefererLog := 'referer_log';
-  if not _LogOK(FAccessLog, HAccessLog) or
-     not _LogOK(FAgentLog, HAgentLog) or
-     not _LogOK(FErrorLog, HErrorLog) or
-     not _LogOK(FRefererLog, HRefererLog) then GlobalFail;
-  InitializeCriticalSection(CSAccessLog);
-  InitializeCriticalSection(CSAgentLog);
-  InitializeCriticalSection(CSErrorLog);
-  InitializeCriticalSection(CSRefererLog);
-end;
+
+  procedure InitLogs;
+  begin
+    FAccessLog := 'access_log';
+    FAgentLog := 'agent_log';
+    FErrorLog := 'error_log';
+    FRefererLog := 'referer_log';
+    if not _LogOK(FAccessLog, HAccessLog) or not _LogOK(FAgentLog, HAgentLog) or
+      not _LogOK(FErrorLog, HErrorLog) or not _LogOK(FRefererLog, HRefererLog)
+    then
+      GlobalFail;
+    InitializeCriticalSection(CSAccessLog);
+    InitializeCriticalSection(CSAgentLog);
+    InitializeCriticalSection(CSErrorLog);
+    InitializeCriticalSection(CSRefererLog);
+  end;
 {$ENDIF}
 
-procedure InitReseterThread;
-begin
-  SocketsColl := TColl.Create;
-  ResetterThread := TResetterThread.Create;
-end;
-
-procedure FreeDummyLibraries;
-var
-  I: Integer;
-begin
-  I := GetModuleHandle('OleAut32'); if I <> 0 then FreeLibrary(I); 
-  I := GetModuleHandle('Ole32'); if I <> 0 then FreeLibrary(I);
-  I := GetModuleHandle('RPCRT4'); if I <> 0 then FreeLibrary(I);
-  I := GetModuleHandle('AdvAPI32'); if I <> 0 then FreeLibrary(I);
-  I := GetModuleHandle('GDI32'); if I <> 0 then FreeLibrary(I);
-  I := GetModuleHandle('COMCTL32'); if I <> 0 then FreeLibrary(I);
-  I := GetModuleHandle('USER32'); if I <> 0 then FreeLibrary(I);
-end;
-
-type
-  TWndMethod = procedure(var Message: TMessage) of object;
-
-
-const
-  InstanceCount = 313;
-
-{ Object instance management }
-
-type
-  PObjectInstance = ^TObjectInstance;
-  TObjectInstance = packed record
-    Code: Byte;
-    Offset: Integer;
-    case Integer of
-      0: (Next: PObjectInstance);
-      1: (Method: TWndMethod);
+  procedure InitReseterThread;
+  begin
+    SocketsColl := TColl.Create;
+    ResetterThread := TResetterThread.Create;
   end;
 
-type
-  PInstanceBlock = ^TInstanceBlock;
-  TInstanceBlock = packed record
-    Next: PInstanceBlock;
-    Code: array[1..2] of Byte;
-    WndProcPtr: Pointer;
-    Instances: array[0..InstanceCount] of TObjectInstance;
+  procedure FreeDummyLibraries;
+  var
+    i: Integer;
+  begin
+    i := GetModuleHandle('OleAut32');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('Ole32');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('RPCRT4');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('AdvAPI32');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('GDI32');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('COMCTL32');
+    if i <> 0 then
+      FreeLibrary(i);
+    i := GetModuleHandle('USER32');
+    if i <> 0 then
+      FreeLibrary(i);
   end;
 
-var
-  InstBlockList: PInstanceBlock;
-  InstFreeList: PObjectInstance;
+  type
+    TWndMethod = procedure(var Message: TMessage) of object;
+
+  const
+    InstanceCount = 313;
+
+    { Object instance management }
+
+  type
+    PObjectInstance = ^TObjectInstance;
+
+    TObjectInstance = packed record
+      Code: Byte;
+      Offset: Integer;
+      case Integer of
+        0:
+          (Next: PObjectInstance);
+        1:
+          (Method: TWndMethod);
+    end;
+
+  type
+    PInstanceBlock = ^TInstanceBlock;
+
+    TInstanceBlock = packed record
+      Next: PInstanceBlock;
+      Code: array [1 .. 2] of Byte;
+      WndProcPtr: Pointer;
+      Instances: array [0 .. InstanceCount] of TObjectInstance;
+    end;
+
+  var
+    InstBlockList: PInstanceBlock;
+    InstFreeList: PObjectInstance;
 
 {$IFDEF FPC}
 {$ASMMODE Intel}
 {$ENDIF}
+    { Standard window procedure }
+    { In    ECX = Address of method pointer }
+    { Out   EAX = Result }
 
+  function StdWndProc(Window: HWND; Message, WParam: Longint; LParam: Longint)
+    : Longint; stdcall; assembler;
+  asm
+    XOR     EAX,EAX
+    PUSH    EAX
+    PUSH    LParam
+    PUSH    WParam
+    PUSH    Message
+    MOV     EDX,ESP
+    MOV     EAX,[ECX].Longint[4]
+    CALL    [ECX].Pointer
+    ADD     ESP,12
+    POP     EAX
+  end;
 
-{ Standard window procedure }
-{ In    ECX = Address of method pointer }
-{ Out   EAX = Result }
+  { Allocate an object instance }
 
-function StdWndProc(Window: HWND; Message, WParam: Longint;
-  LParam: Longint): Longint; stdcall; assembler;
-asm
-        XOR     EAX,EAX
-        PUSH    EAX
-        PUSH    LParam
-        PUSH    WParam
-        PUSH    Message
-        MOV     EDX,ESP
-        MOV     EAX,[ECX].Longint[4]
-        CALL    [ECX].Pointer
-        ADD     ESP,12
-        POP     EAX
-end;
-
-{ Allocate an object instance }
-
-function CalcJmpOffset(Src, Dest: Pointer): Longint;
-begin
-  Result := Longint(Dest) - (Longint(Src) + 5);
-end;
-
-function MakeObjectInstance(Method: TWndMethod): Pointer;
-const
-  BlockCode: array[1..2] of Byte = (
-    $59,       { POP ECX }
-    $E9);      { JMP StdWndProc }
-  PageSize = 4096;
-var
-  Block: PInstanceBlock;
-  Instance: PObjectInstance;
-begin
-  if InstFreeList = nil then
+  function CalcJmpOffset(Src, Dest: Pointer): Longint;
   begin
-    Block := VirtualAlloc(nil, PageSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-    Block^.Next := InstBlockList;
-    Move(BlockCode, Block^.Code, SizeOf(BlockCode));
-    Block^.WndProcPtr := Pointer(CalcJmpOffset(@Block^.Code[2], @StdWndProc));
-    Instance := @(Block^.Instances[0]);
-    repeat
-      Instance^.Code := $E8;  { CALL NEAR PTR Offset }
-      Instance^.Offset := CalcJmpOffset(Instance, @Block^.Code);
-      Instance^.Next := InstFreeList;
-      InstFreeList := Instance;
-      Inc(Longint(Instance), SizeOf(TObjectInstance));
-    until Longint(Instance) - Longint(Block) >= SizeOf(TInstanceBlock);
-    InstBlockList := Block;
+    Result := Longint(Dest) - (Longint(Src) + 5);
   end;
-  Result := InstFreeList;
-  Instance := InstFreeList;
-  InstFreeList := Instance^.Next;
-  Instance^.Method := Method;
-end;
 
-{ Free an object instance }
-
-procedure FreeObjectInstance(ObjectInstance: Pointer);
-begin
-  if ObjectInstance <> nil then
+  function MakeObjectInstance(Method: TWndMethod): Pointer;
+  const
+    BlockCode: array [1 .. 2] of Byte = ($59, { POP ECX }
+      $E9); { JMP StdWndProc }
+    PageSize = 4096;
+  var
+    Block: PInstanceBlock;
+    Instance: PObjectInstance;
   begin
-    PObjectInstance(ObjectInstance)^.Next := InstFreeList;
-    InstFreeList := ObjectInstance;
-  end;
-end;
-
-var
-  UtilWindowClass: TWndClass = (
-    style: 0;
-    lpfnWndProc: @DefWindowProc;
-    cbClsExtra: 0;
-    cbWndExtra: 0;
-    hInstance: 0;
-    hIcon: 0;
-    hCursor: 0;
-    hbrBackground: 0;
-    lpszMenuName: nil;
-    lpszClassName: 'TPUtilWindow');
-
-function AllocateHWnd(Method: TWndMethod): HWND;
-var
-  TempClass: TWndClass;
-  ClassRegistered: Boolean;
-begin
-  UtilWindowClass.hInstance := HInstance;
-  UtilWindowClass.lpfnWndProc := @DefWindowProc;
-  ClassRegistered := GetClassInfo(HInstance, UtilWindowClass.lpszClassName,
-    TempClass);
-  if not ClassRegistered or ({$IFDEF FPC_DELPHI}@{$ENDIF}TempClass.lpfnWndProc <> @DefWindowProc) then
-  begin
-    if ClassRegistered then
-      Windows.UnregisterClass(UtilWindowClass.lpszClassName, HInstance);
-    Windows.RegisterClass(UtilWindowClass);
-  end;
-  Result := CreateWindowEx(WS_EX_TOOLWINDOW, UtilWindowClass.lpszClassName,
-    '', WS_POPUP {!0}, 0, 0, 0, 0, 0, 0, HInstance, nil);
-  if Assigned(Method) then
-    SetWindowLong(Result, GWL_WNDPROC, Longint(MakeObjectInstance(Method)));
-end;
-
-procedure DeallocateHWnd(Wnd: HWND);
-var
-  DefAddr, Instance: Pointer;
-begin
-  Instance := Pointer(GetWindowLong(Wnd, GWL_WNDPROC));
-  DestroyWindow(Wnd);
-  DefAddr := @DefWindowProc;
-  if Instance <> DefAddr then FreeObjectInstance(Instance);
-end;
-
-type
-  TWndProc = class
-    Handle: THandle;
-    procedure WndProc(var M: TMessage);
-    destructor Destroy; override;
-  end;
-
-destructor TWndProc.Destroy;
-begin
-  DeallocateHWnd(Handle);
-  inherited Destroy;
-end;
-
-var
-  Leave: Boolean;
-
-procedure TWndProc.WndProc(var M: TMessage);
-begin
-  if M.Msg = WM_QUIT then Leave := True;
-  M.Result := DefWindowProc(Handle, M.Msg, M.wParam, M.lParam);
-end;
-
-type
-  TMainThread = class(TThread)
-    procedure Execute; override;
-  end;
-
-var
-  ServerSocketHandle: WinSock.TSocket;
-
-
-procedure MainLoop;
-var
-  J, err: Integer;
-  NewSocketHandle: WinSock.TSocket;
-  NewSocket: TSocket;
-  NewThread: THTTPServerThread;
-  WData: TWSAData;
-  Addr: TSockAddr;
-  s: AnsiString;
-begin
-  Leave := False;
-  err := WSAStartup(MakeWord(1,1), WData);
-  if err <> 0 then
-  begin
-    s := 'Failed to initialize WinSocket,error #'+ItoS(err);
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
-    Halt;
-  end;
-  ServerSocketHandle := socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if ServerSocketHandle = INVALID_SOCKET then
-  begin
-    s := 'Failed to create a socket, Error #'+ItoS(WSAGetLastError);
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
-    Halt;
-  end;
-
-  Addr.sin_family := AF_INET;
-  Addr.sin_port := htons(BindPort);
-  Addr.sin_addr.s_addr := BindAddr;
-  if bind(ServerSocketHandle, Addr, SizeOf(Addr)) = SOCKET_ERROR then
-  begin
-    MessageBeep(MB_ICONEXCLAMATION);
-{$IFDEF LOGGING}
-    AddErrorLog(
-         'Failed to bind the socket, port #'+ItoS(BindPort)+', address='+AddrInet(BindAddr)+', error #'+ItoS(WSAGetLastError)+'.'#13#10#13#10+
-         'Probable reason is that another daemon is already running on the same port ('+ItoS(BindPort)+').');
-{$ENDIF}
-    Halt;
-  end;
-
-
-
-  InitReseterThread;
-
-  listen(ServerSocketHandle, 100);
-
-  FreeDummyLibraries;
-
-  repeat
-    J := SizeOf(Addr);
-    {$IFDEF VER90}
-    NewSocketHandle := accept(ServerSocketHandle, Addr, J);
-    {$ELSE}
-    NewSocketHandle := accept(ServerSocketHandle, @Addr, @J);
-    {$ENDIF}
-    if NewSocketHandle = INVALID_SOCKET then Break;
-
-    if Leave then Break;
-
-    NewSocket := TSocket.Create;
-    NewSocket.Handle := NewSocketHandle;
-    NewSocket.FAddr := Addr.sin_addr.s_addr;
-    NewSocket.FPort := Addr.sin_port;
-    if not NewSocket.Startup then FreeObject(NewSocket) else
+    if InstFreeList = nil then
     begin
-      SocketsColl.Enter;
-      if SocksCount = 0 then
-      begin
-        ResetterThread.TimeToSleep := SleepQuant;
-        SetEvent(ResetterThread.oSleep);
-      end;
-      Inc(SocksCount);
-      SocketsColl.Leave;
-      NewThread := THTTPServerThread.Create;
-      NewThread.FreeOnTerminate := True;
-      NewThread.Socket := NewSocket;
-      NewSocket.RegisterSelf;
-      NewThread.Resume;
+      Block := VirtualAlloc(nil, PageSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      Block^.Next := InstBlockList;
+      Move(BlockCode, Block^.Code, SizeOf(BlockCode));
+      Block^.WndProcPtr := Pointer(CalcJmpOffset(@Block^.Code[2], @StdWndProc));
+      Instance := @(Block^.Instances[0]);
+      repeat
+        Instance^.Code := $E8; { CALL NEAR PTR Offset }
+        Instance^.Offset := CalcJmpOffset(Instance, @Block^.Code);
+        Instance^.Next := InstFreeList;
+        InstFreeList := Instance;
+        Inc(Longint(Instance), SizeOf(TObjectInstance));
+      until Longint(Instance) - Longint(Block) >= SizeOf(TInstanceBlock);
+      InstBlockList := Block;
     end;
-  until False;
-  if ServerSocketHandle <> INVALID_SOCKET then CloseSocket(ServerSocketHandle);
-end;
+    Result := InstFreeList;
+    Instance := InstFreeList;
+    InstFreeList := Instance^.Next;
+    Instance^.Method := Method;
+  end;
 
+  { Free an object instance }
 
-procedure MessageLoop;
-var
-  M: TMsg;
-  WP: TWndProc;
-begin
-  WP := TWndProc.Create;
-  WP.Handle := AllocateHWnd({$IFDEF FPC_OBJFPC}@{$ENDIF}WP.WndProc);
-  repeat
-    GetMessage(M, 0, 0, 0);
-    if M.Message = WM_QUIT then
+  procedure FreeObjectInstance(ObjectInstance: Pointer);
+  begin
+    if ObjectInstance <> nil then
     begin
+      PObjectInstance(ObjectInstance)^.Next := InstFreeList;
+      InstFreeList := ObjectInstance;
+    end;
+  end;
+
+  var
+    UtilWindowClass: TWndClass = (style: 0; lpfnWndProc: @DefWindowProc;
+      cbClsExtra: 0; cbWndExtra: 0; hInstance: 0; hIcon: 0; hCursor: 0;
+      hbrBackground: 0; lpszMenuName: nil; lpszClassName: 'TPUtilWindow');
+
+  function AllocateHWnd(Method: TWndMethod): HWND;
+  var
+    TempClass: TWndClass;
+    ClassRegistered: Boolean;
+  begin
+    UtilWindowClass.hInstance := hInstance;
+    UtilWindowClass.lpfnWndProc := @DefWindowProc;
+    ClassRegistered := GetClassInfo(hInstance, UtilWindowClass.lpszClassName,
+      TempClass);
+    if not ClassRegistered or ({$IFDEF FPC_DELPHI}@{$ENDIF}TempClass.lpfnWndProc
+      <> @DefWindowProc) then
+    begin
+      if ClassRegistered then
+        Windows.UnregisterClass(UtilWindowClass.lpszClassName, hInstance);
+      Windows.RegisterClass(UtilWindowClass);
+    end;
+    Result := CreateWindowEx(WS_EX_TOOLWINDOW, UtilWindowClass.lpszClassName,
+      '', WS_POPUP { !0 } , 0, 0, 0, 0, 0, 0, hInstance, nil);
+    if Assigned(Method) then
+      SetWindowLong(Result, GWL_WNDPROC, Longint(MakeObjectInstance(Method)));
+  end;
+
+  procedure DeallocateHWnd(Wnd: HWND);
+  var
+    DefAddr, Instance: Pointer;
+  begin
+    Instance := Pointer(GetWindowLong(Wnd, GWL_WNDPROC));
+    DestroyWindow(Wnd);
+    DefAddr := @DefWindowProc;
+    if Instance <> DefAddr then
+      FreeObjectInstance(Instance);
+  end;
+
+  type
+    TWndProc = class
+      Handle: THandle;
+      procedure WndProc(var M: TMessage);
+      destructor Destroy; override;
+    end;
+
+  destructor TWndProc.Destroy;
+  begin
+    DeallocateHWnd(Handle);
+    inherited Destroy;
+  end;
+
+  var
+    Leave: Boolean;
+
+  procedure TWndProc.WndProc(var M: TMessage);
+  begin
+    if M.Msg = WM_QUIT then
       Leave := True;
-      Break;
+    M.Result := DefWindowProc(Handle, M.Msg, M.WParam, M.LParam);
+  end;
+
+  type
+    TMainThread = class(TThread)
+      procedure Execute; override;
     end;
-    TranslateMessage(M);
-    DispatchMessage(M);
-  until Leave;
-  WP.Free;
-end;
 
+  var
+    ServerSocketHandle: WinSock.TSocket;
 
-procedure ComeOn;
-var
-  i: Integer;
-  MainThread: TMainThread;
-begin
+  procedure MainLoop;
+  var
+    j, err: Integer;
+    NewSocketHandle: WinSock.TSocket;
+    NewSocket: TSocket;
+    NewThread: THTTPServerThread;
+    WData: TWSAData;
+    Addr: TSockAddr;
+    s: AnsiString;
+  begin
+    Leave := False;
+    err := WSAStartup(MakeWord(1, 1), WData);
+    if err <> 0 then
+    begin
+      s := 'Failed to initialize WinSocket,error #' + ItoS(err);
+      MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+      Halt;
+    end;
+    ServerSocketHandle := Socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if ServerSocketHandle = INVALID_SOCKET then
+    begin
+      s := 'Failed to create a socket, Error #' + ItoS(WSAGetLastError);
+      MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+      Halt;
+    end;
 
-//--- Set Hight priority class
-//  SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
+    Addr.sin_family := AF_INET;
+    Addr.sin_port := htons(BindPort);
+    Addr.sin_addr.s_addr := BindAddr;
+    if bind(ServerSocketHandle, Addr, SizeOf(Addr)) = SOCKET_ERROR then
+    begin
+      MessageBeep(MB_ICONEXCLAMATION);
+{$IFDEF LOGGING}
+      AddErrorLog('Failed to bind the socket, port #' + ItoS(BindPort) +
+        ', address=' + AddrInet(BindAddr) + ', error #' + ItoS(WSAGetLastError)
+        + '.'#13#10#13#10 +
+        'Probable reason is that another daemon is already running on the same port ('
+        + ItoS(BindPort) + ').');
+{$ENDIF}
+      Halt;
+    end;
+
+    InitReseterThread;
+
+    listen(ServerSocketHandle, 100);
+
+    FreeDummyLibraries;
+
+    repeat
+      j := SizeOf(Addr);
+{$IFDEF VER90}
+      NewSocketHandle := Accept(ServerSocketHandle, Addr, j);
+{$ELSE}
+      NewSocketHandle := Accept(ServerSocketHandle, @Addr, @j);
+{$ENDIF}
+      if NewSocketHandle = INVALID_SOCKET then
+        Break;
+
+      if Leave then
+        Break;
+
+      NewSocket := TSocket.Create;
+      NewSocket.Handle := NewSocketHandle;
+      NewSocket.FAddr := Addr.sin_addr.s_addr;
+      NewSocket.FPort := Addr.sin_port;
+      if not NewSocket.Startup then
+        FreeObject(NewSocket)
+      else
+      begin
+        SocketsColl.Enter;
+        if SocksCount = 0 then
+        begin
+          ResetterThread.TimeToSleep := SleepQuant;
+          SetEvent(ResetterThread.oSleep);
+        end;
+        Inc(SocksCount);
+        SocketsColl.Leave;
+        NewThread := THTTPServerThread.Create;
+        NewThread.FreeOnTerminate := True;
+        NewThread.Socket := NewSocket;
+        NewSocket.RegisterSelf;
+        NewThread.Resume;
+      end;
+    until False;
+    if ServerSocketHandle <> INVALID_SOCKET then
+      CloseSocket(ServerSocketHandle);
+  end;
+
+  procedure MessageLoop;
+  var
+    M: TMsg;
+    WP: TWndProc;
+  begin
+    WP := TWndProc.Create;
+    WP.Handle := AllocateHWnd({$IFDEF FPC_OBJFPC}@{$ENDIF}WP.WndProc);
+    repeat
+      GetMessage(M, 0, 0, 0);
+      if M.Message = WM_QUIT then
+      begin
+        Leave := True;
+        Break;
+      end;
+      TranslateMessage(M);
+      DispatchMessage(M);
+    until Leave;
+    WP.Free;
+  end;
+
+  procedure ComeOn;
+  var
+    i: Integer;
+    MainThread: TMainThread;
+  begin
+
+    // --- Set Hight priority class
+    // SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
 
 {$IFDEF ODBC}
-  InitializeCriticalSection(OdbcCS);
-{$endif}
-
-//--- Initialize xBase Module
-  xBaseInit;
-
-  ExecutableCache := TExecutableCacheColl.Create;
-  ExecutableCache.Enter;
-  ExecutableCache.Leave;
-
-  RootCacheColl := TRootCacheColl.Create;
-  RootCacheColl.Enter;
-  RootCacheColl.Leave;
-
-//--- Get and validate a home directory
-  if not GetHomeDir then Exit;
-
-
-
-//--- Read content types from registry and associate with file extensions
-  ReadContentTypes;
-
-// --- Open log files and initialize semaphores
-{$IFDEF LOGGING}
-  InitLogs;
+    InitializeCriticalSection(OdbcCS);
 {$ENDIF}
+    // --- Initialize xBase Module
+    xBaseInit;
 
-// --- Perform main loop
-  MainThread := TMainThread.Create(False);
+    ExecutableCache := TExecutableCacheColl.Create;
+    ExecutableCache.Enter;
+    ExecutableCache.Leave;
 
-  MessageLoop;
+    RootCacheColl := TRootCacheColl.Create;
+    RootCacheColl.Enter;
+    RootCacheColl.Leave;
 
-  CloseSocket(ServerSocketHandle);
-  ServerSocketHandle := INVALID_SOCKET;
+    // --- Get and validate a home directory
+    if not GetHomeDir then
+      Exit;
 
-  MainThread.Terminate;
-  WaitForSingleObject(MainThread.Handle, INFINITE);
-  MainThread.Free;
+    // --- Read content types from registry and associate with file extensions
+    ReadContentTypes;
 
-
-// Non-debug version never exits :-)
-
-  ResetterThread.Terminate;
-  SetEvent(ResetterThread.oSleep);
-  SocketsColl.Enter;
-  for i := 0 to SocketsColl.Count-1 do shutdown(TSocket(SocketsColl[i]).Handle, 2);
-  SocketsColl.Leave;
-  while SocketsColl.Count > 0 do Sleep(1000);
-  ResetterThread.TimeToSleep := SleepQuant;
-  SetEvent(ResetterThread.oSleep);
-  WaitForSingleObject(ResetterThread.Handle, INFINITE);
-  FreeObject(ResetterThread);
-  FreeObject(SocketsColl);
-  FreeObject(ContentTypes);
-  xBaseDone;
+    // --- Open log files and initialize semaphores
 {$IFDEF LOGGING}
-  CloseHandle(HAccessLog);
-  CloseHandle(HAgentLog);
-  CloseHandle(HErrorLog);
-  CloseHandle(HRefererLog);
-  DeleteCriticalSection(CSAccessLog);
-  DeleteCriticalSection(CSAgentLog);
-  DeleteCriticalSection(CSErrorLog);
-  DeleteCriticalSection(CSRefererLog);
+    InitLogs;
 {$ENDIF}
-end;
+    // --- Perform main loop
+    MainThread := TMainThread.Create(False);
 
-{ TMsgThread }
+    MessageLoop;
+
+    CloseSocket(ServerSocketHandle);
+    ServerSocketHandle := INVALID_SOCKET;
+
+    MainThread.Terminate;
+    WaitForSingleObject(MainThread.Handle, INFINITE);
+    MainThread.Free;
 
 
-{ TMainThread }
+    // Non-debug version never exits :-)
 
-procedure TMainThread.Execute;
-begin
-  MainLoop;
-end;
+    ResetterThread.Terminate;
+    SetEvent(ResetterThread.oSleep);
+    SocketsColl.Enter;
+    for i := 0 to SocketsColl.Count - 1 do
+      shutdown(TSocket(SocketsColl[i]).Handle, 2);
+    SocketsColl.Leave;
+    while SocketsColl.Count > 0 do
+      Sleep(1000);
+    ResetterThread.TimeToSleep := SleepQuant;
+    SetEvent(ResetterThread.oSleep);
+    WaitForSingleObject(ResetterThread.Handle, INFINITE);
+    FreeObject(ResetterThread);
+    FreeObject(SocketsColl);
+    FreeObject(ContentTypes);
+    xBaseDone;
+{$IFDEF LOGGING}
+    CloseHandle(HAccessLog);
+    CloseHandle(HAgentLog);
+    CloseHandle(HErrorLog);
+    CloseHandle(HRefererLog);
+    DeleteCriticalSection(CSAccessLog);
+    DeleteCriticalSection(CSAgentLog);
+    DeleteCriticalSection(CSErrorLog);
+    DeleteCriticalSection(CSRefererLog);
+{$ENDIF}
+  end;
+
+  { TMsgThread }
+
+  { TMainThread }
+
+  procedure TMainThread.Execute;
+  begin
+    MainLoop;
+  end;
 
 end.
