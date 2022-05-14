@@ -11,15 +11,6 @@ on:
       - 'SRC/Tiny.dpr'
       - 'SRC/xBase.pas'
 
-  pull_request:
-    branches:
-      - master
-    paths: 
-      - 'SRC/define.inc'
-      - 'SRC/SrvMain.pas'
-      - 'SRC/Tiny.dpr'
-      - 'SRC/xBase.pas'
-
   workflow_dispatch:
 
 jobs:
