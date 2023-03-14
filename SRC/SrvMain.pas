@@ -321,6 +321,7 @@ begin
   Result := INVALID_FILE_TIME;
   Clear(d, SizeOf(d));
   s := AStr;
+  z := '';
   GetWrd(s, z, ' ');
   GetWrdD(s, z);
   v := Vl(z);
@@ -698,6 +699,7 @@ var
   slen: Integer;
 begin
   slen := Length(s);
+  j := 0;
   if slen > 0 then
     WriteFile(HPipe, s[1], slen, j, nil);
 end;
@@ -724,6 +726,7 @@ begin
         end
         else
         begin
+          z := '';
           GetWrdStrictUC(s, z);
           Delete(z, Length(z), 1);
           if not EntityHeader.Filter(z, s) then
@@ -742,6 +745,8 @@ var
   j: DWORD;
 begin
   repeat
+    j := 0;
+    FillChar(ss, SizeOf(ss), 0);
     if (not ReadFile(HPipe, ss[1], 250, j, nil)) or (j = 0) then
       Break;
     ss[0] := AnsiChar(j);
@@ -754,6 +759,7 @@ var
   j: DWORD;
 begin
   repeat
+    j := 0;
     if (not ReadFile(HPipe, Buffer^, CHTTPServerThreadBufSize, j, nil)) or
       (j = 0) then
       Break;
@@ -786,6 +792,9 @@ var
   var
     d, n, e: AnsiString;
   begin
+    d := '';
+    n := '';
+    e := '';
     FSPlit(AExecutable, d, n, e);
     Result := n + e + ' is a GUI application';
   end;
@@ -925,6 +934,7 @@ begin
 
   while not PipeReadStdThread.Error do
   begin
+    Actually := 0;
     if (not ReadFile(so_r, Buffer, CHTTPServerThreadBufSize, Actually, nil)) or
       (Actually = 0) then
       Break;
@@ -965,6 +975,7 @@ begin
   s := AAgent + #13#10;
   EnterCriticalSection(CSAgentLog);
   slen := Length(s);
+  b := 0;
   WriteFile(HAgentLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSAgentLog);
 end;
@@ -980,6 +991,7 @@ begin
   s := ARefererSrc + ' -> ' + ARefererDst + #13#10;
   EnterCriticalSection(CSRefererLog);
   slen := Length(s);
+  b := 0;
   WriteFile(HRefererLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSRefererLog);
 end;
@@ -990,6 +1002,8 @@ var
   b: Integer;
   s: AnsiString;
 begin
+  s := '';
+  FillChar(lt, SizeOf(lt), 0);
   GetLocalTime(lt);
   b := TimeZoneBias;
   if b < 0 then
@@ -1037,6 +1051,7 @@ begin
     #13#10;
   EnterCriticalSection(CSAccessLog);
   slen := Length(z);
+  b := 0;
   WriteFile(HAccessLog, z[1], slen, b, nil);
   LeaveCriticalSection(CSAccessLog);
 end;
@@ -1050,6 +1065,7 @@ begin
   s := CurTime + ' ' + AErr + #13#10;
   EnterCriticalSection(CSErrorLog);
   slen := Length(s);
+  b := 0;
   WriteFile(HErrorLog, s[1], slen, b, nil);
   LeaveCriticalSection(CSErrorLog);
 end;
@@ -1124,6 +1140,7 @@ begin
   z := LowerCase(CopyLeft(ExtractFileExt(AFName), 2));
   if z <> '' then
   begin
+    i := -1;
     if not ContentTypes.Search(@z, i) then
       z := ''
     else
@@ -1251,6 +1268,7 @@ begin
     Exit;
   end;
   ExecutableCache.Enter;
+  i := -1;
   if ExecutableCache.Search(@LocalFName, i) then
   begin
     p := ExecutableCache[i];
@@ -1314,6 +1332,7 @@ begin
   s := GetEnvVariable('PATHEXT');
   while s <> '' do
   begin
+    z := '';
     GetWrd(s, z, ';');
     if Length(z) < 2 then
       Continue;
@@ -1337,6 +1356,7 @@ var
   p: Pointer;
 begin
   RootCacheColl.Enter;
+  i := -1;
   Found := RootCacheColl.Search(@AURI, i);
   if Found then
   begin
@@ -1513,6 +1533,7 @@ var
     PathInfo := CopyLeft(LocalFName, Length(CgiFile) + 2);
     ts := PathInfo;
     repeat
+      z := '';
       GetWrd(ts, z, '\');
       CgiFile := CgiFile + '\' + z;
       fa := GetFileAttributesA(@(CgiFile[1]));
@@ -1664,6 +1685,7 @@ begin
 
   if CheckedURI[Length(CheckedURI)] = '\' then
   begin
+    IsCGI := False;
     LocalFName := FindRootFile(CheckedURI, IsCGI);
     if IsCGI then
     begin
@@ -1788,6 +1810,7 @@ begin
 
           // Parse HTTP version
           s := HTTPVersion;
+          z := '';
           GetWrd(s, z, '/');
           if z <> 'HTTP' then
             Break;
@@ -2319,9 +2342,9 @@ begin
 
   { Allocate an object instance }
 
-  function CalcJmpOffset(Src, Dest: Pointer): Longint;
+  function CalcJmpOffset(Src, Dest: Pointer): NativeInt;
   begin
-    Result := Longint(Dest) - (Longint(Src) + 5);
+    Result := NativeInt(Dest) - (NativeInt(Src) + 5);
   end;
 
   function MakeObjectInstance(Method: TWndMethod): Pointer;
@@ -2345,8 +2368,8 @@ begin
         Instance^.Offset := CalcJmpOffset(Instance, @Block^.Code);
         Instance^.Next := InstFreeList;
         InstFreeList := Instance;
-        Inc(Longint(Instance), SizeOf(TObjectInstance));
-      until Longint(Instance) - Longint(Block) >= SizeOf(TInstanceBlock);
+        Inc(NativeInt(Instance), SizeOf(TObjectInstance));
+      until NativeInt(Instance) - NativeInt(Block) >= SizeOf(TInstanceBlock);
       InstBlockList := Block;
     end;
     Result := InstFreeList;
@@ -2378,6 +2401,7 @@ begin
   begin
     UtilWindowClass.hInstance := hInstance;
     UtilWindowClass.lpfnWndProc := @DefWindowProc;
+    FillChar(TempClass, SizeOf(TempClass), 0);
     ClassRegistered := GetClassInfo(hInstance, UtilWindowClass.lpszClassName,
       TempClass);
     if not ClassRegistered or ({$IFDEF FPC_DELPHI}@{$ENDIF}TempClass.lpfnWndProc
@@ -2390,7 +2414,7 @@ begin
     Result := CreateWindowEx(WS_EX_TOOLWINDOW, UtilWindowClass.lpszClassName,
       '', WS_POPUP { !0 } , 0, 0, 0, 0, 0, 0, hInstance, nil);
     if Assigned(Method) then
-      SetWindowLong(Result, GWL_WNDPROC, Longint(MakeObjectInstance(Method)));
+      SetWindowLong(Result, GWL_WNDPROC, LONG(MakeObjectInstance(Method)));
   end;
 
   procedure DeallocateHWnd(Wnd: HWND);
@@ -2446,6 +2470,7 @@ begin
     s: AnsiString;
   begin
     Leave := False;
+    FillChar(WData, SizeOf(WData), 0);
     err := WSAStartup(MakeWord(1, 1), WData);
     if err <> 0 then
     begin
@@ -2531,6 +2556,7 @@ begin
     WP := TWndProc.Create;
     WP.Handle := AllocateHWnd({$IFDEF FPC_OBJFPC}@{$ENDIF}WP.WndProc);
     repeat
+      FillChar(M, SizeOf(M), 0);
       GetMessage(M, 0, 0, 0);
       if M.Message = WM_QUIT then
       begin

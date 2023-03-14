@@ -652,6 +652,7 @@ begin
   end
   else
   begin
+    FillChar(wf, SizeOf(wf), 0);
     Result := FindFirstFileA(@(FName[1]), wf);
     if Result <> INVALID_HANDLE_VALUE then
       CvtFD(wf, FindData);
@@ -662,6 +663,7 @@ function uFindNext(Handle: THandle; var FindData: TuFindData): Boolean;
 var
   wf: TWin32FindDataA;
 begin
+  FillChar(wf, SizeOf(wf), 0);
   Result := FindNextFileA(Handle, wf);
   if Result then
     CvtFD(wf, FindData);
@@ -707,6 +709,7 @@ end;
 
 function AddRightSpaces(const S: AnsiString; NumSpaces: Integer): AnsiString;
 begin
+  Result := '';
   SetLength(Result, NumSpaces);
   FillChar(Result[1], NumSpaces, ' ');
   Move(S[1], Result[1], MinI(NumSpaces, Length(S)));
@@ -714,6 +717,7 @@ end;
 
 function Hex2(a: Byte): AnsiString;
 begin
+  Result := '';
   SetLength(Result, 2);
   Result[1] := rrLoHexChar[a shr 4];
   Result[2] := rrLoHexChar[a and $F];
@@ -723,6 +727,7 @@ function Hex4(a: Word): AnsiString;
 var
   I: Integer;
 begin
+  Result := '';
   SetLength(Result, 4);
   for I := 0 to 3 do
   begin
@@ -735,6 +740,7 @@ function Hex8(a: DWORD): AnsiString;
 var
   I: DWORD;
 begin
+  Result := '';
   SetLength(Result, 8);
   for I := 0 to 7 do
   begin
@@ -1495,6 +1501,7 @@ end;
 
 function WindowsDirectory: AnsiString;
 begin
+  Result := '';
   SetLength(Result, MAX_PATH);
   GetWindowsDirectoryA(@(Result[1]), MAX_PATH);
   SetLength(Result, NulSearch(Result[1]));
@@ -1570,6 +1577,7 @@ var
   PDataBuf: PAnsiChar;
 begin
   L := 250;
+  z := '';
   SetLength(z, L + 1);
   PDataBuf := @(z[1]);
   T := REG_SZ;
@@ -1940,6 +1948,7 @@ var
   I: Integer;
 begin
   IndexOf := -1;
+  I := -1;
   if Search(KeyOf(Item), I) then
   begin
     if Duplicates then
@@ -1954,6 +1963,7 @@ procedure TSortedColl.Insert(Item: Pointer);
 var
   I: Integer;
 begin
+  I := -1;
   if not Search(KeyOf(Item), I) or Duplicates then
     AtInsert(I, Item);
 end;
@@ -2036,6 +2046,7 @@ var
 begin
   while Str <> '' do
   begin
+    z := '';
     GetWrd(Str, z, Delim);
     if Sorted then
       Ins(z)
@@ -2048,6 +2059,7 @@ function TStringColl.Found(const Str: AnsiString): Boolean;
 var
   I: Integer;
 begin
+  I := -1;
   Result := Search(@Str, I);
 end;
 
@@ -2307,6 +2319,7 @@ begin
     Result := '';
     Exit;
   end;
+  S := '';
   SetLength(S, 1000);
   GetTempFileNameA(@(APath[1]), @(APfx[1]), 0, @(S[1]));
   Result := Copy(S, 1, NulSearch(S[1]));
@@ -2502,6 +2515,8 @@ begin
   end
   else
   begin
+    FillChar(Buffer, SizeOf(Buffer), 0);
+    FName := nil;
     SetString(Result, Buffer, GetFullPathNameA(@(FileName[1]), SizeOf(Buffer),
       Buffer, FName));
   end;
@@ -2851,6 +2866,7 @@ var
 
 begin
   Result := False;
+  R := '';
   sl := Length(S);
   I := 0;
   while I < sl do
@@ -2903,6 +2919,7 @@ var
   c: AnsiChar;
 begin
   Result := False;
+  R := '';
   KVC := False;
   for I := 1 to Length(S) do
   begin
@@ -2948,6 +2965,7 @@ end;
 
 function StoI(const S: AnsiString): Integer;
 begin
+  Result := 0;
   if not _Val(S, Result) then
     Result := 0;
 end;
@@ -2989,8 +3007,10 @@ var
   T, L: TFileTime;
   a, B, c: DWORD;
 begin
+  FillChar(T, SizeOf(T), 0);
+  FillChar(L, SizeOf(L), 0);
   GetSystemTimeAsFileTime(T);
-  FileTimeToLocalFileTime(T, L);
+  if not FileTimeToLocalFileTime(T, L) then Exit;
   a := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
   B := uCvtGetFileTime(L.dwLowDateTime, L.dwHighDateTime);
   if a > B then
@@ -3022,7 +3042,7 @@ var
 
 function THostCacheColl.Compare(Key1, Key2: Pointer): Integer;
 begin
-  Result := Integer(Key1) - Integer(Key2);
+  Result := NativeInt(Key1) - NativeInt(Key2);
 end;
 
 function THostCacheColl.KeyOf(Item: Pointer): Pointer;
@@ -3041,6 +3061,7 @@ var
   HostName: AnsiString;
 begin
   HostCache.Enter;
+  I := -1;
   F := HostCache.Search(Pointer(Addr), I);
   if F then
     Result := StrAsg(THostCache(HostCache[I]).Name);
