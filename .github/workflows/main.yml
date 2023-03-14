@@ -20,11 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Compile TinyWeb with Delphi 2007
-        run: |
-          cd $Env:GITHUB_WORKSPACE/SRC
-          & 'C:\Delphi2007\Main\bin\DCC32.EXE' @('-B', 'Tiny.dpr')
-
       - name: Compile TinyWeb with FreePascal 3.2.2 in ObjFPC mode
         run: |
           cd $Env:GITHUB_WORKSPACE/SRC
