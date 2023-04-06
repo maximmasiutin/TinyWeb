@@ -3330,11 +3330,9 @@ end;
 
 
 procedure TFileFlusherThread.Flush(ATime: DWORD);
-var
-  b: BOOL;
 begin
   EnterCriticalSection(CS^);
-  b := FlushFileBuffers(FileHandle);
+  FlushFileBuffers(FileHandle);
   LastFlushInitiatedTimestamp := ATime;
   LeaveCriticalSection(CS^);
 end;
