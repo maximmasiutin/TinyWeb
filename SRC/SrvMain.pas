@@ -380,6 +380,7 @@ begin
   if v = INVALID_VALUE then
     Exit;
   d.wSecond := v;
+  Clear(T, SizeOf(T));
   if not SystemTimeToFileTime(d, T) then
     Exit;
   Result := uCvtGetFileTime(T.dwLowDateTime, T.dwHighDateTime);
@@ -832,6 +833,8 @@ begin
   CreatePipe(si_r, si_w, @Security, 0);
   CreatePipe(so_r, so_w, @Security, 0);
   CreatePipe(se_r, se_w, @Security, 0);
+
+  FillChar(PI, SizeOf(PI), 0);
 
   FillChar(SI, SizeOf(SI), 0);
   SI.CB := SizeOf(SI);
@@ -1645,6 +1648,8 @@ var
   IsCGI: Boolean;
   CheckedURI, CDoubleDot, CDoubleBackslash, CDotEncosed: AnsiString;
 begin
+  Result := nil; // to avoid the uninitialized warning
+
   CBackSlash := '\';
   CForwardSlash := '/';
   ResponseEntityHeader := nil;
@@ -1952,6 +1957,7 @@ begin
       if s <> '' then
       begin
         k := s;
+        z := '';
         GetWrd(k, z, ' ');
         v := Vl(z);
         if (v <> INVALID_VALUE) and (v < 1000) and (v > 0) then
@@ -2036,6 +2042,7 @@ begin
         Socket.WriteStr(s);
         FPOS := 0;
         repeat
+          Actually := 0;
           ReadFile(FHandle, Buffer, CHTTPServerThreadBufSize, Actually, nil);
           Inc(FPOS, Actually);
           if FPOS > FileNfo.Size then
@@ -2316,11 +2323,13 @@ var
   FSetProcessWorkingSetSize: TSetProcessWorkingSetSizeFunc;
 
 procedure FreeWorkingSetMemory;
+var
+  P: Pointer;
 begin
   if not Assigned(FSetProcessWorkingSetSize) then
   begin
-    FSetProcessWorkingSetSize := GetProcAddress(GetModuleHandle(kernel32),
-      'SetProcessWorkingSetSize');
+    P := GetProcAddress(GetModuleHandle(kernel32), 'SetProcessWorkingSetSize');
+    FSetProcessWorkingSetSize := TSetProcessWorkingSetSizeFunc(P);
   end;
   if Assigned(FSetProcessWorkingSetSize) then
   begin

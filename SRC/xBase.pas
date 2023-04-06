@@ -420,7 +420,7 @@ function __unsafe(c: AnsiChar): Boolean;
 { --- Basic Routines }
 
 function Buf2Str(const Buffer): AnsiString;
-procedure Clear(var Buf; Count: Integer);
+procedure Clear(out Buf; Count: Integer);
 function CompareMem(P1, P2: Pointer; Length: Integer): Boolean; assembler;
 procedure FreeObject(var O);
 procedure LowerPrec(var a, B: Integer; Bits: Byte);
@@ -1167,7 +1167,7 @@ end;
 // //
 /// /////////////////////////////////////////////////////////////////////
 
-procedure Clear(var Buf; Count: Integer);
+procedure Clear(out Buf; Count: Integer);
 begin
   FillChar(Buf, Count, 0);
 end;
@@ -1538,6 +1538,7 @@ begin
     Result := INVALID_REGISTRY_KEY;
     Exit;
   end;
+  Result := 0;
   if RegOpenKeyExA(HKEY_LOCAL_MACHINE, // handle of an open key
     @(AName[1]), // subkey name
     0, // Reserved
@@ -1559,6 +1560,7 @@ begin
     Result := INVALID_REGISTRY_KEY;
     Exit;
   end;
+  Result := 0;
   if RegCreateKeyExA(HKEY_LOCAL_MACHINE, // handle of an open key
     @(AFName[1]), // subkey name
     0, // reserved, must be zero
@@ -1702,6 +1704,7 @@ var
   Len: Integer;
   Buffer: array [0 .. 255] of AnsiChar;
 begin
+  Clear(Buffer, SizeOf(Buffer));
   Len := FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM or
     FORMAT_MESSAGE_ARGUMENT_ARRAY, nil, ErrorCode, 0, Buffer,
     SizeOf(Buffer), nil);
@@ -2278,6 +2281,7 @@ begin
     Result := '';
     Exit;
   end;
+  Clear(Buf, SizeOf(Buf));
   I := GetEnvironmentVariableA(@(Name[1]), Buf, BufSize);
   case I of
     1 .. BufSize:
@@ -3249,7 +3253,7 @@ begin
   until Terminated;
 end;
 
-constructor TFileFlusherThread.Create;
+constructor TFileFlusherThread.Create(AFileHandle: THandle; ACriticalSection: PRTLCriticalSection);
 begin
   inherited Create(True);
   FileHandle := AFileHandle;
