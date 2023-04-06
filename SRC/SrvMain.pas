@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 1997-2000 RIT Research Labs
+// Copyright (C) 2021-2023 Maxim Masiutin
 // Copyright (C) 2000-2017 RITLABS S.R.L.
-// Copyright (C) 2021 Maxim Masiutin
+// Copyright (C) 1997-2000 RIT Research Labs
 //
 // This programs is free for commercial and non-commercial use as long as
 // the following conditions are aheared to.
@@ -76,26 +76,44 @@ array [0 .. MaxStatusCodeIdx] of record Code: Integer;
 Msg:
 AnsiString
 end
-= ((Code: 100; Msg: 'Continue'), (Code: 101; Msg: 'Switching Protocols'),
-  (Code: 200; Msg: 'OK'), (Code: 201; Msg: 'Created'), (Code: 202;
-  Msg: 'Accepted'), (Code: 203; Msg: 'Non-Authoritative Information'),
-  (Code: 204; Msg: 'No Content'), (Code: 205; Msg: 'Reset Content'), (Code: 206;
-  Msg: 'Partial Content'), (Code: 300; Msg: 'Multiple Choices'), (Code: 301;
-  Msg: 'Moved Permanently'), (Code: 302; Msg: 'Moved Temporarily'), (Code: 303;
-  Msg: 'See Other'), (Code: 304; Msg: 'Not Modified'), (Code: 305;
-  Msg: 'Use Proxy'), (Code: 400; Msg: 'Bad Request'), (Code: 401;
-  Msg: 'Unauthorized'), (Code: 402; Msg: 'Payment Required'), (Code: 403;
-  Msg: 'Forbidden'), (Code: 404; Msg: 'Not Found'), (Code: 405;
-  Msg: 'Method Not Allowed'), (Code: 406; Msg: 'Not Acceptable'), (Code: 407;
-  Msg: 'Proxy Authentication Required'), (Code: 408; Msg: 'Request Time-out'),
-  (Code: 409; Msg: 'Conflict'), (Code: 410; Msg: 'Gone'), (Code: 411;
-  Msg: 'Length Required'), (Code: 412; Msg: 'Precondition Failed'), (Code: 413;
-  Msg: 'Request Entity Too Large'), (Code: 414; Msg: 'Request-URI Too Large'),
-  (Code: 415; Msg: 'Unsupported Media Type'), (Code: 500;
-  Msg: 'Internal Server Error'), (Code: 501; Msg: 'Not Implemented'),
-  (Code: 502; Msg: 'Bad Gateway'), (Code: 503; Msg: 'Service Unavailable'),
-  (Code: 504; Msg: 'Gateway Time-out'), (Code: 505;
-  Msg: 'HTTP Version not supported'));
+= (
+  (Code: 100; Msg: 'Continue'), 
+  (Code: 101; Msg: 'Switching Protocols'),
+  (Code: 200; Msg: 'OK'), 
+  (Code: 201; Msg: 'Created'), 
+  (Code: 202; Msg: 'Accepted'), 
+  (Code: 203; Msg: 'Non-Authoritative Information'),
+  (Code: 204; Msg: 'No Content'), 
+  (Code: 205; Msg: 'Reset Content'), 
+  (Code: 206; Msg: 'Partial Content'), 
+  (Code: 300; Msg: 'Multiple Choices'), 
+  (Code: 301; Msg: 'Moved Permanently'), 
+  (Code: 302; Msg: 'Moved Temporarily'), 
+  (Code: 303; Msg: 'See Other'), 
+  (Code: 304; Msg: 'Not Modified'), 
+  (Code: 305; Msg: 'Use Proxy'), 
+  (Code: 400; Msg: 'Bad Request'), 
+  (Code: 401; Msg: 'Unauthorized'), 
+  (Code: 402; Msg: 'Payment Required'), 
+  (Code: 403; Msg: 'Forbidden'), 
+  (Code: 404; Msg: 'Not Found'), 
+  (Code: 405; Msg: 'Method Not Allowed'), 
+  (Code: 406; Msg: 'Not Acceptable'), 
+  (Code: 407; Msg: 'Proxy Authentication Required'), 
+  (Code: 408; Msg: 'Request Time-out'),
+  (Code: 409; Msg: 'Conflict'), 
+  (Code: 410; Msg: 'Gone'), 
+  (Code: 411; Msg: 'Length Required'), 
+  (Code: 412; Msg: 'Precondition Failed'), 
+  (Code: 413; Msg: 'Request Entity Too Large'), 
+  (Code: 414; Msg: 'Request-URI Too Large'),
+  (Code: 415; Msg: 'Unsupported Media Type'), 
+  (Code: 500; Msg: 'Internal Server Error'), 
+  (Code: 501; Msg: 'Not Implemented'),
+  (Code: 502; Msg: 'Bad Gateway'), 
+  (Code: 503; Msg: 'Service Unavailable'),
+  (Code: 504; Msg: 'Gateway Time-out'), 
+  (Code: 505; Msg: 'HTTP Version not supported'));
 
 type
   TEntityHeader = class;
@@ -291,6 +309,7 @@ var
   FAccessLog, FAgentLog, FErrorLog, FRefererLog: AnsiString;
   CSAccessLog, CSAgentLog, CSErrorLog, CSRefererLog: TRTLCriticalSection;
   HAccessLog, HAgentLog, HErrorLog, HRefererLog: THandle;
+  AccessLogFlusher: TFileFlusherThread;
 {$ENDIF}
 
 function FileTimeToStr(AT: DWORD): AnsiString;
@@ -1049,11 +1068,12 @@ begin
     ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
     z + // The content-length of the document transferred
     #13#10;
-  EnterCriticalSection(CSAccessLog);
   slen := Length(z);
   b := 0;
+  EnterCriticalSection(CSAccessLog);
   WriteFile(HAccessLog, z[1], slen, b, nil);
   LeaveCriticalSection(CSAccessLog);
+  AccessLogFlusher.Signal;
 end;
 
 procedure AddErrorLog(const AErr: AnsiString);
@@ -2247,6 +2267,9 @@ begin
     InitializeCriticalSection(CSAgentLog);
     InitializeCriticalSection(CSErrorLog);
     InitializeCriticalSection(CSRefererLog);
+    AccessLogFlusher := TFileFlusherThread.Create(HAccessLog, @CSAccessLog);
+    AccessLogFlusher.Priority := tpLower;
+    AccessLogFlusher.Suspended := False;
   end;
 {$ENDIF}
 
@@ -2254,6 +2277,7 @@ begin
   begin
     SocketsColl := TColl.Create;
     ResetterThread := TResetterThread.Create;
+    ResetterThread.Suspended := False;
   end;
 
   procedure FreeDummyLibraries;
@@ -2282,6 +2306,27 @@ begin
     if i <> 0 then
       FreeLibrary(i);
   end;
+
+
+type
+  TSetProcessWorkingSetSizeFunc = function(hProcess: THandle;
+    dwMinimumWorkingSetSize, dwMaximumWorkingSetSize: SIZE_T): BOOL; stdcall;
+
+var
+  FSetProcessWorkingSetSize: TSetProcessWorkingSetSizeFunc;
+
+procedure FreeWorkingSetMemory;
+begin
+  if not Assigned(FSetProcessWorkingSetSize) then
+  begin
+    FSetProcessWorkingSetSize := GetProcAddress(GetModuleHandle(kernel32),
+      'SetProcessWorkingSetSize');
+  end;
+  if Assigned(FSetProcessWorkingSetSize) then
+  begin
+    FSetProcessWorkingSetSize(GetCurrentProcess, SIZE_T(-1), SIZE_T(-1));
+  end;
+end;
 
   type
     TWndMethod = procedure(var Message: TMessage) of object;
@@ -2507,6 +2552,7 @@ begin
     listen(ServerSocketHandle, 100);
 
     FreeDummyLibraries;
+    FreeWorkingSetMemory;
 
     repeat
       j := SizeOf(Addr);
@@ -2558,13 +2604,20 @@ begin
     repeat
       FillChar(M, SizeOf(M), 0);
       GetMessage(M, 0, 0, 0);
-      if M.Message = WM_QUIT then
-      begin
-        Leave := True;
-        Break;
+      case
+        M.Message of
+          0,
+          WM_QUIT:
+          begin
+            Leave := True;
+            Break;
+          end;
+        else
+          begin
+            TranslateMessage(M);
+            DispatchMessage(M);
+          end;
       end;
-      TranslateMessage(M);
-      DispatchMessage(M);
     until Leave;
     WP.Free;
   end;
@@ -2574,10 +2627,6 @@ begin
     i: Integer;
     MainThread: TMainThread;
   begin
-
-    // --- Set Hight priority class
-    // SetPriorityClass(GetCurrentProcess, HIGH_PRIORITY_CLASS);
-
 {$IFDEF ODBC}
     InitializeCriticalSection(OdbcCS);
 {$ENDIF}
@@ -2604,19 +2653,26 @@ begin
     InitLogs;
 {$ENDIF}
     // --- Perform main loop
-    MainThread := TMainThread.Create(False);
+    MainThread := TMainThread.Create(True);
+    MainThread.Suspended := False;
 
     MessageLoop;
+
+    // Non-debug version never exits :-)
+
+
+{$IFDEF LOGGING}
+    AccessLogFlusher.Priority := tpHigher; // to make it terminate faster
+    AccessLogFlusher.Terminate;
+    AccessLogFlusher.Signal;
+{$ENDIF}
 
     CloseSocket(ServerSocketHandle);
     ServerSocketHandle := INVALID_SOCKET;
 
     MainThread.Terminate;
-    WaitForSingleObject(MainThread.Handle, INFINITE);
-    MainThread.Free;
-
-
-    // Non-debug version never exits :-)
+    MainThread.WaitFor;
+    FreeObject(MainThread);
 
     ResetterThread.Terminate;
     SetEvent(ResetterThread.oSleep);
@@ -2634,6 +2690,8 @@ begin
     FreeObject(ContentTypes);
     xBaseDone;
 {$IFDEF LOGGING}
+    AccessLogFlusher.WaitFor;
+    FreeObject(AccessLogFlusher);
     CloseHandle(HAccessLog);
     CloseHandle(HAgentLog);
     CloseHandle(HErrorLog);

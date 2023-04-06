@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
+// Copyright (C) 2021-2023 Maxim Masiutin
 // Copyright (C) 1997-2000 RIT Research Labs
 // Copyright (C) 2000-2017 RITLABS S.R.L.
-// Copyright (C) 2021 Maxim Masiutin
 //
 // This programs is free for commercial and non-commercial use as long as
 // the following conditions are aheared to.
@@ -241,6 +241,7 @@ type
     procedure Resume;
     procedure Suspend;
     procedure Terminate;
+    procedure WaitFor;
     property FreeOnTerminate: Boolean read FFreeOnTerminate
       write FFreeOnTerminate;
     property Handle: THandle read FHandle;
@@ -505,11 +506,28 @@ function StrAsg(const Src: AnsiString): AnsiString;
 
 type
   TResetterThread = class(TThread)
-    TimeToSleep, oSleep: DWORD;
+    TimeToSleep: DWORD;
+    oSleep: THandle;
     constructor Create;
     procedure Execute; override;
     destructor Destroy; override;
   end;
+
+  TFileFlusherThread = class(TThread)
+  public
+    constructor Create(AFileHandle: THandle; ACriticalSection: PRTLCriticalSection);
+    procedure Signal;
+    destructor Destroy; override;
+  private
+    FileHandle: THandle;
+    oEvent: THandle;
+    CS: PRTLCriticalSection;
+    LastFlushInitiatedTimestamp: DWORD;
+    procedure Flush(ATime: DWORD);
+  protected
+    procedure Execute; override;
+  end;
+
 
 {$IFNDEF UNICODE}
 
@@ -526,18 +544,18 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '1.95';
+  CServerVersion = '1.96';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
 
 implementation
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Time Routines                             //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                          Time Routines                             //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 const
   cTimeHi = 27111902;
@@ -674,11 +692,11 @@ begin
   Result := Windows.FindClose(Handle);
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// AnsiString Routines                            //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                      AnsiString Routines                           //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 function IsWild(const S: AnsiString): Boolean;
 var
@@ -2415,6 +2433,12 @@ begin
     FSuspended := False;
 end;
 
+
+procedure TThread.WaitFor;
+begin
+  WaitForSingleObject(FHandle, INFINITE);
+end;
+
 procedure TThread.Terminate;
 begin
   FTerminated := True;
@@ -2971,15 +2995,29 @@ begin
 end;
 
 function _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
+var
+  s: AnsiString;
+  le: DWORD;
 begin
   if Handle = 0 then
   begin
+    SetLastError(0);
     Handle := _CreateFile(Name, [cWrite]);
     if Handle <> INVALID_HANDLE_VALUE then
       if SetFilePointer(Handle, 0, nil, FILE_END) = INVALID_FILE_SIZE then
         ClearHandle(Handle);
   end;
   Result := Handle <> INVALID_HANDLE_VALUE;
+  if not Result then
+  begin
+    le := GetLastError;
+    s := 'Cannot create/open the log file for writing - '+Name;
+    if le <> 0 then
+    begin
+      s := s + ' - '+SysErrorMsg(le);
+    end;
+    MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+  end;
 end;
 
 function AddrInet(I: DWORD): AnsiString;
@@ -3170,7 +3208,7 @@ end;
 
 constructor TResetterThread.Create;
 begin
-  inherited Create(False);
+  inherited Create(True);
   oSleep := CreateEvent(nil, False, False, nil);
   TimeToSleep := INFINITE;
 end;
@@ -3210,6 +3248,98 @@ begin
     SocketsColl.Leave;
   until Terminated;
 end;
+
+constructor TFileFlusherThread.Create;
+begin
+  inherited Create(True);
+  FileHandle := AFileHandle;
+  CS := ACriticalSection;
+  oEvent := CreateEvtA;
+end;
+
+procedure TFileFlusherThread.Execute;
+const
+  CMaxTimeout = 100;
+  CMinTimeout = 5;
+var
+  WaitTimeout: DWORD;
+  CurrentTimestamp: DWORD;
+  DiffI: Int64;
+  DiffD: DWORD;
+  le: DWORD;
+  s: AnsiString;
+begin
+  WaitTimeout := INFINITE;
+  repeat
+    case WaitForSingleObject(oEvent, WaitTimeout) of
+       WAIT_TIMEOUT:
+          if not Terminated then
+          begin
+            Flush(uGetSystemTime);
+            WaitTimeout := INFINITE;
+          end;
+       WAIT_OBJECT_0:
+          if not Terminated then
+          begin
+            CurrentTimestamp := uGetSystemTime;
+            DiffI := Abs(Int64(LastFlushInitiatedTimestamp) - Int64(CurrentTimestamp));
+            if DiffI > MaxInt then DiffD := MaxInt else DiffD := DWORD(DiffI);
+            if DiffD < CMaxTimeout then
+            begin
+              // less than 100 milliseconds (0.1 seconds) passed since last flush
+              WaitTimeout := CMaxTimeout - DiffD;
+              if WaitTimeout < CMinTimeout then
+              begin
+                // do not wait if too few milliseconds left until the upcomingflush,
+                // flush the buffers right away
+                WaitTimeout := 0;
+              end;
+            end else
+            begin
+              // flush the buffers right away
+              WaitTimeout := 0;
+            end;
+            if WaitTimeout = 0 then
+            begin
+              Flush(CurrentTimestamp);
+              WaitTimeout := INFINITE;
+            end;
+          end;
+       else
+       begin
+         le := GetLastError;
+         Terminate;
+         s := 'TFileFlusherThread WaitForSingleObject failed - '+SysErrorMsg(le);
+         MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+       end;
+    end;
+  until Terminated;
+end;
+
+destructor TFileFlusherThread.Destroy;
+begin
+  ClearHandle(oEvent);
+  FileHandle := INVALID_HANDLE_VALUE;
+  CS := nil;
+  inherited Destroy;
+end;
+
+
+procedure TFileFlusherThread.Flush(ATime: DWORD);
+var
+  b: BOOL;
+begin
+  EnterCriticalSection(CS^);
+  b := FlushFileBuffers(FileHandle);
+  LastFlushInitiatedTimestamp := ATime;
+  LeaveCriticalSection(CS^);
+end;
+
+procedure TFileFlusherThread.Signal;
+begin
+  SetEvent(oEvent);
+end;
+
 
 function CompareMask(const N, m: AnsiString; SupportPercent: Boolean): Boolean;
 var

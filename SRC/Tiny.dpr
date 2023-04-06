@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 1997-2000 RIT Research Labs
+// Copyright (C) 2021-2023 Maxim Masiutin
 // Copyright (C) 2000-2017 RITLABS S.R.L.
-// Copyright (C) 2021 Maxim Masiutin
+// Copyright (C) 1997-2000 RIT Research Labs
 //
 // This programs is free for commercial and non-commercial use as long as
 // the following conditions are aheared to.
