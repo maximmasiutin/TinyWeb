@@ -1,10 +1,10 @@
 # TinyWeb Server 
-Version 1.95  
+Version 1.96  
 Released August 8, 2021  
 Written by Maxim Masiutin  
-Copyright (C) 1997-2000 RIT Research Labs  
+Copyright (C) 2021-2023 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
-Copyright (C) 2021 Maxim Masiutin  
+Copyright (C) 1997-2000 RIT Research Labs  
 
 ## Setup
 To set up the TinyWeb Server, just create a shortcut in the Startup menu with the following properties:

@@ -90,7 +90,12 @@
 </ul>
 <h2>1.95 (08 August 2021)</h2>
 <ul>
-<li>TinyWeb now compiles under Delphi 10.3.</li>
+<li>TinyWeb now compiles under Delphi 10.3</li>
+</ul>
+<h2>1.96 (06 April 2023)</h2>
+<ul>
+<li>The file buffers of the access log are flushed after each write, but with a delay of up to 0.1 seconds to prevent excessive flushing under heavy load, when many lines are written with very short time intervals.</li>
+<li>There is an error message displayed when TinyWeb is unable to create (open for writing) log files at startup; in earlier versions it just exited silently without notifying the user about the error in any way.
 </ul>
 </body>
 </html>
