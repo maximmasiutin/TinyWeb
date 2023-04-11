@@ -49,6 +49,8 @@
 
 program Tiny;
 
+{$APPTYPE GUI}
+
 {$I DEFINE.INC}
 
 uses
