@@ -97,5 +97,11 @@
 <li>The file buffers of the access log are flushed after each write, but with a delay of up to 0.1 seconds to prevent excessive flushing under heavy load, when many lines are written with very short time intervals.</li>
 <li>There is an error message displayed when TinyWeb is unable to create (open for writing) log files at startup; in earlier versions it just exited silently without notifying the user about the error in any way.
 </ul>
+<h2>1.97 (11 April 2023)</h2>
+<ul>
+<li>Fixed compiler warnings in FPC (Free Pascal)</li>
+<li>The file buffers of all log files are flushed, not just the logs of the access logs</li>
+<li>The query sting of the GET method is also written to the access log</li>
+</ul>
 </body>
 </html>

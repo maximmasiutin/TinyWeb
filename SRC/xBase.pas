@@ -263,7 +263,7 @@ type
 
   TCollClass = class of TColl;
 
-  TListSortCompare = function(Item1, Item2: Pointer): Integer;
+  TListSortCompare = function(Item1, Item2: Pointer): Int64;
 
   TColl = class(TAdvCpObject)
   protected
@@ -309,7 +309,7 @@ type
   TSortedColl = class(TColl)
   public
     Duplicates: Boolean;
-    function Compare(Key1, Key2: Pointer): Integer; virtual; abstract;
+    function Compare(Key1, Key2: Pointer): Int64; virtual; abstract;
     function KeyOf(Item: Pointer): Pointer; virtual;
     function IndexOf(Item: Pointer): Integer; override;
     procedure Insert(Item: Pointer); override;
@@ -325,7 +325,7 @@ type
   public
     function KeyOf(Item: Pointer): Pointer; override;
     procedure FreeItem(Item: Pointer); override;
-    function Compare(Key1, Key2: Pointer): Integer; override;
+    function Compare(Key1, Key2: Pointer): Int64; override;
     function CopyItem(AItem: Pointer): Pointer; override;
     function Copy: Pointer; override;
     procedure Ins(const S: AnsiString);
@@ -353,7 +353,7 @@ type
 function AddRightSpaces(const S: AnsiString; NumSpaces: Integer): AnsiString;
 procedure AddStr(var S: AnsiString; c: AnsiChar);
 procedure Add_Str(var S: ShortString; c: AnsiChar);
-function CompareStr(const S1, S2: AnsiString): Integer; assembler;
+function CompareStr(const S1, S2: AnsiString): Int64; assembler;
 function CopyLeft(const S: AnsiString; I: Integer): AnsiString;
 procedure DelDoubles(const St: AnsiString; var Source: AnsiString);
 procedure DelFC(var S: AnsiString);
@@ -528,12 +528,11 @@ type
     procedure Execute; override;
   end;
 
-
 {$IFNDEF UNICODE}
-
   UnicodeString = WideString;
   RawByteString = AnsiString;
 {$ENDIF}
+
 function UnicodeStringToRawByteString(const w: UnicodeString; CP: Integer)
   : RawByteString;
 
@@ -544,10 +543,14 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '1.96';
+  CServerVersion = '1.97';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
+
+{$IFDEF DEBUG}
+procedure xBaseSelfTest;
+{$ENDIF}
 
 implementation
 
@@ -1161,11 +1164,11 @@ begin
   Delete(S, I, Length(S) - I + 1);
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Basic Routines                            //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                          Basic Routines                            //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 procedure Clear(out Buf; Count: Integer);
 begin
@@ -1272,11 +1275,11 @@ begin
   B := B shr c;
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Win32 Events Extentions                       //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                      Win32 Events Extentions                       //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 function CreateEvtA: THandle;
 begin
@@ -1312,11 +1315,11 @@ begin
   SignaledEvt := WaitForSingleObject(id, 0) = id;
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Win32 API Hooks                               //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                      Win32 API Hooks                               //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 procedure CloseHandles(const Handles: array of THandle);
 var
@@ -1525,11 +1528,11 @@ begin
   SetLength(Result, NulSearch(Result[1]));
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Registry Routines                             //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                      Registry Routines                             //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 function OpenRegKeyEx(const AName: AnsiString; AMode: DWORD): HKey;
 begin
@@ -1693,11 +1696,11 @@ begin
   Result := e = ERROR_SUCCESS;
 end;
 
-/// /////////////////////////////////////////////////////////////////////
-// //
-// Objects                                //
-// //
-/// /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//                                                                    //
+//                             Objects                                //
+//                                                                    //
+////////////////////////////////////////////////////////////////////////
 
 function SysErrorMsg(ErrorCode: DWORD): AnsiString;
 var
@@ -1991,7 +1994,8 @@ end;
 
 function TSortedColl.Search(Key: Pointer; var Index: Integer): Boolean;
 var
-  L, H, I, c: Integer;
+  L, H, I: Integer;
+  c: Int64;
 begin
   Search := False;
   L := 0;
@@ -2181,7 +2185,7 @@ begin
   Result := PAnsiString(At(Index))^;
 end;
 
-function TStringColl.Compare(Key1, Key2: Pointer): Integer;
+function TStringColl.Compare(Key1, Key2: Pointer): Int64;
 begin
   Compare := CompareStr(PAnsiString(Key1)^, PAnsiString(Key2)^);
 end;
@@ -2236,11 +2240,10 @@ end;
 
 const
   CMonths = 'JanFebMarAprMayJunJulAugSepOctNovDec';
-  Months: string[Length(CMonths)] = CMonths;
 
 function MonthE(m: Integer): AnsiString;
 begin
-  Result := Copy(Months, 1 + (m - 1) * 3, 3);
+  Result := Copy(AnsiString(CMonths), 1 + (m - 1) * 3, 3);
 end;
 
 procedure GlobalFail;
@@ -2625,7 +2628,7 @@ begin
     Dispose(P);
 end;
 
-function CompareStr(const S1, S2: AnsiString): Integer; assembler;
+function CompareStr(const S1, S2: AnsiString): Int64; assembler;
 asm
   PUSH    ESI
   PUSH    EDI
@@ -2649,6 +2652,7 @@ asm
 @@4:    SUB     EAX,EDX
   POP     EDI
   POP     ESI
+  CDQ
 end;
 
 function CompareMem(P1, P2: Pointer; Length: Integer): Boolean; assembler;
@@ -3075,16 +3079,20 @@ type
   end;
 
   THostCacheColl = class(TSortedColl)
-    function Compare(Key1, Key2: Pointer): Integer; override;
+    function Compare(Key1, Key2: Pointer): Int64; override;
     function KeyOf(Item: Pointer): Pointer; override;
   end;
 
 var
   HostCache: THostCacheColl;
 
-function THostCacheColl.Compare(Key1, Key2: Pointer): Integer;
+function THostCacheColl.Compare(Key1, Key2: Pointer): Int64;
+var
+  i1, i2: Int64;
 begin
-  Result := NativeInt(Key1) - NativeInt(Key2);
+  i1 := NativeUInt(Key1);
+  i2 := NativeUInt(Key2);
+  Result := i1 - i2;
 end;
 
 function THostCacheColl.KeyOf(Item: Pointer): Pointer;
@@ -3102,14 +3110,22 @@ var
   he: PHostEnt;
   HostName: AnsiString;
 begin
+  HostName := '';
   HostCache.Enter;
   I := -1;
   F := HostCache.Search(Pointer(Addr), I);
   if F then
+  begin
     Result := StrAsg(THostCache(HostCache[I]).Name);
+  end else
+  begin
+    Result := '';
+  end;
   HostCache.Leave;
   if F then
+  begin
     Exit;
+  end;
   P := gethostbyaddr(@Addr, 4, PF_INET);
   ok := False;
   if P <> nil then
@@ -3703,5 +3719,19 @@ begin
   SetCodePage(Result, CP, False);
 {$ENDIF}
 end;
+
+{$IFDEF DEBUG}
+procedure xBaseSelfTest;
+var
+  i1, i2, i3: Int64;
+begin
+  i1 := CompareStr('a', 'b');
+  i2 := CompareStr('b', 'a');
+  i3 := CompareStr('a', 'a');
+  if not (i1 < 0) or
+     not (i2 > 0) or
+     not (i3 = 0) then GlobalFail; //'CompareStr Self-Test Failed!!!
+end;
+{$ENDIF}
 
 end.
