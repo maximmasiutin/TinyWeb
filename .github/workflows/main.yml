@@ -18,7 +18,7 @@ jobs:
     runs-on: self-hosted-windows-tinyweb
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@4
 
       - name: Compile TinyWeb with FreePascal 3.2.2 in ObjFPC mode
         run: |
