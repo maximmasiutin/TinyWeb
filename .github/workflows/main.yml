@@ -5,27 +5,58 @@ on:
   push:
     branches:
       - master
-    paths: 
+    paths:
       - 'SRC/define.inc'
       - 'SRC/SrvMain.pas'
       - 'SRC/Tiny.dpr'
       - 'SRC/xBase.pas'
-
   workflow_dispatch:
+
+env:
+  fpc_ver: '3.2.2'
+  fpc_installer_name: 'fpc_installer'
+
 
 jobs:
   build_windows:
-    runs-on: self-hosted-windows-tinyweb
-
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@4
+      - uses: actions/checkout@v4
 
-      - name: Compile TinyWeb with FreePascal 3.2.2 in ObjFPC mode
+      - name: Set environment variables for FPC
         run: |
-          cd $Env:GITHUB_WORKSPACE/SRC
-          & 'C:\FPC\3.2.2\bin\i386-win32\fpc.exe' @('-B', '-MObjFPC', 'Tiny.dpr')
+          echo "FPC_PATH=C:\FPC\${{ env.fpc_ver }}\bin\i386-win32\fpc.exe" >> $env:GITHUB_ENV
+          echo "FPC_URL=https://sourceforge.net/projects/freepascal/files/Win32/${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe/download" >> $env:GITHUB_ENV
+          echo "FPC_INSTALLER_PATH=$Env:TEMP\${{ env.fpc_installer_name }}.exe" >> $env:GITHUB_ENV
 
-      - name: Compile TinyWeb with FreePascal 3.2.2 in Delphi mode
+      - name: Print the environment variables set for FPC
         run: |
-          cd $Env:GITHUB_WORKSPACE/SRC
-          & 'C:\FPC\3.2.2\bin\i386-win32\fpc.exe' @('-B', '-MDelphi', 'Tiny.dpr')
+          gci env: | where name -like 'FPC_*'
+
+      - name: Download FreePascal installer
+        run: |
+          & 'curl.exe' @('-L', '-o', "$Env:FPC_INSTALLER_PATH", "$Env:FPC_URL")
+
+      - name: Install FreePascal silently
+        run: |
+          & "$Env:FPC_INSTALLER_PATH" @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LOG')
+          Wait-Process -Name '${{ env.fpc_installer_name }}' -Timeout 600
+          Remove-Item "$Env:FPC_INSTALLER_PATH"
+
+
+      - name: Output the installation log
+        run: |
+          Get-ChildItem -Path "$Env:TEMP\Setup Log *.txt" | ForEach-Object {
+            Write-Host "=== Log file: $($_.FullName) ==="
+            Get-Content -Path $_.FullName
+          }
+
+      - name: Compile TinyWeb with FreePascal in ObjFPC mode
+        working-directory: ${{ github.workspace }}/SRC
+        run: |
+          & "$Env:FPC_PATH" @('-B', '-MObjFPC', 'Tiny.dpr')
+
+      - name: Compile TinyWeb with Delphi in Delphi mode
+        working-directory: ${{ github.workspace }}/SRC
+        run: |
+          & "$Env:FPC_PATH" @('-B', '-MDelphi', 'Tiny.dpr')
