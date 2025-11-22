@@ -5,7 +5,7 @@
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 // Copyright (C) 1997-2000 RIT Research Labs
 //
-// This programs is free for commercial and non-commercial use as long as
+// This program is free for commercial and non-commercial use as long as
 // the following conditions are adhered to.
 //
 // Copyright remains RITLABS S.R.L., and as such any Copyright notices
@@ -137,14 +137,14 @@ type
     constructor Create(AErrorCode: Integer);
   end;
 
-  PHTTPServerThreadBufer = ^THTTPServerThreadBufer;
-  THTTPServerThreadBufer = array [0 .. CHTTPServerThreadBufSize - 1]
+  PHTTPServerThreadBuffer = ^THTTPServerThreadBuffer;
+  THTTPServerThreadBuffer = array [0 .. CHTTPServerThreadBufSize - 1]
     of AnsiChar;
 
   TPipeReadStdThread = class(TThread)
     Error: Boolean;
     HPipe: DWORD;
-    Buffer: PHTTPServerThreadBufer;
+    Buffer: PHTTPServerThreadBuffer;
     EntityHeader: TEntityHeader;
     Collector: TCollector;
     procedure Execute; override;
@@ -175,7 +175,7 @@ type
 
   THTTPServerThread = class(TThread)
     RemoteHost, RemoteAddr: AnsiString;
-    Buffer: THTTPServerThreadBufer;
+    Buffer: THTTPServerThreadBuffer;
     Socket: TSocket;
     constructor Create;
     procedure PrepareResponse(d: THTTPData);
@@ -242,7 +242,7 @@ type
   public
     EntityBody: AnsiString;
     GotEntityBody, CollectEntityBody: Boolean;
-    function Collect(var Buf: THTTPServerThreadBufer; j: Integer): Boolean;
+    function Collect(var Buf: THTTPServerThreadBuffer; j: Integer): Boolean;
     constructor Create;
     destructor Destroy; override;
     function GetNextLine: AnsiString;
@@ -263,7 +263,7 @@ type
     ETag, // Section 14.20
     Expires, // Section 14.21
     LastModified, // Section 14.29
-    { This is two headers for file download by CGI }
+    { These are two headers for file download by CGI }
     AcceptRanges, // Section 14.5
     ContentDisposition, // Section 15.10
     EntityBody: AnsiString;
@@ -531,7 +531,7 @@ begin
   Add(s, ETag, 'ETag'); // Section 14.20
   Add(s, Expires, 'Expires'); // Section 14.21
   Add(s, LastModified, 'Last-Modified'); // Section 14.29
-  { This is two headers for file download by CGI }
+  { These are two headers for file download by CGI }
   Add(s, AcceptRanges, 'Accept-Ranges'); // Section 14.5
   Add(s, ContentDisposition, 'Content-Disposition'); // Section 15.10
   Add(s, SetCookie, 'Set-Cookie');
@@ -599,7 +599,7 @@ begin
                         if z = 'LAST-MODIFIED' then
                           LastModified := s
                         else // 14.29
-                          { This is two headers for file download by CGI }
+                          { These are two headers for file download by CGI }
                           if z = 'ACCEPT-RANGES' then
                             AcceptRanges := s
                           else // 14.5
@@ -655,7 +655,7 @@ begin
   Lines.AtFree(0);
 end;
 
-function TCollector.Collect(var Buf: THTTPServerThreadBufer;
+function TCollector.Collect(var Buf: THTTPServerThreadBuffer;
   j: Integer): Boolean;
 var
   i, l: Integer;
@@ -730,7 +730,7 @@ begin
 end;
 
 function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader;
-  j: Integer; var Buffer: THTTPServerThreadBufer): Boolean;
+  j: Integer; var Buffer: THTTPServerThreadBuffer): Boolean;
 var
   s, z: AnsiString;
 begin
@@ -797,7 +797,7 @@ begin
 end;
 
 function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr,
-  AStdInStr: AnsiString; Buffer: THTTPServerThreadBufer; SelfThr: TThread;
+  AStdInStr: AnsiString; Buffer: THTTPServerThreadBuffer; SelfThr: TThread;
   var ErrorMsg: AnsiString): TEntityHeader;
 var
   SI: TStartupInfoA;

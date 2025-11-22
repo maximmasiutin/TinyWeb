@@ -5,7 +5,7 @@ Copyright (C) 1997-2000 RIT Research Labs
 
 Written by Maxim Masiutin
 
-This programs is free for commercial and non-commercial use as long as
+This program is free for commercial and non-commercial use as long as
 the following conditions are satisfied.
 
 Copyright remains RITLABS S.R.L., and as such any Copyright notices
