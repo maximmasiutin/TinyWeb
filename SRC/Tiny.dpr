@@ -6,7 +6,7 @@
 // Copyright (C) 1997-2000 RIT Research Labs
 //
 // This programs is free for commercial and non-commercial use as long as
-// the following conditions are aheared to.
+// the following conditions are adhered to.
 //
 // Copyright remains RITLABS S.R.L., and as such any Copyright notices
 // in the code are not to be removed. If this package is used in a
@@ -40,7 +40,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// The licence and distribution terms for any publically available
+// The licence and distribution terms for any publicly available
 // version or derivative of this code cannot be changed. i.e. this code
 // cannot simply be copied and put under another distribution licence
 // (including the GNU Public Licence).

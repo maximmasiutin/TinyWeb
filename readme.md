@@ -17,10 +17,10 @@ To set up the TinyWeb Server, just create a shortcut in the Startup menu with th
 
 Here, `c:\www\bin\tiny.exe` is the path to TinyWeb executable, `c:\www\root` is the path to www home (root) directory, and `c:\www\log` is the directory for log files that TinyWeb keeps.
 
-TinyWeb is not a windowed application, so there is no window with TinyWeb. It is also not a console application, so there is no console window for TinyWeb. Moreover, it is not a Windows Service. Once started, the `tiny.exe` process will appear in Task List. There is no way to stop Tiny Web except via the „End Task” operation.
+TinyWeb is not a windowed application, so there is no window with TinyWeb. It is also not a console application, so there is no console window for TinyWeb. Moreover, it is not a Windows Service. Once started, the `tiny.exe` process will appear in Task List. There is no way to stop Tiny Web except via the "End Task" operation.
 
 ## Command-line Options
-1. First parameter (mandatory) is a path www home (root) directory.
+1. First parameter (mandatory) is a path to the www home (root) directory.
 2. Second parameter (optional) is a port number. By default, it is 80 for HTTP and 443 for HTTPS(SSL/TLS).
 3. Third parameter (optional) is a dotted-decimal IP address to bind the server. By default, TinyWeb binds to all available local addresses.
 

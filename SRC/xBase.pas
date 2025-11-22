@@ -6,7 +6,7 @@
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 //
 // This programs is free for commercial and non-commercial use as long as
-// the following conditions are aheared to.
+// the following conditions are adhered to.
 //
 // Copyright remains RITLABS S.R.L., and as such any Copyright notices
 // in the code are not to be removed. If this package is used in a
@@ -40,7 +40,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// The licence and distribution terms for any publically available
+// The licence and distribution terms for any publicly available
 // version or derivative of this code cannot be changed. i.e. this code
 // cannot simply be copied and put under another distribution licence
 // (including the GNU Public Licence).
@@ -153,7 +153,7 @@ type
     cTruncate, // Once opened, the file is truncated so that
     // its size is zero bytes.
 
-    cExisting, // For communications resources, console diveces
+    cExisting, // For communications resources, console devices
 
     cShareAllowWrite, cShareDenyRead,
 
@@ -434,7 +434,7 @@ function NumBits(I: Integer): Integer; assembler;
 procedure XAdd(var Critical, Normal); assembler;
 procedure XChg(var Critical, Normal); assembler;
 
-{ --- Win32 Events Extentions }
+{ --- Win32 Events Extensions }
 
 function CreateEvtA: THandle;
 function CreateEvt(Initial: Boolean): THandle;
@@ -1277,7 +1277,7 @@ end;
 
 ////////////////////////////////////////////////////////////////////////
 //                                                                    //
-//                      Win32 Events Extentions                       //
+//                      Win32 Events Extensions                        //
 //                                                                    //
 ////////////////////////////////////////////////////////////////////////
 
@@ -1644,7 +1644,7 @@ begin
     Result := INVALID_REGISTRY_KEY;
     Exit;
   end;
-  T := REG_DWORD;;
+  T := REG_DWORD;
   S := SizeOf(B);
   PDataBuf := @B;
   e := RegQueryValueExA(Key, // handle of key to query
@@ -1684,7 +1684,7 @@ begin
     Result := False;
     Exit;
   end;
-  T := REG_BINARY;;
+  T := REG_BINARY;
   S := Sz;
   e := RegQueryValueExA(Key, // handle of key to query
     @(rvn[1]), // value to query

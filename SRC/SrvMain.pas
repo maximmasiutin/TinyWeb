@@ -6,7 +6,7 @@
 // Copyright (C) 1997-2000 RIT Research Labs
 //
 // This programs is free for commercial and non-commercial use as long as
-// the following conditions are aheared to.
+// the following conditions are adhered to.
 //
 // Copyright remains RITLABS S.R.L., and as such any Copyright notices
 // in the code are not to be removed. If this package is used in a
@@ -40,7 +40,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-// The licence and distribution terms for any publically available
+// The licence and distribution terms for any publicly available
 // version or derivative of this code cannot be changed. i.e. this code
 // cannot simply be copied and put under another distribution licence
 // (including the GNU Public Licence).
@@ -286,7 +286,7 @@ type
     ErrorMsg, Method, RequestURI, HTTPVersion, AuthUser, AuthPassword, AuthType,
       URIPath, URIParams, URIQuery, URIQueryParam: AnsiString;
 
-    ResponceObjective: TAbstractHttpResponseData;
+    ResponseObjective: TAbstractHttpResponseData;
 
     RequestGeneralHeader: TGeneralHeader;
     RequestRequestHeader: TRequestHeader;
@@ -694,7 +694,7 @@ begin
 
   if CollectEntityBody then
   begin
-    if (CollectEntityBody) and (j > 0) then
+    if j > 0 then
     begin
       i := Length(EntityBody);
       SetLength(EntityBody, i + j);
@@ -1422,7 +1422,7 @@ function FileIsRegular(const FN: AnsiString): Boolean;
 const
   CDot: AnsiChar = '.';
   fDevices: AnsiString =
-    #1'CON'#1'LPT'#1'PRN'#1'NUL'#1'CLOCK$'#1'AUX'#1'COM1'#1'LPT1'#1'LPT2'#1'LPT3'#1'COM2'#1'COM3'#1'COM4'#1'CONIN$'#1'CONOUT$'
+    #1'CON'#1'LPT'#1'PRN'#1'NUL'#1'CLOCK$'#1'AUX'#1'COM1'#1'COM2'#1'COM3'#1'COM4'#1'CONIN$'#1'CONOUT$'
     + #1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
 var
   F: THandle;
@@ -1523,8 +1523,8 @@ var
   PathInfo: AnsiString;
 
   // Thanks to Nick McDaniel, Intranaut Inc. (21 January 1999)
-  // We were having problems with files that that had spaces in the name (C:\Program Files\).  The error that was being generated was "Internal Server Error: Can't open
-  // To alievate this problem, we added double quotes to executable and script name
+  // We were having problems with files that had spaces in the name (C:\Program Files\).  The error that was being generated was "Internal Server Error: Can't open
+  // To alleviate this problem, we added double quotes to executable and script name
 
   function QuoteSpaced(const s: AnsiString): AnsiString;
   var
@@ -1534,7 +1534,7 @@ var
     // parameters to Pos() function were improperly ordered
     CSpace := ' ';
     if Pos(CSpace, DelSpaces(s)) <= 0 then
-    // Does the file name contain space cheracters inside?
+    // Does the file name contain space characters inside?
     begin
       Result := s // No, return it as is
     end
@@ -1893,7 +1893,7 @@ begin
         if not RequestCollector.GotEntityBody then
           Continue;
 
-        // process intity body
+        // process entity body
         RequestEntityHeader.CopyEntityBody(RequestCollector);
 
         FreeObject(RequestCollector);

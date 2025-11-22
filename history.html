@@ -8,11 +8,11 @@
 <ul>
 <li>Supported (but not tested enough) "Location" and "Status" CGI script output directives. Your feedback would be appreciated.</li>
 <li>Supported CGI command line options, mostly used for ISINDEX query.</li>
-<li>Changed the algorithm of determining requester's host name. Now the address resolved back an forward to produce a true picture.</li>
+<li>Changed the algorithm of determining requester's host name. Now the address is resolved back and forward to produce a true picture.</li>
 <li>Fixed some minor bugs with launching CGI scripts and tested with ActivePerl by <A HREF="http://www.activestate.com/">ActiveState</A>.</li>
 <li>Introduced a resetter thread that shuts down the sockets that are completely inactive for 5 minutes.</li>
 <li>Duplicate binds are now reported.</li>
-<li>It is now possible to bind the daemon to specified port (secong command line parameter) and specified address (third commandline parameter).</li>
+<li>It is now possible to bind the daemon to specified port (second command line parameter) and specified address (third command line parameter).</li>
 <li>Now supports more CGI environment variables.</li>
 </ul>
 <h2>0.6 (17 December 1997)</h2>
@@ -86,7 +86,7 @@
 <h2>1.94 (06 April 2017)</h2>
 <ul>
 <li>Added an additional check that the requested file name is safe (see LocalFNameSafe and FileIsRegular): that the file is a normal file rather than a device name, that the file is kept in a directory that does not have hidden or system attribute.</li>
-<li>When the sever wants to close the connection due to an error and the client did send the "Connection: Keep-Alive request" header, some clients thought that the connection should continue despite the server didn't send the "Connection: Keep-Alive" response header. Now, in these cases, the server explicitly send the "Connection: Close" response header.</li>
+<li>When the server wants to close the connection due to an error and the client did send the "Connection: Keep-Alive" request header, some clients thought that the connection should continue despite the server didn't send the "Connection: Keep-Alive" response header. Now, in these cases, the server explicitly sends the "Connection: Close" response header.</li>
 </ul>
 <h2>1.95 (08 August 2021)</h2>
 <ul>
@@ -95,13 +95,13 @@
 <h2>1.96 (06 April 2023)</h2>
 <ul>
 <li>The file buffers of the access log are flushed after each write, but with a delay of up to 0.1 seconds to prevent excessive flushing under heavy load, when many lines are written with very short time intervals.</li>
-<li>There is an error message displayed when TinyWeb is unable to create (open for writing) log files at startup; in earlier versions it just exited silently without notifying the user about the error in any way.
+<li>There is an error message displayed when TinyWeb is unable to create (open for writing) log files at startup; in earlier versions it just exited silently without notifying the user about the error in any way.</li>
 </ul>
 <h2>1.97 (11 April 2023)</h2>
 <ul>
 <li>Fixed compiler warnings in FPC (Free Pascal)</li>
 <li>The file buffers of all log files are flushed, not just the logs of the access logs</li>
-<li>The query sting of the GET method is also written to the access log</li>
+<li>The query string of the GET method is also written to the access log</li>
 </ul>
 </body>
 </html>

@@ -13,7 +13,7 @@ hello.pl - Displays "Hello, World!" in plain form. Requires Perl installed.
            Just place hello.pl to /cgi-bin/ and request /cgi-bin/hello.pl
 
 
-login.html, login.c login.dpr and loginh.pas give an example of processing
+login.htm, login.c, login.dpr, and loginu.pas give an example of processing
 CGI arguments from applications written in C or Delphi.
 
 
