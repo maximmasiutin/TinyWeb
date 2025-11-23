@@ -1,6 +1,6 @@
 # TinyWeb Server 
-Version 1.97  
-Released April 11, 2023  
+Version 1.98
+Released November 23, 2025  
 Written by Maxim Masiutin  
 Copyright (C) 2021-2025 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
