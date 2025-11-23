@@ -59,8 +59,11 @@ jobs:
           $version = "${{ steps.version.outputs.tag }}"
           $content = Get-Content -Path "history.html" -Raw
           if ($content -match "(?s)<h2>$version[^<]*</h2>\s*<ul>(.*?)</ul>") {
-            $items = [regex]::Matches($Matches[1], '<li>([^<]+)</li>')
-            $notes = ($items | ForEach-Object { "- " + $_.Groups[1].Value }) -join "`n"
+            $items = [regex]::Matches($Matches[1], '<li>(.*?)</li>')
+            $notes = ($items | ForEach-Object {
+              $text = $_.Groups[1].Value -replace '<[^>]+>', ''
+              "- " + $text.Trim()
+            }) -join "`n"
           } else {
             $notes = "Release $version"
           }
