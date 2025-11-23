@@ -1,3 +1,3 @@
 .github/CODEOWNERS text eol=lf
 .gitattributes text eol=lf
-
+readme.md  text eol=crlf
