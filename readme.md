@@ -35,9 +35,14 @@ TinyWeb is not a windowed application, so there is no window with TinyWeb. It is
 
 ## Building CGI Executables with Docker
 
-You can use Docker to cross-compile C files into Windows executables using MinGW.
+You can use Docker to cross-compile CGI test programs (C files) into Windows executables using MinGW.
 
-### Build hello.exe
+### Docker Files
+
+- **Dockerfile** - Uses `debian:stable-slim` with `mingw-w64` to cross-compile `CGITEST/login.c` into a 64-bit Windows executable
+- **.dockerignore** - Excludes build artifacts, logs, and documentation from Docker context
+
+### Build login.exe
 ```cmd
 docker build -t tinyweb-login-c .
 ```
@@ -45,11 +50,11 @@ docker build -t tinyweb-login-c .
 ### Extract the executable and copy to cgi-bin
 ```cmd
 docker create --name temp tinyweb-login-c
-docker cp temp:/app/hello.exe c:\www\root\cgi-bin\hello.exe
+docker cp temp:/app/login.exe c:\www\root\cgi-bin\login.exe
 docker rm temp
 ```
 
-The Dockerfile uses `debian:stable-slim` with MinGW to compile `CGITEST/hello.c` into a Windows executable.
+To build other CGI examples (e.g., `hello.c`), modify the `COPY` and `RUN` lines in the Dockerfile.
 
 ## CGI Query Parameter Handling
 
