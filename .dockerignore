@@ -1,0 +1,13 @@
+.git
+.gitignore
+*.exe
+*.obj
+*.o
+*.dcu
+*.bak
+*.7z
+*.log
+*.md
+Dockerfile
+Dockerfile.old
+Dockerfile.new

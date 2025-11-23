@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 2021-2023 Maxim Masiutin
+// Copyright (C) 2021-2025 Maxim Masiutin
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 // Copyright (C) 1997-2000 RIT Research Labs
 //
@@ -796,6 +796,71 @@ begin
   until False;
 end;
 
+// CGI Query Parameter Security Functions
+// Implements defense-in-depth for ISINDEX-style queries per RFC 3875 Section 4.4
+// Reference: https://datatracker.ietf.org/doc/html/rfc3875#section-4.4
+//
+// Two layers of protection:
+// 1. Whitelist validation (optional, enabled by STRICT_CGI_PARAMS define)
+// 2. Apache-style shell metacharacter escaping (always active)
+
+{$IFDEF STRICT_CGI_PARAMS}
+// Whitelist validation: Only allow safe characters in CGI query parameters
+// Returns True if the parameter contains only safe characters
+// This is the first layer - rejects requests with unsafe characters
+function IsQueryParamSafe(const s: AnsiString): Boolean;
+var
+  i: Integer;
+  c: AnsiChar;
+begin
+  Result := True;
+  for i := 1 to Length(s) do
+  begin
+    c := s[i];
+    // Allow: A-Z, a-z, 0-9, hyphen, underscore, dot, forward slash, backslash, colon
+    if not ((c >= 'A') and (c <= 'Z')) and
+       not ((c >= 'a') and (c <= 'z')) and
+       not ((c >= '0') and (c <= '9')) and
+       (c <> '-') and (c <> '_') and (c <> '.') and
+       (c <> '/') and (c <> '\') and (c <> ':') then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+end;
+{$ENDIF}
+
+// Apache-style shell metacharacter escaping for Windows
+// Escapes dangerous characters with caret (^) and wraps in quotes
+// Based on Apache httpd ap_escape_shell_cmd() and PHP escapeshellcmd()
+// This is the second layer - always active as defense-in-depth
+// Reference: https://datatracker.ietf.org/doc/html/rfc3875#section-7.2
+function EscapeShellParam(const s: AnsiString): AnsiString;
+const
+  // Windows shell metacharacters that need escaping
+  DangerousChars = '&|<>^()%!"''`;$[]{}*?~';
+var
+  i: Integer;
+  c: AnsiChar;
+begin
+  Result := '';
+  for i := 1 to Length(s) do
+  begin
+    c := s[i];
+    // Block newlines entirely - cannot be safely escaped on Windows
+    if (c = #10) or (c = #13) then
+      Continue;
+    // Escape dangerous characters with caret (Windows cmd.exe escape char)
+    if Pos(c, DangerousChars) > 0 then
+      Result := Result + '^';
+    Result := Result + c;
+  end;
+  // Wrap in quotes for additional safety
+  if Result <> '' then
+    Result := '"' + Result + '"';
+end;
+
 function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr,
   AStdInStr: AnsiString; Buffer: THTTPServerThreadBuffer; SelfThr: TThread;
   var ErrorMsg: AnsiString): TEntityHeader;
@@ -852,8 +917,9 @@ begin
     s := AExecutable
   else
     s := AExecutable + ' ' + AScript;
+  // Apply Apache-style escaping to query parameter (always active)
   if AQueryParam <> '' then
-    s := s + ' ' + AQueryParam;
+    s := s + ' ' + EscapeShellParam(AQueryParam);
   s := DelSpaces(s);
   if (s = '') or (AEnvStr = '') or (APath = '') then
   begin
@@ -1921,12 +1987,21 @@ begin
             CEqual := '=';
             if Pos(CEqual, URIQuery) = 0 then
             begin
+              // ISINDEX-style query (no '=' sign) per RFC 3875 Section 4.4
               URIQueryParam := URIQuery;
               if not UnpackPchars(URIQueryParam) then
                 Break;
               CZero := #0;
               if Pos(CZero, URIQueryParam) > 0 then
                 Break;
+{$IFDEF STRICT_CGI_PARAMS}
+              // Whitelist validation: reject parameters with unsafe characters
+              if not IsQueryParamSafe(URIQueryParam) then
+              begin
+                StatusCode := 400;
+                Break;
+              end;
+{$ENDIF}
             end;
           end;
           CSemicolon := ';';

@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 2021-2023 Maxim Masiutin
+// Copyright (C) 2021-2025 Maxim Masiutin
 // Copyright (C) 1997-2000 RIT Research Labs
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 //

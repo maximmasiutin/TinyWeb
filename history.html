@@ -103,5 +103,13 @@
 <li>The file buffers of all log files are flushed, not just the logs of the access logs</li>
 <li>The query string of the GET method is also written to the access log</li>
 </ul>
+<h2>1.98 (23 November 2025)</h2>
+<ul>
+<li>Apache-style shell metacharacter escaping for CGI query parameters (always active)</li>
+<li>Optional strict whitelist validation via STRICT_CGI_PARAMS define (enabled by default)</li>
+<li>CGI query parameters protected by two layers: whitelist rejects unsafe chars, escaping sanitizes the rest</li>
+<li>Full ISINDEX query support preserved per <a href="https://datatracker.ietf.org/doc/html/rfc3875#section-4.4">RFC 3875 Section 4.4</a></li>
+<li>To allow special characters in queries, disable STRICT_CGI_PARAMS in define.inc</li>
+</ul>
 </body>
 </html>
