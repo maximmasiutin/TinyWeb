@@ -1,0 +1,71 @@
+name: Trivy Analysis
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run once every 3 months (1st day of Jan, Apr, Jul, Oct at midnight)
+    - cron: '0 0 1 1,4,7,10 *'
+  workflow_call:
+    outputs:
+      scan_passed:
+        description: 'Whether the Trivy scan passed without issues'
+        value: ${{ jobs.scan.outputs.scan_passed }}
+
+env:
+  SARIF_FILE: 'trivy-results.sarif'
+
+jobs:
+  scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    outputs:
+      scan_passed: ${{ steps.check_results.outputs.passed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          version: 'v0.67.0'
+          scan-type: 'fs'
+          scanners: 'vuln,misconfig,secret,license'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: ${{ env.SARIF_FILE }}
+          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+
+      - name: Check Trivy scan results existence
+        run: |
+          if [ ! -f "${{ env.SARIF_FILE }}" ]; then
+            echo "Error: ${{ env.SARIF_FILE }} does not exist."
+            exit 1
+          fi
+          ls -lash ${{ env.SARIF_FILE }}
+
+      - name: Check for security issues
+        id: check_results
+        run: |
+          # Check if there are any results (vulnerabilities found)
+          RESULTS=$(jq '.runs[0].results | length' ${{ env.SARIF_FILE }})
+          echo "Found $RESULTS issues"
+          if [ "$RESULTS" -gt 0 ]; then
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "::error::Trivy found $RESULTS security issues"
+            jq '.runs[0].results[] | {ruleId, message: .message.text}' ${{ env.SARIF_FILE }}
+            exit 1
+          else
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "No security issues found"
+          fi
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: ${{ env.SARIF_FILE }}

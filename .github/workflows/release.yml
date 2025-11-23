@@ -11,7 +11,16 @@ env:
   fpc_installer_name: 'fpc_installer'
 
 jobs:
+  security-scan:
+    name: Security Scan
+    uses: ./.github/workflows/trivy-analysis.yml
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+
   release:
+    needs: security-scan
     runs-on: windows-latest
     permissions:
       contents: write
