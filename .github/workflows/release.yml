@@ -54,16 +54,19 @@ jobs:
 
       - name: Generate release notes from history.html
         id: notes
-        shell: bash
+        shell: pwsh
         run: |
-          # Extract the latest version section from history.html
-          VERSION="${{ steps.version.outputs.tag }}"
-          # Create release notes from history.html
-          {
-            echo "notes<<EOF"
-            grep -A 20 "<h2>$VERSION" history.html | grep -oP '(?<=<li>).*?(?=</li>)' | sed 's/^/- /'
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          $version = "${{ steps.version.outputs.tag }}"
+          $content = Get-Content -Path "history.html" -Raw
+          if ($content -match "(?s)<h2>$version[^<]*</h2>\s*<ul>(.*?)</ul>") {
+            $items = [regex]::Matches($Matches[1], '<li>([^<]+)</li>')
+            $notes = ($items | ForEach-Object { "- " + $_.Groups[1].Value }) -join "`n"
+          } else {
+            $notes = "Release $version"
+          }
+          "notes<<EOF" >> $env:GITHUB_OUTPUT
+          $notes >> $env:GITHUB_OUTPUT
+          "EOF" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
