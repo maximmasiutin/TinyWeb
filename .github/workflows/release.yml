@@ -1,0 +1,75 @@
+---
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  fpc_ver: '3.2.2'
+  fpc_installer_name: 'fpc_installer'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag_dashes=${TAG//./-}" >> $GITHUB_OUTPUT
+
+      - name: Set environment variables for FPC
+        run: |
+          echo "FPC_PATH=C:\FPC\${{ env.fpc_ver }}\bin\i386-win32\fpc.exe" >> $env:GITHUB_ENV
+          echo "FPC_URL=https://sourceforge.net/projects/freepascal/files/Win32/${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe/download" >> $env:GITHUB_ENV
+          echo "FPC_INSTALLER_PATH=$Env:TEMP\${{ env.fpc_installer_name }}.exe" >> $env:GITHUB_ENV
+
+      - name: Download FreePascal installer
+        run: |
+          & 'curl.exe' @('-L', '-o', "$Env:FPC_INSTALLER_PATH", "$Env:FPC_URL")
+
+      - name: Install FreePascal silently
+        run: |
+          & "$Env:FPC_INSTALLER_PATH" @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LOG')
+          Wait-Process -Name '${{ env.fpc_installer_name }}' -Timeout 600
+          Remove-Item "$Env:FPC_INSTALLER_PATH"
+
+      - name: Compile TinyWeb with FreePascal (optimized)
+        working-directory: ${{ github.workspace }}/SRC
+        run: |
+          & "$Env:FPC_PATH" @('-OpCOREAVX2', '-O4', '-Pi386', '-Twin32', '-B', '-MObjFPC', 'Tiny.dpr')
+
+      - name: Create release archive
+        working-directory: ${{ github.workspace }}/SRC
+        run: |
+          & "$env:ProgramFiles\7-Zip\7z.exe" a -mx9 "TinyWeb-${{ steps.version.outputs.tag_dashes }}.7z" Tiny.exe
+
+      - name: Generate release notes from history.html
+        id: notes
+        shell: bash
+        run: |
+          # Extract the latest version section from history.html
+          VERSION="${{ steps.version.outputs.tag }}"
+          # Create release notes from history.html
+          {
+            echo "notes<<EOF"
+            grep -A 20 "<h2>$VERSION" history.html | grep -oP '(?<=<li>).*?(?=</li>)' | sed 's/^/- /'
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: TinyWeb v${{ steps.version.outputs.tag }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: SRC/TinyWeb-${{ steps.version.outputs.tag_dashes }}.7z
+          draft: false
+          prerelease: false
