@@ -7,7 +7,7 @@ RUN useradd -m builder
 USER builder
 
 WORKDIR /home/builder/app
-COPY --chown=builder:builder CGITEST/login.c ./login.c
+COPY --chown=builder:builder --chmod=444 CGITEST/login.c ./login.c
 
 RUN x86_64-w64-mingw32-gcc -o login.exe login.c
 

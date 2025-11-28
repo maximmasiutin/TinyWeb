@@ -15,7 +15,8 @@ void main(void)
 {
 
   HANDLE StdIn;
-  int Size, Actual;
+  int Size;
+  DWORD Actual;
   char* String;
 
 

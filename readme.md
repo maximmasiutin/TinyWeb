@@ -35,26 +35,31 @@ TinyWeb is not a windowed application, so there is no window with TinyWeb. It is
 
 ## Building CGI Executables with Docker
 
-You can use Docker to cross-compile CGI test programs (C files) into Windows executables using MinGW.
+The Docker container is provided to cross-compile CGI test programs from C source code into Windows executables without requiring MinGW installation on your Windows system. This is particularly useful for:
+- Testing CGI functionality without setting up a C compiler
+- Building Windows executables on Linux/Mac systems
+- Ensuring consistent build environments
 
 ### Docker Files
 
-- **Dockerfile** - Uses `debian:stable-slim` with `mingw-w64` to cross-compile `CGITEST/login.c` into a 64-bit Windows executable
+- **Dockerfile** - Uses `debian:stable-slim` with `mingw-w64` to cross-compile `CGITEST/login.c` into a 64-bit Windows executable (`login.exe`)
 - **.dockerignore** - Excludes build artifacts, logs, and documentation from Docker context
 
-### Build login.exe
+### Build the Docker Image
 ```cmd
-docker build -t tinyweb-login-c .
+docker build -t tinyweb-builder .
 ```
 
-### Extract the executable and copy to cgi-bin
+### Extract the Compiled Executable
 ```cmd
-docker create --name temp tinyweb-login-c
-docker cp temp:/app/login.exe c:\www\root\cgi-bin\login.exe
-docker rm temp
+docker create --name temp-builder tinyweb-builder
+docker cp temp-builder:/home/builder/app/login.exe ./login.exe
+docker rm temp-builder
 ```
 
-To build other CGI examples (e.g., `hello.c`), modify the `COPY` and `RUN` lines in the Dockerfile.
+The compiled `login.exe` can then be copied to your TinyWeb CGI directory (e.g., `c:\www\root\cgi-bin\`).
+
+To build other CGI examples from `CGITEST/` (e.g., `hello.c`), modify the `COPY` and `RUN` lines in the Dockerfile.
 
 ## CGI Query Parameter Handling
 
