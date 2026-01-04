@@ -70,6 +70,8 @@ const
   ScriptsPath = 'cgi-bin';
 
   CHTTPServerThreadBufSize = $2000;
+  CMaxHeaderLineLength = 8192;  // CVE-2024-34199: Limit header line length to prevent buffer overflow
+  CMaxTotalHeaderSize = 65536;  // CVE-2024-34199: Limit total header size
   MaxStatusCodeIdx = 36;
 StatusCodes:
 array [0 .. MaxStatusCodeIdx] of record Code: Integer;
@@ -658,19 +660,43 @@ end;
 function TCollector.Collect(var Buf: THTTPServerThreadBuffer;
   j: Integer): Boolean;
 var
-  i, l: Integer;
+  i, l, TotalSize: Integer;
 begin
+  Result := True;
   if not CollectEntityBody then
   begin
     l := Length(CollectStr);
+    // CVE-2024-34199: Calculate total header size to prevent overflow
+    TotalSize := 0;
+    for i := 0 to Lines.Count - 1 do
+      Inc(TotalSize, Length(Lines[i]));
+    Inc(TotalSize, CollectLen);
+
     for i := 0 to j - 1 do
     begin
+      // CVE-2024-34199: Check for excessive line length
+      if CollectLen >= CMaxHeaderLineLength then
+      begin
+        Result := False;
+        Exit;
+      end;
+      // CVE-2024-34199: Check for excessive total header size
+      if TotalSize >= CMaxTotalHeaderSize then
+      begin
+        Result := False;
+        Exit;
+      end;
+
       if l <= CollectLen then
       begin
         Inc(l, j + 100);
+        // CVE-2024-34199: Cap allocation at max line length
+        if l > CMaxHeaderLineLength then
+          l := CMaxHeaderLineLength;
         SetLength(CollectStr, l);
       end;
       Inc(CollectLen);
+      Inc(TotalSize);
       CollectStr[CollectLen] := Buf[i];
       if (CollectLen >= 2) and (CollectStr[CollectLen] = #10) and
         (CollectStr[CollectLen - 1] = #13) then
@@ -794,6 +820,27 @@ begin
     if (Collector.ContentLength > 0) and (Collector.GotEntityBody) then
       Break;
   until False;
+end;
+
+// CVE-2024-5193: CRLF Injection Prevention
+// Strips CR and LF characters from strings to prevent HTTP header injection
+// Reference: CWE-93 - Improper Neutralization of CRLF Sequences
+function StripCRLF(const s: AnsiString): AnsiString;
+var
+  i, j, len: Integer;
+begin
+  len := Length(s);
+  SetLength(Result, len);
+  j := 0;
+  for i := 1 to len do
+  begin
+    if (s[i] <> #13) and (s[i] <> #10) then
+    begin
+      Inc(j);
+      Result[j] := s[i];
+    end;
+  end;
+  SetLength(Result, j);
 end;
 
 // CGI Query Parameter Security Functions
@@ -1317,7 +1364,8 @@ end;
 function ReturnNewLocation(const ALocation: AnsiString; d: THTTPData)
   : TAbstractHttpResponseData;
 begin
-  d.ResponseResponseHeader.Location := ALocation;
+  // CVE-2024-5193: Strip CRLF to prevent HTTP header injection
+  d.ResponseResponseHeader.Location := StripCRLF(ALocation);
   Result := THttpResponseErrorCode.Create(302);
 end;
 
