@@ -1,8 +1,8 @@
-# TinyWeb Server 
-Version 1.98
-Released November 23, 2025  
+# TinyWeb Server
+Version 1.99
+Released January 5, 2026  
 Written by Maxim Masiutin  
-Copyright (C) 2021-2025 Maxim Masiutin  
+Copyright (C) 2021-2026 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
 Copyright (C) 1997-2000 RIT Research Labs  
 
@@ -78,3 +78,17 @@ The `STRICT_CGI_PARAMS` define in `SRC/define.inc` controls whitelist validation
 - **Disabled**: Allows all characters (escaped for safety)
 
 To disable strict mode, comment out `{$DEFINE STRICT_CGI_PARAMS}` in `define.inc`.
+
+## Security Vulnerabilities Fixed
+
+TinyWeb has addressed the following CVEs:
+
+| CVE | Type | Severity | Fixed In |
+|-----|------|----------|----------|
+| CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
+| CVE-2024-34199 | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
+| CVE Request 1971570 | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
+| CVE-2004-2636 | Path Traversal (CWE-22) | High | v1.93+ |
+| CVE-2003-1510 | Denial of Service | High (7.8) | v1.93+ |
+
+**Recommendation:** Always use the latest version of TinyWeb.
