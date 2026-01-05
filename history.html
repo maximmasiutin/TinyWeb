@@ -111,5 +111,13 @@
 <li>Full ISINDEX query support preserved per <a href="https://datatracker.ietf.org/doc/html/rfc3875#section-4.4">RFC 3875 Section 4.4</a></li>
 <li>To allow special characters in queries, disable STRICT_CGI_PARAMS in define.inc</li>
 </ul>
+<h2>1.99 (05 January 2026)</h2>
+<ul>
+<li>Fixed <a href="https://nvd.nist.gov/vuln/detail/CVE-2024-5193">CVE-2024-5193</a> (CRLF Injection, CWE-93): Added StripCRLF function to remove CR/LF characters from Location header values, preventing HTTP header injection via URL-encoded %0D%0A sequences in redirect responses.</li>
+<li>Fixed <a href="https://nvd.nist.gov/vuln/detail/CVE-2024-34199">CVE-2024-34199</a> (Buffer Overflow / Heap Overflow DoS, CWE-787): Added request size limits in TCollector.Collect - CMaxHeaderLineLength (8KB per line) and CMaxTotalHeaderSize (64KB total) to prevent memory exhaustion attacks that could crash the server.</li>
+<li>Added detailed CVE technical documentation as comments in source code (SrvMain.pas) describing vulnerability mechanics, attack vectors, and fixes for CVE-2024-34199 and CVE-2024-5193.</li>
+<li>GitHub Actions: Added explicit permissions block to build workflow (CWE-275 mitigation).</li>
+<li>Minor Dockerfile and documentation improvements.</li>
+</ul>
 </body>
 </html>
