@@ -70,8 +70,30 @@ const
   ScriptsPath = 'cgi-bin';
 
   CHTTPServerThreadBufSize = $2000;
-  CMaxHeaderLineLength = 8192;  // CVE-2024-34199: Limit header line length to prevent buffer overflow
-  CMaxTotalHeaderSize = 65536;  // CVE-2024-34199: Limit total header size
+
+  // CVE-2024-34199: Buffer Overflow / Heap Overflow Prevention
+  // ============================================================
+  // VULNERABILITY: TinyWeb 1.94 and below allowed unauthenticated remote
+  // attackers to cause denial of service via heap overflow. The TCollector.Collect()
+  // function grew CollectStr buffer without bounds when parsing HTTP request lines.
+  //
+  // ATTACK VECTOR: Attacker sends ~900MB of data as HTTP method field without CRLF:
+  //   - PoC sends 'P' * 941114855 bytes before " / HTTP/1.1\r\n"
+  //   - CollectStr grows via SetLength() calls: 1KB -> 2KB -> ... -> 2GB
+  //   - No CRLF means line never completes, buffer never resets
+  //   - Hits 32-bit address space limit, causes runtime error 203 (Heap Overflow)
+  //   - Thread crashes but memory not freed -> memory leak
+  //   - Repeated attacks exhaust all 2GB, causing complete DoS
+  //
+  // FIX: Added size limits checked in TCollector.Collect() before each byte stored.
+  // Requests exceeding limits are rejected early (Collect returns False).
+  //
+  // References:
+  //   - PoC: https://github.com/DMCERTCE/PoC_Tiny_Overflow
+  //   - Fix: https://github.com/maximmasiutin/TinyWeb/commit/d49c3da
+  //   - NVD: https://nvd.nist.gov/vuln/detail/CVE-2024-34199
+  CMaxHeaderLineLength = 8192;   // CVE-2024-34199: Max 8KB per request line
+  CMaxTotalHeaderSize = 65536;   // CVE-2024-34199: Max 64KB total headers
   MaxStatusCodeIdx = 36;
 StatusCodes:
 array [0 .. MaxStatusCodeIdx] of record Code: Integer;
@@ -657,6 +679,22 @@ begin
   Lines.AtFree(0);
 end;
 
+// TCollector.Collect - Collects HTTP request data from socket buffer
+// CVE-2024-34199 FIX: Added bounds checking to prevent heap overflow
+// ===================================================================
+// VULNERABLE CODE (before fix):
+//   for i := 0 to j - 1 do begin
+//     if l <= CollectLen then begin
+//       Inc(l, j + 100);
+//       SetLength(CollectStr, l);    // NO LIMIT - grew to 2GB!
+//     end;
+//     Inc(CollectLen);               // NO CHECK - unbounded growth!
+//     CollectStr[CollectLen] := Buf[i];
+//   end;
+//   Result := True;                  // ALWAYS TRUE - never rejected!
+//
+// FIX: Check CMaxHeaderLineLength and CMaxTotalHeaderSize before storing
+// each byte. Return False to reject request if limits exceeded.
 function TCollector.Collect(var Buf: THTTPServerThreadBuffer;
   j: Integer): Boolean;
 var
@@ -666,7 +704,8 @@ begin
   if not CollectEntityBody then
   begin
     l := Length(CollectStr);
-    // CVE-2024-34199: Calculate total header size to prevent overflow
+    // CVE-2024-34199: Calculate total header size to prevent heap overflow
+    // Sum all previously parsed lines plus current line being collected
     TotalSize := 0;
     for i := 0 to Lines.Count - 1 do
       Inc(TotalSize, Length(Lines[i]));
@@ -823,8 +862,22 @@ begin
 end;
 
 // CVE-2024-5193: CRLF Injection Prevention
-// Strips CR and LF characters from strings to prevent HTTP header injection
-// Reference: CWE-93 - Improper Neutralization of CRLF Sequences
+// =========================================
+// VULNERABILITY: TinyWeb 1.94 and below allowed CRLF injection via request URLs.
+// When a request URL contained %0D%0A (URL-encoded CR LF), these characters were
+// reflected in HTTP response headers (e.g., Location header during redirects),
+// allowing attackers to inject arbitrary HTTP headers.
+//
+// ATTACK VECTOR: GET /path%0D%0AX-Injected-Header:%20malicious HTTP/1.1
+// If server redirects to /path/, the Location header would contain injected headers.
+//
+// FIX: StripCRLF() removes all CR (#13) and LF (#10) characters from strings
+// before they are used in HTTP response headers. Applied in ReturnNewLocation().
+//
+// References:
+//   - CWE-93: Improper Neutralization of CRLF Sequences
+//   - NVD: https://nvd.nist.gov/vuln/detail/CVE-2024-5193
+//   - Fix: https://github.com/maximmasiutin/TinyWeb/commit/d49c3da
 function StripCRLF(const s: AnsiString): AnsiString;
 var
   i, j, len: Integer;
@@ -1361,10 +1414,13 @@ begin
   Result := s + #0;
 end;
 
+// ReturnNewLocation - Creates HTTP 302 redirect response
+// CVE-2024-5193 FIX: ALocation is sanitized via StripCRLF() before use
 function ReturnNewLocation(const ALocation: AnsiString; d: THTTPData)
   : TAbstractHttpResponseData;
 begin
   // CVE-2024-5193: Strip CRLF to prevent HTTP header injection
+  // Without this, attacker could inject headers via: GET /path%0D%0AEvil:Header
   d.ResponseResponseHeader.Location := StripCRLF(ALocation);
   Result := THttpResponseErrorCode.Create(302);
 end;
