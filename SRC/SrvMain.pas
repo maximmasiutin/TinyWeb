@@ -94,6 +94,23 @@ const
   //   - NVD: https://nvd.nist.gov/vuln/detail/CVE-2024-34199
   CMaxHeaderLineLength = 8192;   // CVE-2024-34199: Max 8KB per request line
   CMaxTotalHeaderSize = 65536;   // CVE-2024-34199: Max 64KB total headers
+
+  // Buffer size for FindExecutable API result path.
+  // Windows supports long paths beyond MAX_PATH (260), so we use 1000.
+  CMaxExecutablePathLength = 1000;
+
+  // Maximum valid HTTP status code. RFC 9110 defines codes 100-599,
+  // but we allow up to 999 for future extensions.
+  CMaxHttpStatusCode = 1000;
+
+  // Buffer size for Windows registry class name queries.
+  // Accommodates long registry key class names.
+  CRegistryClassBufferSize = 1000;
+
+  // Sleep interval in milliseconds during server shutdown.
+  // Allows pending socket operations to complete gracefully.
+  CShutdownSleepMs = 1000;
+
   MaxStatusCodeIdx = 36;
 StatusCodes:
 array [0 .. MaxStatusCodeIdx] of record Code: Integer;
@@ -1479,7 +1496,7 @@ begin
   end
   else
   begin
-    SetLength(s, 1000);
+    SetLength(s, CMaxExecutablePathLength);
     Result := FindExecutable(@(LocalFName[1]), @(sPath[1]), @s[1]);
     c := TExecutableCache.Create;
     c.ReturnValue := Result;
@@ -1588,12 +1605,39 @@ begin
 
 end;
 
+// FileIsRegular: Validates that a filename is a regular file, not a Windows
+// reserved device name. Windows reserved names can be accessed regardless of
+// extension (e.g., "CON.txt" still refers to the console device).
+//
+// References:
+//   - Microsoft Docs "Naming Files, Paths, and Namespaces":
+//     https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+//   - MSDN "CreateFile function" remarks on reserved names:
+//     https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea
+//   - CWE-22: Improper Limitation of a Pathname to a Restricted Directory
+//     https://cwe.mitre.org/data/definitions/22.html
+//
+// Device names blocked:
+//   CON      - Console (keyboard input, screen output)
+//   PRN      - Default printer (legacy, maps to LPT1)
+//   AUX      - Auxiliary device (legacy, maps to COM1)
+//   NUL      - Null device (discards all writes)
+//   COM0-9   - Serial communication ports (COM0 supported on some systems)
+//   LPT0-9   - Parallel printer ports (LPT0 supported on some systems)
+//   CONIN$   - Console input stream
+//   CONOUT$  - Console output stream
+//   CLOCK$   - Real-time clock device (legacy DOS device)
+//
 function FileIsRegular(const FN: AnsiString): Boolean;
 const
   CDot: AnsiChar = '.';
+  // Device names delimited by #1 for efficient substring search.
+  // Both numbered (COM1-9, LPT1-9) and unnumbered (COM, LPT) forms blocked.
+  // COM0 and LPT0 added for completeness (supported on some Windows versions).
   fDevices: AnsiString =
-    #1'CON'#1'LPT'#1'PRN'#1'NUL'#1'CLOCK$'#1'AUX'#1'COM1'#1'COM2'#1'COM3'#1'COM4'#1'CONIN$'#1'CONOUT$'
-    + #1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
+    #1'CON'#1'PRN'#1'AUX'#1'NUL'#1'CLOCK$'#1'CONIN$'#1'CONOUT$'
+    + #1'COM0'#1'COM1'#1'COM2'#1'COM3'#1'COM4'#1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'
+    + #1'LPT'#1'LPT0'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
 var
   F: THandle;
   FT: DWORD;
@@ -2155,7 +2199,7 @@ begin
         z := '';
         GetWrd(k, z, ' ');
         v := Vl(z);
-        if (v <> INVALID_VALUE) and (v < 1000) and (v > 0) then
+        if (v <> INVALID_VALUE) and (v < CMaxHttpStatusCode) and (v > 0) then
           StatusCode := v
         else
           StatusCode := 0;
@@ -2281,7 +2325,7 @@ end;
 
 procedure GetContentTypes(const CBase, SubName: AnsiString; Swap: Boolean);
 const
-  ClassBufSize = 1000;
+  ClassBufSize = CRegistryClassBufferSize;
 var
   Buf: array [0 .. ClassBufSize] of AnsiChar;
   r: TContentType;
@@ -2937,7 +2981,7 @@ begin
     shutdown(TSocket(SocketsColl[i]).Handle, 2);
   SocketsColl.Leave;
   while SocketsColl.Count > 0 do
-    Sleep(1000);
+    Sleep(CShutdownSleepMs);
   ResetterThread.TimeToSleep := SleepQuant;
   SetEvent(ResetterThread.oSleep);
   WaitForSingleObject(ResetterThread.Handle, INFINITE);
