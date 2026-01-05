@@ -1,6 +1,20 @@
 {  Dos CGI Testing Example provided by Martin Lafferty}
 
-{  Should be compiled by Borland/Turbo Pascal comiler for DOS }
+{  Should be compiled by Borland/Turbo Pascal compiler for DOS }
+
+{  SECURITY WARNING - DEMONSTRATION CODE ONLY                    }
+{  ===========================================                    }
+{  This file contains HARDCODED CREDENTIALS for demonstration.   }
+{  DO NOT use hardcoded passwords in production applications.    }
+{                                                                 }
+{  In production systems:                                         }
+{  - Store password hashes, not plaintext passwords               }
+{  - Use secure password hashing (bcrypt, Argon2, PBKDF2)         }
+{  - Implement proper authentication mechanisms                   }
+{  - Use environment variables or secure vaults for secrets       }
+{                                                                 }
+{  The credentials in this demo (Jimmi/Hendrix) are intentionally }
+{  obvious to demonstrate CGI functionality, not secure auth.     }
 
 program Doscgi;
 uses

@@ -5,6 +5,22 @@
 //  Copyright (C) 1997 RIT Research Labs
 //
 //////////////////////////////////////////////////////////////////////////
+//
+//  SECURITY WARNING - DEMONSTRATION CODE ONLY
+//  ===========================================
+//  This file contains HARDCODED CREDENTIALS for demonstration purposes.
+//  DO NOT use hardcoded passwords in production applications.
+//
+//  In production systems:
+//  - Store password hashes, not plaintext passwords
+//  - Use secure password hashing (bcrypt, Argon2, PBKDF2)
+//  - Implement proper authentication mechanisms
+//  - Use environment variables or secure vaults for secrets
+//
+//  The credentials in this demo (Jimmi/Hendrix) are intentionally
+//  obvious to demonstrate CGI functionality, not secure authentication.
+//
+//////////////////////////////////////////////////////////////////////////
 
 
 

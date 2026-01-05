@@ -1,3 +1,16 @@
+CGITEST - CGI Testing Examples for TinyWeb
+===========================================
+
+SECURITY WARNING
+----------------
+These files are DEMONSTRATION CODE ONLY. They contain hardcoded
+credentials (Jimmi/Hendrix) for testing CGI functionality.
+
+DO NOT use these examples as templates for production authentication:
+- Never hardcode passwords in source code
+- Use secure password hashing (bcrypt, Argon2, PBKDF2)
+- Store credentials in secure vaults or environment variables
+- Implement proper session management and CSRF protection
 
 Files are provided here to test CGI.
 
