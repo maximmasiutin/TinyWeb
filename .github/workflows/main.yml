@@ -1,6 +1,9 @@
 ---
 name: Build
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
