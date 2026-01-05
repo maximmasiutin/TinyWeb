@@ -83,6 +83,14 @@
 <ul>
 <li>Martin Lafferty made a provision to run DOS CGI under WinNT</li>
 </ul>
+<h2>1.93 (03 June 2004)</h2>
+<ul>
+<li>Fixed <a href="https://nvd.nist.gov/vuln/detail/CVE-2003-1510">CVE-2003-1510</a> (Denial of Service): Added null byte (#0) check in path validation to prevent CPU consumption via ".%00." in cgi-bin requests.</li>
+<li>Fixed <a href="https://nvd.nist.gov/vuln/detail/CVE-2004-2636">CVE-2004-2636</a> (Source Code Disclosure, CWE-22): Added "\.\\" pattern detection (level #1) and StrEnds() verification after ExpandFileName() (level #2) to prevent source code disclosure via "/./" in URLs.</li>
+<li>Added LocalFNameSafe() function to validate all path components.</li>
+<li>Added FileIsRegular() function to block Windows reserved device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9, CONIN$, CONOUT$, CLOCK$).</li>
+<li>Security advisory: <a href="https://www.masiutin.net/tinyweb-cves-mitre.html">MITRE CVE Advisories</a></li>
+</ul>
 <h2>1.94 (06 April 2017)</h2>
 <ul>
 <li>Added an additional check that the requested file name is safe (see LocalFNameSafe and FileIsRegular): that the file is a normal file rather than a device name, that the file is kept in a directory that does not have hidden or system attribute.</li>
@@ -118,6 +126,7 @@
 <li>Added detailed CVE technical documentation as comments in source code (SrvMain.pas) describing vulnerability mechanics, attack vectors, and fixes for CVE-2024-34199 and CVE-2024-5193.</li>
 <li>GitHub Actions: Added explicit permissions block to build workflow (CWE-275 mitigation).</li>
 <li>Minor Dockerfile and documentation improvements.</li>
+<li>Security advisories: <a href="https://www.masiutin.net/tinyweb-cve-2024-5193.html">CVE-2024-5193</a>, <a href="https://www.masiutin.net/tinyweb-cves-mitre.html">MITRE CVE Advisories</a></li>
 </ul>
 </body>
 </html>
