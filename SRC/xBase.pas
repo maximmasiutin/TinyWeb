@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 2021-2025 Maxim Masiutin
+// Copyright (C) 2021-2026 Maxim Masiutin
 // Copyright (C) 1997-2000 RIT Research Labs
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 //
@@ -69,29 +69,6 @@ const
   { Maximum TColl size }
 
   MaxCollSize = $20000 div SizeOf(Pointer);
-
-const
-  MMaxChars = 250;
-
-type
-  Str255 = String[255];
-  TByteTable = Array [AnsiChar] of Byte;
-  TBase64Table = (bsBase64, bsUUE, bsXXE);
-  TUUStr = String[MMaxChars];
-
-  TMimeCoder = class
-    Table: AnsiString;
-    MaxChars: Byte;
-    Pad: AnsiChar;
-    XChars: TByteTable;
-    constructor Create(AType: TBase64Table);
-    procedure InitTable;
-    function Encode(const Buf; N: Byte): AnsiString;
-    function EncodeBuf(const Buf; N: Byte; var OutBuf): Integer;
-    function EncodeStr(const S: AnsiString): AnsiString;
-    function Decode(const S: AnsiString; var Buf): Integer;
-    function DecodeBuf(const SrcBuf; SrcLen: Integer; var Buf): Integer;
-  end;
 
   TSocketOption = (soBroadcast, soDebug, soDontLinger, soDontRoute, soKeepAlive,
     soOOBInLine, soReuseAddr, soNoDelay, soBlocking, soAcceptConn);
@@ -543,7 +520,7 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '1.99';
+  CServerVersion = '2.0';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
@@ -3481,208 +3458,6 @@ begin
     I2 := 0;
   end;
   Result := AnsiChar(I1 shl 4 + I2);
-end;
-
-constructor TMimeCoder.Create(AType: TBase64Table);
-begin
-  case AType of
-    bsBase64:
-      begin
-        Table := 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-        MaxChars := 57;
-        Pad := '=';
-      end;
-    bsUUE:
-      begin
-        Table := '`!"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_';
-        Pad := '`';
-        MaxChars := 45;
-      end;
-    bsXXE:
-      begin
-        Table := '+-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-        Pad := '+';
-        MaxChars := 45;
-      end;
-  end;
-  InitTable;
-end;
-
-procedure TMimeCoder.InitTable;
-var
-  I: Integer;
-begin
-  FillChar(XChars, SizeOf(XChars), 65);
-  for I := 1 to Length(Table) do
-    XChars[Table[I]] := I - 1;
-  XChars[Pad] := 0;
-  if Pad = '`' then
-    XChars[' '] := 0;
-end;
-
-function TMimeCoder.EncodeStr(const S: AnsiString): AnsiString;
-begin
-  if S = '' then
-    Result := ''
-  else
-    Result := Encode(S[1], Length(S));
-end;
-
-function IsUUEStr(const S: AnsiString): Boolean;
-var
-  I: Integer;
-begin
-  Result := False;
-  for I := 1 to Length(S) do
-    if (S[I] < '!') or (S[I] > '`') then
-      Exit;
-  Result := True;
-end;
-
-function TMimeCoder.Encode(const Buf; N: Byte): AnsiString;
-var
-  B: Array [0 .. MMaxChars] of Byte;
-  I, K, L: Word;
-  S: Str255;
-begin
-  FillChar(B, SizeOf(B), 0);
-  Move(Buf, B, N);
-  L := N;
-  if L mod 3 <> 0 then
-    Inc(L, 3);
-  S[0] := AnsiChar((L div 3) * 4);
-  FillChar(S[1], Length(S), Pad);
-  I := 0;
-  K := 1;
-  while I < N do
-  begin
-    S[K] := Table[1 + (B[I] shr 2)];
-    S[K + 1] := Table[1 + (((B[I] and $03) shl 4) or (B[I + 1] shr 4))];
-    if I + 1 >= N then
-      Break;
-    S[K + 2] := Table[1 + (((B[I + 1] and $0F) shl 2) or (B[I + 2] shr 6))];
-    if I + 2 >= N then
-      Break;
-    S[K + 3] := Table[1 + (B[I + 2] and $3F)];
-    Inc(I, 3);
-    Inc(K, 4);
-  end;
-  Result := S;
-end;
-
-function TMimeCoder.EncodeBuf(const Buf; N: Byte; var OutBuf): Integer;
-var
-  B: Array [0 .. MMaxChars] of Byte;
-  I, K, L: Word;
-  P: PCharArray;
-begin
-  P := @OutBuf;
-  FillChar(B, SizeOf(B), 0);
-  Move(Buf, B, N);
-  L := N;
-  if L mod 3 <> 0 then
-    Inc(L, 3);
-  Result := (L div 3) * 4;
-  FillChar(P^, Result, Pad);
-  I := 0;
-  K := 0;
-  while I < N do
-  begin
-    P^[K] := Table[1 + (B[I] shr 2)];
-    P^[K + 1] := Table[1 + (((B[I] and $03) shl 4) or (B[I + 1] shr 4))];
-    if I + 1 >= N then
-      Break;
-    P^[K + 2] := Table[1 + (((B[I + 1] and $0F) shl 2) or (B[I + 2] shr 6))];
-    if I + 2 >= N then
-      Break;
-    P^[K + 3] := Table[1 + (B[I + 2] and $3F)];
-    Inc(I, 3);
-    Inc(K, 4);
-  end;
-end;
-
-function TMimeCoder.Decode(const S: AnsiString; var Buf): Integer;
-var
-  B: array [0 .. MMaxChars] of Byte absolute Buf;
-  a: array [0 .. MMaxChars] of Byte;
-  I, J, K, Pdd: Integer;
-begin
-  if S = '' then
-  begin
-    Result := 0;
-    Exit
-  end;
-  Result := -1;
-  FillChar(a, SizeOf(a), 0);
-  for I := 0 to Length(S) - 1 do
-  begin
-    a[I] := XChars[S[I + 1]];
-    if a[I] > 64 then
-      Exit;
-  end;
-  J := Length(S);
-  Pdd := 3;
-  if (Pad = '=') then
-    while S[J] = Pad do
-    begin
-      Dec(Pdd);
-      Dec(J)
-    end;
-  Pdd := Pdd mod 3;
-  Result := (J div 4) * 3 + Pdd;
-  I := 0;
-  K := 0;
-  while I < J do
-  begin
-    B[K] := ((a[I] shl 2) or (a[I + 1] shr 4)) and $FF;
-    B[K + 1] := ((a[I + 1] shl 4) or (a[I + 2] shr 2)) and $FF;
-    B[K + 2] := ((a[I + 2] shl 6) or (a[I + 3])) and $FF;
-    Inc(I, 4);
-    Inc(K, 3);
-  end;
-end;
-
-function TMimeCoder.DecodeBuf(const SrcBuf; SrcLen: Integer; var Buf): Integer;
-var
-  B: array [0 .. MMaxChars] of Byte absolute Buf;
-  a: array [0 .. MMaxChars] of Byte;
-  I, J, K, Pdd: Integer;
-  P: PByteArray;
-begin
-  P := @SrcBuf;
-  if SrcLen = 0 then
-  begin
-    Result := 0;
-    Exit
-  end;
-  Result := -1;
-  FillChar(a, SizeOf(a), 0);
-  for I := 0 to SrcLen - 1 do
-  begin
-    a[I] := XChars[AnsiChar(P^[I])];
-    if a[I] > 64 then
-      Exit;
-  end;
-  J := SrcLen;
-  Pdd := 3;
-  if (Pad = '=') then
-    while (J > 0) and (AnsiChar(P^[J - 1]) = Pad) do
-    begin
-      Dec(Pdd);
-      Dec(J)
-    end;
-  Pdd := Pdd mod 3;
-  Result := (J div 4) * 3 + Pdd;
-  I := 0;
-  K := 0;
-  while I < J do
-  begin
-    B[K] := ((a[I] shl 2) or (a[I + 1] shr 4)) and $FF;
-    B[K + 1] := ((a[I + 1] shl 4) or (a[I + 2] shr 2)) and $FF;
-    B[K + 2] := ((a[I + 2] shl 6) or (a[I + 3])) and $FF;
-    Inc(I, 4);
-    Inc(K, 3);
-  end;
 end;
 
 function StrAsg(const Src: AnsiString): AnsiString;
