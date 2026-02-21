@@ -70,6 +70,7 @@ const
 
   MaxCollSize = $20000 div SizeOf(Pointer);
 
+type
   TSocketOption = (soBroadcast, soDebug, soDontLinger, soDontRoute, soKeepAlive,
     soOOBInLine, soReuseAddr, soNoDelay, soBlocking, soAcceptConn);
 
