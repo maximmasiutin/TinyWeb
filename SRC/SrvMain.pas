@@ -1,7 +1,7 @@
 //////////////////////////////////////////////////////////////////////////
 //
 // TinyWeb
-// Copyright (C) 2021-2025 Maxim Masiutin
+// Copyright (C) 2021-2026 Maxim Masiutin
 // Copyright (C) 2000-2017 RITLABS S.R.L.
 // Copyright (C) 1997-2000 RIT Research Labs
 //
@@ -931,6 +931,14 @@ var
   c: AnsiChar;
 begin
   Result := True;
+  if Length(s) = 0 then Exit;
+  // RFC 3875 Section 4.4: Search words MUST NOT begin with a hyphen
+  // This prevents parameters from being interpreted as command-line switches
+  if s[1] = '-' then
+  begin
+    Result := False;
+    Exit;
+  end;
   for i := 1 to Length(s) do
   begin
     c := s[i];
@@ -956,7 +964,7 @@ end;
 function EscapeShellParam(const s: AnsiString): AnsiString;
 const
   // Windows shell metacharacters that need escaping
-  DangerousChars = '&|<>^()%!"''`;$[]{}*?~';
+  DangerousChars = '&|<>^()%!`;$[]{}*?~';
 var
   i: Integer;
   c: AnsiChar;
@@ -968,14 +976,28 @@ begin
     // Block newlines entirely - cannot be safely escaped on Windows
     if (c = #10) or (c = #13) then
       Continue;
+    // Special handling for double quotes and MSVCRT CommandLineToArgvW
+    // A double quote must be escaped with a backslash (\")
+    if c = '"' then
+      Result := Result + '\'
     // Escape dangerous characters with caret (Windows cmd.exe escape char)
-    if Pos(c, DangerousChars) > 0 then
+    else if Pos(c, DangerousChars) > 0 then
       Result := Result + '^';
+    
+    // Also escape single quotes for consistency though cmd.exe doesn't use them
+    if c = '''' then
+       Result := Result + '^';
+
     Result := Result + c;
   end;
   // Wrap in quotes for additional safety
   if Result <> '' then
+  begin
+    // If the string ends with a backslash, double it so it doesn't escape the closing quote
+    if Result[Length(Result)] = '\' then
+      Result := Result + '\';
     Result := '"' + Result + '"';
+  end;
 end;
 
 function ExecuteScript(const AExecutable, APath, AScript, AQueryParam, AEnvStr,
