@@ -1,6 +1,6 @@
 # TinyWeb Server
-Version 2.0
-Released 15 February 2026  
+Version 2.01
+Released 21 February 2026  
 Written by Maxim Masiutin  
 Copyright (C) 2021-2026 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
@@ -85,6 +85,7 @@ TinyWeb has addressed the following CVEs:
 
 | CVE | Type | Severity | Fixed In |
 |-----|------|----------|----------|
+| CVE-pending | Argument Injection / Source Code Disclosure (CWE-88/CWE-78) | Critical (9.3) | v2.01 |
 | CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
 | CVE-2024-34199 | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
 | CVE-2026-22781 | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
