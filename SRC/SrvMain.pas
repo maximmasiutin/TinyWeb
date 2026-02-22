@@ -97,6 +97,11 @@ const
   
   // Unbounded Content-Length Memory Exhaustion DoS Prevention
   CMaxEntityBodySize = 10485760; // Max 10MB per request payload
+
+  // Slowloris / Thread Exhaustion DoS Prevention
+  CMaxConnections = 512;        // Max concurrent connections
+  CConnectionTimeoutSecs = 30;  // Max 30 seconds wait for HTTP request
+  
   // Buffer size for FindExecutable API result path.
   // Windows supports long paths beyond MAX_PATH (260), so we use 1000.
   CMaxExecutablePathLength = 1000;
@@ -2058,6 +2063,9 @@ begin
   RemoteAddr := AddrInet(Socket.FAddr);
   RemoteHost := GetHostNameByAddr(Socket.FAddr);
 
+  // Slowloris protection: record the time when the connection was accepted
+  v := uGetSystemTime;
+
   repeat
     AbortConnection := False;
     d := THTTPData.Create;
@@ -2069,6 +2077,13 @@ begin
     s := '';
     with d do
       repeat
+
+        // Slowloris protection: enforce timeout for receiving the request
+        if (uGetSystemTime - v) > CConnectionTimeoutSecs then
+        begin
+          StatusCode := 408; // Request Timeout
+          Break;
+        end;
 
         j := Socket.Read(Buffer, CHTTPServerThreadBufSize);
         if (j <= 0) or (Socket.Status <> 0) then
@@ -2901,6 +2916,16 @@ begin
     else
     begin
       SocketsColl.Enter;
+      
+      // Stop accepting connection if limit is reached
+      if SocksCount >= CMaxConnections then
+      begin
+        SocketsColl.Leave;
+        CloseSocket(NewSocketHandle);
+        FreeObject(NewSocket);
+        Continue;
+      end;
+      
       if SocksCount = 0 then
       begin
         ResetterThread.TimeToSleep := SleepQuant;
