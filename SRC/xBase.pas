@@ -543,6 +543,9 @@ const
   cTimeHi = 27111902;   // High 32 bits of 116444736000000000
   cTimeLo = -717324288; // Low 32 bits of 116444736000000000
   cSecScale = 10000000; // 100-nanosecond intervals per second
+  // Divisor to convert 100-nanosecond FILETIME intervals into milliseconds.
+  // By scaling down to milliseconds, a relative time duration (age) can comfortably 
+  // fit within a 32-bit DWORD (up to ~49.7 days) avoiding expensive 64-bit math for cache logic.
   cAgeScale = 10000;
 
 {$IFDEF FPC}
