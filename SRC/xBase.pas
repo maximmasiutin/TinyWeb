@@ -539,17 +539,16 @@ implementation
 ////////////////////////////////////////////////////////////////////////
 
 const
-  cTimeHi = 27111902;
-  cTimeLo = -717324288;
-  cSecScale = 10000000;
+  cTimeHi = 27111902;  // High part of FILETIME offset
+  cTimeLo = -717324288; // Low part of FILETIME offset
+  cSecScale = 10000000; // 100-nanosecond intervals per second
   cAgeScale = 10000;
 
 {$IFDEF FPC}
 {$ASMMODE Intel}
 {$ENDIF}
 
-// Converts FILETIME to seconds
-// cTimeHi = 27111902; cTimeLo = -717324288; cSecScale = 10000000;
+// Converts FILETIME to UNIX Epoch seconds
 function uCvtGetFileTime(L, H: DWORD): DWORD; assembler;
 asm
   mov ecx, cSecScale
