@@ -94,7 +94,9 @@ const
   //   - NVD: https://nvd.nist.gov/vuln/detail/CVE-2024-34199
   CMaxHeaderLineLength = 8192;   // CVE-2024-34199: Max 8KB per request line
   CMaxTotalHeaderSize = 65536;   // CVE-2024-34199: Max 64KB total headers
-
+  
+  // Unbounded Content-Length Memory Exhaustion DoS Prevention
+  CMaxEntityBodySize = 10485760; // Max 10MB per request payload
   // Buffer size for FindExecutable API result path.
   // Windows supports long paths beyond MAX_PATH (260), so we use 1000.
   CMaxExecutablePathLength = 1000;
@@ -776,6 +778,20 @@ begin
 
   if CollectEntityBody then
   begin
+    // Check if ContentLength exceeds CMaxEntityBodySize
+    if ContentLength > CMaxEntityBodySize then
+    begin
+      Result := False;
+      Exit;
+    end;
+    
+    // Also guard against accumulating too much data if ContentLength wasn't provided but data stream is large
+    if Length(EntityBody) + j > CMaxEntityBodySize then
+    begin
+      Result := False;
+      Exit;
+    end;
+
     if j > 0 then
     begin
       i := Length(EntityBody);
