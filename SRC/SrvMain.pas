@@ -433,26 +433,20 @@ begin
   Result := True;
   if z = 'CACHE-CONTROL' then
     CacheControl := s
-  else // Section 14.9
-    if z = 'CONNECTION' then
-      Connection := s
-    else // Section 14.10
-      if z = 'DATE' then
-        Date := s
-      else // Section 14.19
-        if z = 'PRAGMA' then
-          Pragma := s
-        else // Section 14.32
-          if z = 'TRANSFER-ENCODING' then
-            TransferEncoding := s
-          else // Section 14.40
-            if z = 'UPGRADE' then
-              Upgrade := s
-            else // Section 14.41
-              if z = 'VIA' then
-                Via := s
-              else // Section 14.44
-                Result := False;
+  else if z = 'CONNECTION' then // Section 14.9
+    Connection := s
+  else if z = 'DATE' then // Section 14.10
+    Date := s
+  else if z = 'PRAGMA' then // Section 14.19
+    Pragma := s
+  else if z = 'TRANSFER-ENCODING' then // Section 14.32
+    TransferEncoding := s
+  else if z = 'UPGRADE' then // Section 14.40
+    Upgrade := s
+  else if z = 'VIA' then // Section 14.41
+    Via := s
+  else
+    Result := False; // Section 14.44
 end;
 
 function TRequestHeader.Filter(const z, s: AnsiString): Boolean;

@@ -160,8 +160,6 @@
             Overflow DoS, CWE-787): Added request size limits in TCollector.Collect - CMaxHeaderLineLength (8KB per
             line) and CMaxTotalHeaderSize (64KB total) to prevent memory exhaustion attacks that could crash the server.
         </li>
-        <li>Added detailed CVE technical documentation as comments in source code (SrvMain.pas) describing vulnerability
-            mechanics, attack vectors, and fixes for CVE-2024-34199 and CVE-2024-5193.</li>
         <li>GitHub Actions: Added explicit permissions block to build workflow (CWE-275 mitigation).</li>
         <li>Minor Dockerfile and documentation improvements.</li>
         <li>Security advisories: <a href="https://www.masiutin.net/tinyweb-cve-2024-5193.html">CVE-2024-5193</a>, <a
@@ -178,8 +176,10 @@
     </ul>
     <h2>2.02 (22 February 2026)</h2>
     <ul>
-        <li>Fixed Denial of Service via thread exhaustion (Slowloris) by limiting maximum concurrent connections and adding an idle timeout.</li>
-        <li>Fixed Denial of Service via memory exhaustion by limiting the maximum allowed Content-Length for request bodies.</li>
+        <li>Fixed Denial of Service via thread exhaustion (Slowloris) by limiting maximum concurrent connections and
+            adding an idle timeout.</li>
+        <li>Fixed Denial of Service via memory exhaustion by limiting the maximum allowed Content-Length for request
+            bodies.</li>
     </ul>
 </body>
 

@@ -85,11 +85,11 @@ TinyWeb has addressed the following CVEs:
 
 | CVE | Type | Severity | Fixed In |
 |-----|------|----------|----------|
+| CVE-2003-1510 | Denial of Service | High (7.8) | v1.93 |
+| CVE-2004-2636 | Path Traversal (CWE-22) | Medium (5.0) | v1.93 |
 | CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
 | CVE-2024-34199 | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
 | CVE-2026-22781 | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
-| CVE-2004-2636 | Path Traversal (CWE-22) | High | v1.93 |
-| CVE-2003-1510 | Denial of Service | High (7.8) | v1.93 |
 
 **Security Advisories:**
 - [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
