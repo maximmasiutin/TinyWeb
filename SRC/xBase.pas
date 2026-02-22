@@ -548,6 +548,8 @@ const
 {$ASMMODE Intel}
 {$ENDIF}
 
+// Converts FILETIME to seconds
+// cTimeHi = 27111902; cTimeLo = -717324288; cSecScale = 10000000;
 function uCvtGetFileTime(L, H: DWORD): DWORD; assembler;
 asm
   mov ecx, cSecScale

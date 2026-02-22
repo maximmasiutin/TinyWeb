@@ -6,3 +6,6 @@ __*
 *.exe
 *.identcache
 *.res
+*.o
+*.ppu
+*.a
