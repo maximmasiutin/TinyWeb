@@ -460,59 +460,42 @@ begin
   Result := True;
   if z = 'ACCEPT' then
     Accept := s
-  else // Section 14.1
-    if z = 'ACCEPT-CHARSET' then
-      AcceptCharset := s
-    else // Section 14.2
-      if z = 'ACCEPT-ENCODING' then
-        AcceptEncoding := s
-      else // Section 14.3
-        if z = 'ACCEPT-LANGUAGE' then
-          AcceptLanguage := s
-        else // Section 14.4
-          if z = 'AUTHORIZATION' then
-            Authorization := s
-          else // Section 14.8
-            if z = 'FROM' then
-              From := s
-            else // Section 14.22
-              if z = 'HOST' then
-                Host := s
-              else // Section 14.23
-                if z = 'IF-MODIFIED-SINCE' then
-                  IfModifiedSince := s
-                else // Section 14.24
-                  if z = 'IF-MATCH' then
-                    IfMatch := s
-                  else // Section 14.25
-                    if z = 'IF-NONE-MATCH' then
-                      IfNoneMatch := s
-                    else // Section 14.26
-                      if z = 'IF-RANGE' then
-                        IfRange := s
-                      else // Section 14.27
-                        if z = 'IF-UNMODIFIED-SINCE' then
-                          IfUnmodifiedSince := s
-                        else // Section 14.28
-                          if z = 'MAX-FORWARDS' then
-                            MaxForwards := s
-                          else // Section 14.31
-                            if z = 'PROXY-AUTHORIZATION' then
-                              ProxyAuthorization := s
-                            else // Section 14.34
-                              if z = 'RANGE' then
-                                Range := s
-                              else // Section 14.36
-                                if z = 'REFERER' then
-                                  Referer := s
-                                else // Section 14.37
-                                  if z = 'USER-AGENT' then
-                                    UserAgent := s
-                                  else // Section 14.42
-                                    if z = 'COOKIE' then
-                                      Cookie := s
-                                    else
-                                      Result := False
+  else if z = 'ACCEPT-CHARSET' then // Section 14.1
+    AcceptCharset := s
+  else if z = 'ACCEPT-ENCODING' then // Section 14.2
+    AcceptEncoding := s
+  else if z = 'ACCEPT-LANGUAGE' then // Section 14.3
+    AcceptLanguage := s
+  else if z = 'AUTHORIZATION' then // Section 14.4
+    Authorization := s
+  else if z = 'FROM' then // Section 14.8
+    From := s
+  else if z = 'HOST' then // Section 14.22
+    Host := s
+  else if z = 'IF-MODIFIED-SINCE' then // Section 14.23
+    IfModifiedSince := s
+  else if z = 'IF-MATCH' then // Section 14.24
+    IfMatch := s
+  else if z = 'IF-NONE-MATCH' then // Section 14.25
+    IfNoneMatch := s
+  else if z = 'IF-RANGE' then // Section 14.26
+    IfRange := s
+  else if z = 'IF-UNMODIFIED-SINCE' then // Section 14.27
+    IfUnmodifiedSince := s
+  else if z = 'MAX-FORWARDS' then // Section 14.28
+    MaxForwards := s
+  else if z = 'PROXY-AUTHORIZATION' then // Section 14.31
+    ProxyAuthorization := s
+  else if z = 'RANGE' then // Section 14.34
+    Range := s
+  else if z = 'REFERER' then // Section 14.36
+    Referer := s
+  else if z = 'USER-AGENT' then // Section 14.37
+    UserAgent := s
+  else if z = 'COOKIE' then // Section 14.42
+    Cookie := s
+  else
+    Result := False;
 end;
 
 procedure Add(var s, z: AnsiString; const a: AnsiString);
@@ -589,55 +572,40 @@ begin
   Result := True;
   if z = 'ALLOW' then
     Allow := s
-  else // 14.7
-    if z = 'CONTENT-BASE' then
-      ContentBase := s
-    else // 14.11
-      if z = 'CONTENT-ENCODING' then
-        ContentEncoding := s
-      else // 14.12
-        if z = 'CONTENT-LANGUAGE' then
-          ContentLanguage := s
-        else // 14.13
-          if z = 'CONTENT-LENGTH' then
-            ContentLength := s
-          else // 14.14
-            if z = 'CONTENT-LOCATION' then
-              ContentLocation := s
-            else // 14.15
-              if z = 'CONTENT-MD5' then
-                ContentMD5 := s
-              else // 14.16
-                if z = 'CONTENT-RANGE' then
-                  ContentRange := s
-                else // 14.17
-                  if z = 'CONTENT-TYPE' then
-                    ContentType := s
-                  else // 14.18
-                    if z = 'ETAG' then
-                      ETag := s
-                    else // 14.20
-                      if z = 'EXPIRES' then
-                        Expires := s
-                      else // 14.21
-                        if z = 'LAST-MODIFIED' then
-                          LastModified := s
-                        else // 14.29
-                          { These are two headers for file download by CGI }
-                          if z = 'ACCEPT-RANGES' then
-                            AcceptRanges := s
-                          else // 14.5
-                            if z = 'CONTENT-DISPOSITION' then
-                              ContentDisposition := s
-                            else // 15.10
-                              if z = 'STATUS' then
-                                CGIStatus := s
-                              else if z = 'LOCATION' then
-                                CGILocation := s
-                              else if z = 'SET-COOKIE' then
-                                SetCookie := s
-                              else
-                                Result := False;
+  else if z = 'CONTENT-BASE' then // 14.7
+    ContentBase := s
+  else if z = 'CONTENT-ENCODING' then // 14.11
+    ContentEncoding := s
+  else if z = 'CONTENT-LANGUAGE' then // 14.12
+    ContentLanguage := s
+  else if z = 'CONTENT-LENGTH' then // 14.13
+    ContentLength := s
+  else if z = 'CONTENT-LOCATION' then // 14.14
+    ContentLocation := s
+  else if z = 'CONTENT-MD5' then // 14.15
+    ContentMD5 := s
+  else if z = 'CONTENT-RANGE' then // 14.16
+    ContentRange := s
+  else if z = 'CONTENT-TYPE' then // 14.17
+    ContentType := s
+  else if z = 'ETAG' then // 14.18
+    ETag := s
+  else if z = 'EXPIRES' then // 14.20
+    Expires := s
+  else if z = 'LAST-MODIFIED' then // 14.21
+    LastModified := s
+  else if z = 'ACCEPT-RANGES' then // 14.29 { These are two headers for file download by CGI }
+    AcceptRanges := s
+  else if z = 'CONTENT-DISPOSITION' then // 14.5
+    ContentDisposition := s
+  else if z = 'STATUS' then // 15.10
+    CGIStatus := s
+  else if z = 'LOCATION' then
+    CGILocation := s
+  else if z = 'SET-COOKIE' then
+    SetCookie := s
+  else
+    Result := False;
 end;
 
 constructor THTTPData.Create;
