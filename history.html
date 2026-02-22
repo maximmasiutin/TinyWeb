@@ -176,6 +176,11 @@
         <li>Fixed CGI Parameter Injection vulnerabilities: Source Code Disclosure and Remote Code Execution via Argument
             Injection bypassing the CGI whitelist and escaping rules.</li>
     </ul>
+    <h2>2.02 (22 February 2026)</h2>
+    <ul>
+        <li>Fixed Denial of Service via thread exhaustion (Slowloris) by limiting maximum concurrent connections and adding an idle timeout.</li>
+        <li>Fixed Denial of Service via memory exhaustion by limiting the maximum allowed Content-Length for request bodies.</li>
+    </ul>
 </body>
 
 </html>

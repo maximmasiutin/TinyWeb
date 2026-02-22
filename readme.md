@@ -1,6 +1,6 @@
 # TinyWeb Server
-Version 2.01
-Released 21 February 2026  
+Version 2.02
+Released 22 February 2026  
 Written by Maxim Masiutin  
 Copyright (C) 2021-2026 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
