@@ -539,8 +539,9 @@ implementation
 ////////////////////////////////////////////////////////////////////////
 
 const
-  cTimeHi = 27111902;  // High part of FILETIME offset
-  cTimeLo = -717324288; // Low part of FILETIME offset
+  // Number of 100-nanosecond intervals between Windows Epoch (1601-01-01) and Unix Epoch (1970-01-01)
+  cTimeHi = 27111902;   // High 32 bits of 116444736000000000
+  cTimeLo = -717324288; // Low 32 bits of 116444736000000000
   cSecScale = 10000000; // 100-nanosecond intervals per second
   cAgeScale = 10000;
 
