@@ -372,7 +372,7 @@ function MonthE(m: Integer): AnsiString;
 function NewStr(const S: AnsiString): PAnsiString;
 function Replace(const Pattern, ReplaceString: AnsiString;
   var S: AnsiString): Boolean;
-function StoI(const S: AnsiString): Integer;
+
 function StrEnds(const S1, S2: AnsiString): Boolean;
 function StrRight(const S: AnsiString; Num: Integer): AnsiString;
 function UpperCase(const S: AnsiString): AnsiString;
@@ -521,7 +521,7 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '2.02';
+  CServerVersion = '2.03';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
@@ -2962,6 +2962,7 @@ function _Val(const S: AnsiString; var V: Integer): Boolean;
 var
   I, R: Integer;
   c: AnsiChar;
+  Digit: Integer;
 begin
   Result := False;
   if S = '' then
@@ -2972,18 +2973,21 @@ begin
     c := S[I];
     if not __digit(c) then
       Exit;
-    R := (R * 10) + Ord(c) - Ord('0');
+    Digit := Ord(c) - Ord('0');
+    // Check for overflow before (R * 10) + Digit
+    // For signed 32-bit integer, MaxInt is 2147483647
+    if (R > 214748364) or ((R = 214748364) and (Digit > 7)) then
+    begin
+      // Overflow detected
+      Exit;
+    end;
+    R := (R * 10) + Digit;
   end;
   Result := True;
   V := R;
 end;
 
-function StoI(const S: AnsiString): Integer;
-begin
-  Result := 0;
-  if not _Val(S, Result) then
-    Result := 0;
-end;
+
 
 function _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
 var

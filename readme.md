@@ -1,6 +1,6 @@
 # TinyWeb Server
-Version 2.02
-Released 22 February 2026  
+Version 2.03
+Released 28 February 2026  
 Written by Maxim Masiutin  
 Copyright (C) 2021-2026 Maxim Masiutin  
 Copyright (C) 2000-2017 RITLABS S.R.L.  
@@ -90,10 +90,18 @@ TinyWeb has addressed the following CVEs:
 | CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
 | CVE-2024-34199 | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
 | CVE-2026-22781 | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
+| CVE-2026-27613 | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
+| CVE-2026-27630 | Slowloris (CWE-400) | High (8.7) | v2.02 |
+| CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
+| Pending | Integer Overflow (CWE-190) | High (8.7) | v2.03 |
 
 **Security Advisories:**
+- [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
+- [CVE-2026-27630 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27630.html)
+- [CVE-2026-27613 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27613.html)
+- [CVE-2026-22781 Advisory](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html)
 - [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
-- [CVE-2024-34199, CVE-2004-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
-- [Command Injection Advisory](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html)
+- [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
+- [Integer Overflow Advisory (v2.03)](file:///C:/q/TinyWeb-reports/integer_overflow_advisory.md)
 
 **Recommendation:** Always use the latest version of TinyWeb.

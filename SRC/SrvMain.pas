@@ -215,6 +215,7 @@ type
     TransferEncoding, // Section 14.40
     Upgrade, // Section 14.41
     Via: AnsiString; // Section 14.44
+    Conflict: Boolean;
     function Filter(const z, s: AnsiString): Boolean;
     function OutString: AnsiString;
   end;
@@ -293,6 +294,7 @@ type
     EntityBody: AnsiString;
     EntityLength: Integer;
     SetCookie, CGIStatus, CGILocation: AnsiString;
+    Conflict: Boolean;
     function Filter(const z, s: AnsiString): Boolean;
     procedure CopyEntityBody(Collector: TCollector);
     function OutString: AnsiString;
@@ -440,7 +442,10 @@ begin
   else if z = 'PRAGMA' then // Section 14.19
     Pragma := s
   else if z = 'TRANSFER-ENCODING' then // Section 14.32
-    TransferEncoding := s
+  begin
+    if TransferEncoding <> '' then Conflict := True;
+    TransferEncoding := s;
+  end
   else if z = 'UPGRADE' then // Section 14.40
     Upgrade := s
   else if z = 'VIA' then // Section 14.41
@@ -573,7 +578,10 @@ begin
   else if z = 'CONTENT-LANGUAGE' then // 14.12
     ContentLanguage := s
   else if z = 'CONTENT-LENGTH' then // 14.13
-    ContentLength := s
+  begin
+    if ContentLength <> '' then Conflict := True;
+    ContentLength := s;
+  end
   else if z = 'CONTENT-LOCATION' then // 14.14
     ContentLocation := s
   else if z = 'CONTENT-MD5' then // 14.15
@@ -758,6 +766,7 @@ function DoCollect(Collector: TCollector; EntityHeader: TEntityHeader;
   j: Integer; var Buffer: THTTPServerThreadBuffer): Boolean;
 var
   s, z: AnsiString;
+  val: Integer;
 begin
   Result := True;
   if not Collector.Collect(Buffer, j) then
@@ -785,7 +794,22 @@ begin
           end;
         end;
       end;
-      Collector.SetContentLength(StoI(EntityHeader.ContentLength));
+
+      if EntityHeader.Conflict then
+      begin
+        // RFC 9110/9112: 400 (Multiple CL)
+        Result := False;
+        Exit;
+      end;
+
+      val := 0;
+      if not _Val(EntityHeader.ContentLength, val) then
+      begin
+        // RFC 9110/9112: 400 (Malformed CL)
+        Result := False;
+        Exit;
+      end;
+      Collector.SetContentLength(val);
     end;
 end;
 
@@ -1947,7 +1971,7 @@ end;
 procedure THTTPServerThread.Execute;
 var
   FPOS: DWORD;
-  i, j: Integer;
+  i, j, val: Integer;
 {$IFDEF LOGGING}
   logS: AnsiString;
 {$ENDIF}
@@ -2056,10 +2080,25 @@ begin
             z := '';
           end;
 
+          if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict or
+             ((RequestEntityHeader.ContentLength <> '') and
+              (RequestGeneralHeader.TransferEncoding <> '')) then
+          begin
+            // RFC 9110/9112: 400 (Multiple CL / TE-CL Conflict)
+            StatusCode := 400;
+            Break;
+          end;
+
           if (s <> '') or (z <> '') then
             Break;
-          RequestCollector.SetContentLength
-            (StoI(RequestEntityHeader.ContentLength));
+          val := 0;
+          if not _Val(RequestEntityHeader.ContentLength, val) then
+          begin
+            // RFC 9110/9112: 400 (Malformed CL)
+            StatusCode := 400;
+            Break;
+          end;
+          RequestCollector.SetContentLength(val);
         end;
 
         if not RequestCollector.GotEntityBody then
