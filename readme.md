@@ -102,6 +102,6 @@ TinyWeb has addressed the following CVEs:
 - [CVE-2026-22781 Advisory](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html)
 - [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
-- [Integer Overflow Advisory (v2.03)](file:///C:/q/TinyWeb-reports/integer_overflow_advisory.md)
+- [Integer Overflow Advisory (v2.03)]
 
 **Recommendation:** Always use the latest version of TinyWeb.
