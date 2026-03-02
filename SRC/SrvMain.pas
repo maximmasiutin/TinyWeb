@@ -73,14 +73,14 @@ const
 
   CMaxHeaderLineLength = 8192;   // CVE-2024-34199: Max 8KB per request line
   CMaxTotalHeaderSize = 65536;   // CVE-2024-34199: Max 64KB total headers
-  
+
   // Unbounded Content-Length Memory Exhaustion DoS Prevention
   CMaxEntityBodySize = 10485760; // Max 10MB per request payload
 
   // Slowloris / Thread Exhaustion DoS Prevention
   CMaxConnections = 512;        // Max concurrent connections
   CConnectionTimeoutSecs = 30;  // Max 30 seconds wait for HTTP request
-  
+
   // Buffer size for FindExecutable API result path.
   // Windows supports long paths beyond MAX_PATH (260), so we use 1000.
   CMaxExecutablePathLength = 1000;
@@ -100,42 +100,42 @@ const
   MaxStatusCodeIdx = 36;
 
   StatusCodes: array [0 .. MaxStatusCodeIdx] of record Code: Integer; Msg: AnsiString end = (
-    (Code: 100; Msg: 'Continue'), 
+    (Code: 100; Msg: 'Continue'),
     (Code: 101; Msg: 'Switching Protocols'),
-    (Code: 200; Msg: 'OK'), 
-    (Code: 201; Msg: 'Created'), 
-    (Code: 202; Msg: 'Accepted'), 
+    (Code: 200; Msg: 'OK'),
+    (Code: 201; Msg: 'Created'),
+    (Code: 202; Msg: 'Accepted'),
     (Code: 203; Msg: 'Non-Authoritative Information'),
-    (Code: 204; Msg: 'No Content'), 
-    (Code: 205; Msg: 'Reset Content'), 
-    (Code: 206; Msg: 'Partial Content'), 
-    (Code: 300; Msg: 'Multiple Choices'), 
-    (Code: 301; Msg: 'Moved Permanently'), 
-    (Code: 302; Msg: 'Moved Temporarily'), 
-    (Code: 303; Msg: 'See Other'), 
-    (Code: 304; Msg: 'Not Modified'), 
-    (Code: 305; Msg: 'Use Proxy'), 
-    (Code: 400; Msg: 'Bad Request'), 
-    (Code: 401; Msg: 'Unauthorized'), 
-    (Code: 402; Msg: 'Payment Required'), 
-    (Code: 403; Msg: 'Forbidden'), 
-    (Code: 404; Msg: 'Not Found'), 
-    (Code: 405; Msg: 'Method Not Allowed'), 
-    (Code: 406; Msg: 'Not Acceptable'), 
-    (Code: 407; Msg: 'Proxy Authentication Required'), 
+    (Code: 204; Msg: 'No Content'),
+    (Code: 205; Msg: 'Reset Content'),
+    (Code: 206; Msg: 'Partial Content'),
+    (Code: 300; Msg: 'Multiple Choices'),
+    (Code: 301; Msg: 'Moved Permanently'),
+    (Code: 302; Msg: 'Moved Temporarily'),
+    (Code: 303; Msg: 'See Other'),
+    (Code: 304; Msg: 'Not Modified'),
+    (Code: 305; Msg: 'Use Proxy'),
+    (Code: 400; Msg: 'Bad Request'),
+    (Code: 401; Msg: 'Unauthorized'),
+    (Code: 402; Msg: 'Payment Required'),
+    (Code: 403; Msg: 'Forbidden'),
+    (Code: 404; Msg: 'Not Found'),
+    (Code: 405; Msg: 'Method Not Allowed'),
+    (Code: 406; Msg: 'Not Acceptable'),
+    (Code: 407; Msg: 'Proxy Authentication Required'),
     (Code: 408; Msg: 'Request Time-out'),
-    (Code: 409; Msg: 'Conflict'), 
-    (Code: 410; Msg: 'Gone'), 
-    (Code: 411; Msg: 'Length Required'), 
-    (Code: 412; Msg: 'Precondition Failed'), 
-    (Code: 413; Msg: 'Request Entity Too Large'), 
+    (Code: 409; Msg: 'Conflict'),
+    (Code: 410; Msg: 'Gone'),
+    (Code: 411; Msg: 'Length Required'),
+    (Code: 412; Msg: 'Precondition Failed'),
+    (Code: 413; Msg: 'Request Entity Too Large'),
     (Code: 414; Msg: 'Request-URI Too Large'),
-    (Code: 415; Msg: 'Unsupported Media Type'), 
-    (Code: 500; Msg: 'Internal Server Error'), 
+    (Code: 415; Msg: 'Unsupported Media Type'),
+    (Code: 500; Msg: 'Internal Server Error'),
     (Code: 501; Msg: 'Not Implemented'),
-    (Code: 502; Msg: 'Bad Gateway'), 
+    (Code: 502; Msg: 'Bad Gateway'),
     (Code: 503; Msg: 'Service Unavailable'),
-    (Code: 504; Msg: 'Gateway Time-out'), 
+    (Code: 504; Msg: 'Gateway Time-out'),
     (Code: 505; Msg: 'HTTP Version not supported')
   );
 
@@ -719,7 +719,7 @@ begin
       Result := False;
       Exit;
     end;
-    
+
     // Also guard against accumulating too much data if ContentLength wasn't provided but data stream is large
     if Length(EntityBody) + j > CMaxEntityBodySize then
     begin
@@ -863,6 +863,136 @@ begin
   SetLength(Result, j);
 end;
 
+function IsHeaderTChar(c: AnsiChar): Boolean;
+begin
+  case c of
+    '0'..'9', 'A'..'Z', 'a'..'z',
+    '!', '#', '$', '%', '&', '''', '*', '+', '-', '.', '^', '_', '`', '|', '~':
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+function IsHexChar(c: AnsiChar): Boolean;
+begin
+  case c of
+    '0'..'9', 'A'..'F', 'a'..'f':
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+function HexNibble(c: AnsiChar): Integer;
+begin
+  if (c >= '0') and (c <= '9') then
+    Result := Ord(c) - Ord('0')
+  else if (c >= 'A') and (c <= 'F') then
+    Result := Ord(c) - Ord('A') + 10
+  else if (c >= 'a') and (c <= 'f') then
+    Result := Ord(c) - Ord('a') + 10
+  else
+    Result := -1;
+end;
+
+function HasDangerousPercentEncoding(const s: AnsiString): Boolean;
+var
+  i, v1, v2, octet: Integer;
+begin
+  Result := False;
+  if Length(s) < 3 then
+    Exit;
+  i := 1;
+  while i <= Length(s) - 2 do
+  begin
+    if s[i] = '%' then
+    begin
+      if IsHexChar(s[i + 1]) and IsHexChar(s[i + 2]) then
+      begin
+        v1 := HexNibble(s[i + 1]);
+        v2 := HexNibble(s[i + 2]);
+        if (v1 >= 0) and (v2 >= 0) then
+        begin
+          octet := (v1 shl 4) or v2;
+          if (octet = 0) or (octet = 10) or (octet = 13) then
+          begin
+            Result := True;
+            Exit;
+          end;
+        end;
+      end;
+      Inc(i, 3);
+      Continue;
+    end;
+    Inc(i);
+  end;
+end;
+
+function ParseHeaderLineStrict(const Line: AnsiString;
+  var HeaderNameUpper, HeaderValue: AnsiString): Boolean;
+var
+  i, p: Integer;
+  c: AnsiChar;
+begin
+  Result := False;
+  HeaderNameUpper := '';
+  HeaderValue := '';
+
+  if Line = '' then
+    Exit;
+
+  // RFC 9112: obs-fold lines are invalid for normal HTTP messages.
+  if (Line[1] = ' ') or (Line[1] = #9) then
+    Exit;
+
+  // RFC 9110: reject dangerous and invalid controls in field lines.
+  for i := 1 to Length(Line) do
+  begin
+    c := Line[i];
+    if (c = #0) or (c = #10) or (c = #13) then
+      Exit;
+  end;
+
+  p := Pos(':', Line);
+  if p <= 1 then
+    Exit;
+
+  for i := 1 to p - 1 do
+  begin
+    if not IsHeaderTChar(Line[i]) then
+      Exit;
+  end;
+
+  HeaderNameUpper := UpperCase(Copy(Line, 1, p - 1));
+  HeaderValue := Copy(Line, p + 1, Length(Line) - p);
+
+  // Trim OWS around field-value per RFC 9110 field parsing rules.
+  while (Length(HeaderValue) > 0) and
+        ((HeaderValue[1] = ' ') or (HeaderValue[1] = #9)) do
+    Delete(HeaderValue, 1, 1);
+
+  while (Length(HeaderValue) > 0) and
+        ((HeaderValue[Length(HeaderValue)] = ' ') or
+         (HeaderValue[Length(HeaderValue)] = #9)) do
+    SetLength(HeaderValue, Length(HeaderValue) - 1);
+
+  for i := 1 to Length(HeaderValue) do
+  begin
+    c := HeaderValue[i];
+    if (c = #0) or (c = #10) or (c = #13) then
+      Exit;
+    if ((Ord(c) < 32) and (c <> #9)) or (Ord(c) = 127) then
+      Exit;
+  end;
+
+  // Defense-in-depth: reject encoded CR/LF/NUL in header values.
+  if HasDangerousPercentEncoding(HeaderValue) then
+    Exit;
+
+  Result := True;
+end;
+
 // CGI Query Parameter Security Functions
 // Implements defense-in-depth for ISINDEX-style queries per RFC 3875 Section 4.4
 // Reference: https://datatracker.ietf.org/doc/html/rfc3875#section-4.4
@@ -933,7 +1063,7 @@ begin
     // Escape dangerous characters with caret (Windows cmd.exe escape char)
     else if Pos(c, DangerousChars) > 0 then
       Result := Result + '^';
-    
+
     // Also escape single quotes for consistency though cmd.exe doesn't use them
     if c = '''' then
        Result := Result + '^';
@@ -2065,19 +2195,31 @@ begin
           while RequestCollector.LineAvail do
           begin
             s := RequestCollector.GetNextLine;
-            if Length(s) < 4 then
+            if s = '' then
               Break;
-            GetWrdStrictUC(s, z);
-            Delete(z, Length(z), 1);
-            if not RequestGeneralHeader.Filter(z, s) and
-              not RequestRequestHeader.Filter(z, s) and
-              not RequestEntityHeader.Filter(z, s) then
+            if Length(s) < 4 then
+            begin
+              ErrorMsg := 'Bad Header Line Length';
+              Break;
+            end;
+            // Parse and validate each header line strictly to prevent
+            // control-character and parser differential issues before CGI env mapping.
+            if not ParseHeaderLineStrict(s, z, k) then
+            begin
+              StatusCode := 400;
+              ErrorMsg := 'Malformed Header Line';
+              Break;
+            end;
+            if not RequestGeneralHeader.Filter(z, k) and
+              not RequestRequestHeader.Filter(z, k) and
+              not RequestEntityHeader.Filter(z, k) then
             begin
               // New Feature !!!
             end;
 
             s := '';
             z := '';
+            k := '';
           end;
 
           if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict or
@@ -2092,7 +2234,8 @@ begin
           if (s <> '') or (z <> '') then
             Break;
           val := 0;
-          if not _Val(RequestEntityHeader.ContentLength, val) then
+          if (RequestEntityHeader.ContentLength <> '') and
+             (not _Val(RequestEntityHeader.ContentLength, val)) then
           begin
             // RFC 9110/9112: 400 (Malformed CL)
             StatusCode := 400;
@@ -2860,7 +3003,7 @@ begin
     else
     begin
       SocketsColl.Enter;
-      
+
       // Stop accepting connection if limit is reached
       if SocksCount >= CMaxConnections then
       begin
@@ -2869,7 +3012,7 @@ begin
         FreeObject(NewSocket);
         Continue;
       end;
-      
+
       if SocksCount = 0 then
       begin
         ResetterThread.TimeToSleep := SleepQuant;
