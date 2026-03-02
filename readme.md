@@ -1,7 +1,8 @@
 # TinyWeb Server
+
 Version 2.04
 
-Released 2 March 2026
+Released 02 March 2026
 
 Written by Maxim Masiutin
 
