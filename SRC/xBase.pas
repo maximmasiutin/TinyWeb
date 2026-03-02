@@ -521,7 +521,7 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '2.03';
+  CServerVersion = '2.04';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
@@ -544,7 +544,7 @@ const
   cTimeLo = -717324288; // Low 32 bits of 116444736000000000
   cSecScale = 10000000; // 100-nanosecond intervals per second
   // Divisor to convert 100-nanosecond FILETIME intervals into milliseconds.
-  // By scaling down to milliseconds, a relative time duration (age) can comfortably 
+  // By scaling down to milliseconds, a relative time duration (age) can comfortably
   // fit within a 32-bit DWORD (up to ~49.7 days) avoiding expensive 64-bit math for cache logic.
   cAgeScale = 10000;
 

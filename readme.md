@@ -1,10 +1,16 @@
 # TinyWeb Server
-Version 2.03
-Released 28 February 2026  
-Written by Maxim Masiutin  
-Copyright (C) 2021-2026 Maxim Masiutin  
-Copyright (C) 2000-2017 RITLABS S.R.L.  
-Copyright (C) 1997-2000 RIT Research Labs  
+Version 2.04
+
+Released 2 March 2026
+
+Written by Maxim Masiutin
+
+Copyright (C) 2021-2026 Maxim Masiutin
+
+Copyright (C) 2000-2017 RITLABS S.R.L.
+
+Copyright (C) 1997-2000 RIT Research Labs
+
 
 ## Setup
 To set up the TinyWeb Server, just create a shortcut in the Startup menu with the following properties:
@@ -94,6 +100,7 @@ TinyWeb has addressed the following CVEs:
 | CVE-2026-27630 | Slowloris (CWE-400) | High (8.7) | v2.02 |
 | CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
 | Pending | Integer Overflow (CWE-190) | High (8.7) | v2.03 |
+| TW-2026-0001 | Header Control Character Injection (CWE-113/CWE-93) | High | v2.04 |
 
 **Security Advisories:**
 - [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
@@ -103,5 +110,6 @@ TinyWeb has addressed the following CVEs:
 - [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
 - [Integer Overflow Advisory (v2.03)]
+- [Header Control Character Injection Advisory (v2.04)]
 
 **Recommendation:** Always use the latest version of TinyWeb.

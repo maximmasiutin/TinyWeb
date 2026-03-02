@@ -183,7 +183,12 @@
     </ul>
     <h2>2.03 (28 February 2026)</h2>
     <ul>
-        <li>Fixed nteger Overflow in <code>_Val</code> (xBase.pas) that could lead to HTTP Request Smuggling.</li>
+        <li>Fixed Integer Overflow in <code>_Val</code> (xBase.pas) that could lead to HTTP Request Smuggling.</li>
+    </ul>
+    <h2>2.04 (02 March 2026)</h2>
+    <ul>
+        <li>Hardened HTTP header parsing to enforce complete control-byte blocking in active request parsing.</li>
+        <li>Enabled strict per-header validation before CGI environment mapping to prevent parser differential issues.</li>
     </ul>
 </body>
 
