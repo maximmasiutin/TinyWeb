@@ -2,7 +2,7 @@
 
 Version 2.04
 
-Released 02 March 2026
+Released 06 March 2026
 
 Written by Maxim Masiutin
 
