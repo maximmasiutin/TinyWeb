@@ -864,9 +864,12 @@ begin
 end;
 
 // Escape control bytes (0..31, 127) and the literal '#' for safe log emission.
-// Prohibited bytes become "#NN" where NN is the decimal byte value, so the
-// resulting log line is one unambiguous record with no embedded CR, LF, or NUL.
+// Prohibited bytes become "#XX" where XX is the byte value as exactly two
+// uppercase hex digits, making the encoding self-delimiting and uniquely
+// decodable. The resulting log line has no embedded CR, LF, or NUL.
 function EscapeForLog(const s: AnsiString): AnsiString;
+const
+  HexDigits: array[0..15] of AnsiChar = '0123456789ABCDEF';
 var
   i, c: Integer;
 begin
@@ -875,7 +878,7 @@ begin
   begin
     c := Ord(s[i]);
     if (c < 32) or (c = 127) or (s[i] = '#') then
-      Result := Result + '#' + ItoS(c)
+      Result := Result + '#' + HexDigits[(c shr 4) and $0F] + HexDigits[c and $0F]
     else
       Result := Result + s[i];
   end;
@@ -2125,7 +2128,7 @@ var
 {$ENDIF}
   s, z, k: AnsiString;
   d: THTTPData;
-  AbortConnection: Boolean;
+  AbortConnection, BadByte: Boolean;
   v, Actually: DWORD;
   CQuestion, CEqual, CZero, CSemicolon: AnsiChar;
 begin
@@ -2332,17 +2335,21 @@ begin
           end;
           if not UnpackPchars(s) then
             Break;
+          BadByte := False;
           for i := 1 to Length(s) do
           begin
             if (s[i] = #0) or (s[i] = #10) or (s[i] = #13) or
                ((Ord(s[i]) < 32) and (s[i] <> #9)) or (Ord(s[i]) = 127) then
             begin
-              StatusCode := 400;
-              s := '';
+              BadByte := True;
               Break;
             end;
           end;
-          if StatusCode = 400 then Break;
+          if BadByte then
+          begin
+            StatusCode := 400;
+            Break;
+          end;
           URIPath := s;
 
 {$IFDEF LOGGING}
