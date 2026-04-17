@@ -1403,7 +1403,9 @@ begin
     AuthUser + ' ' + // The username as which the user has authenticated himself
     CurTime + ' ' + // Date and time of the request
     '"' + ARequestLine + k + '" ' +
-  // The request line exactly as it came from the client
+  // The request line, log-escaped by the caller via EscapeForLog so that
+  // control bytes, '#', '"', and '\' are rendered as '#XX' hex. Callers
+  // must pre-escape every component they pass here.
     ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
     z + // The content-length of the document transferred
     #13#10;
@@ -3078,8 +3080,7 @@ begin
       if SocksCount >= CMaxConnections then
       begin
         SocketsColl.Leave;
-        CloseSocket(NewSocketHandle);
-        FreeObject(NewSocket);
+        FreeObject(NewSocket); // TSocket.Destroy closes NewSocketHandle
         Continue;
       end;
 
