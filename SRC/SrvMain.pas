@@ -863,10 +863,14 @@ begin
   SetLength(Result, j);
 end;
 
-// Escape control bytes (0..31, 127) and the literal '#' for safe log emission.
-// Prohibited bytes become "#XX" where XX is the byte value as exactly two
-// uppercase hex digits, making the encoding self-delimiting and uniquely
-// decodable. The resulting log line has no embedded CR, LF, or NUL.
+// Escape control bytes (0..31, 127), the literal '#', the double-quote, and
+// the backslash for safe log emission. Prohibited bytes become "#XX" where
+// XX is the byte value as exactly two uppercase hex digits, making the
+// encoding self-delimiting and uniquely decodable. Double-quote is escaped
+// because AddAccessLog wraps the request line in '"..."', so an unescaped
+// quote in a decoded URI would corrupt log parsing. Backslash is escaped to
+// keep the encoding compatible with CLF log parsers that treat '\"' as an
+// escaped quote.
 function EscapeForLog(const s: AnsiString): AnsiString;
 const
   HexDigits: array[0..15] of AnsiChar = '0123456789ABCDEF';
@@ -878,7 +882,7 @@ begin
   for i := 1 to len do
   begin
     c := Ord(s[i]);
-    if (c < 32) or (c = 127) or (s[i] = '#') then
+    if (c < 32) or (c = 127) or (s[i] = '#') or (s[i] = '"') or (s[i] = '\') then
       Inc(outLen, 3)
     else
       Inc(outLen);
@@ -888,7 +892,7 @@ begin
   for i := 1 to len do
   begin
     c := Ord(s[i]);
-    if (c < 32) or (c = 127) or (s[i] = '#') then
+    if (c < 32) or (c = 127) or (s[i] = '#') or (s[i] = '"') or (s[i] = '\') then
     begin
       Result[j + 1] := '#';
       Result[j + 2] := HexDigits[(c shr 4) and $0F];
