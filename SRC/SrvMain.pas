@@ -863,6 +863,24 @@ begin
   SetLength(Result, j);
 end;
 
+// Escape control bytes (0..31, 127) and the literal '#' for safe log emission.
+// Prohibited bytes become "#NN" where NN is the decimal byte value, so the
+// resulting log line is one unambiguous record with no embedded CR, LF, or NUL.
+function EscapeForLog(const s: AnsiString): AnsiString;
+var
+  i, c: Integer;
+begin
+  Result := '';
+  for i := 1 to Length(s) do
+  begin
+    c := Ord(s[i]);
+    if (c < 32) or (c = 127) or (s[i] = '#') then
+      Result := Result + '#' + ItoS(c)
+    else
+      Result := Result + s[i];
+  end;
+end;
+
 function IsHeaderTChar(c: AnsiChar): Boolean;
 begin
   case c of
@@ -2222,6 +2240,19 @@ begin
             k := '';
           end;
 
+          // RFC 9112 Section 3.3.1: a server that receives a request message
+          // with a transfer coding it does not implement SHOULD respond with
+          // 501 (Not Implemented). TinyWeb does not decode any transfer
+          // coding (including "chunked"), so any non-empty Transfer-Encoding
+          // value is treated as unsupported. Without this guard, a chunked
+          // body is silently ignored and the chunk octets can be reinterpreted
+          // as a subsequent pipelined request, enabling HTTP request smuggling.
+          if RequestGeneralHeader.TransferEncoding <> '' then
+          begin
+            StatusCode := 501;
+            Break;
+          end;
+
           if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict or
              ((RequestEntityHeader.ContentLength <> '') and
               (RequestGeneralHeader.TransferEncoding <> '')) then
@@ -2301,11 +2332,22 @@ begin
           end;
           if not UnpackPchars(s) then
             Break;
+          for i := 1 to Length(s) do
+          begin
+            if (s[i] = #0) or (s[i] = #10) or (s[i] = #13) or
+               ((Ord(s[i]) < 32) and (s[i] <> #9)) or (Ord(s[i]) = 127) then
+            begin
+              StatusCode := 400;
+              s := '';
+              Break;
+            end;
+          end;
+          if StatusCode = 400 then Break;
           URIPath := s;
 
 {$IFDEF LOGGING}
-          AddRefererLog(d.RequestRequestHeader.Referer, d.URIPath);
-          AddAgentLog(d.RequestRequestHeader.UserAgent);
+          AddRefererLog(EscapeForLog(d.RequestRequestHeader.Referer), EscapeForLog(d.URIPath));
+          AddAgentLog(EscapeForLog(d.RequestRequestHeader.UserAgent));
 {$ENDIF}
           PrepareResponse(d);
 
@@ -2414,9 +2456,10 @@ begin
       end;
 
 {$IFDEF LOGGING}
-      logS := Method + ' ' + URIPath;
-      if URIQuery <> '' then logS := LogS+'?'+URIQuery;
-      AddAccessLog(RemoteHost, logS, HTTPVersion, d.AuthUser, StatusCode, i);
+      logS := EscapeForLog(Method) + ' ' + EscapeForLog(URIPath);
+      if URIQuery <> '' then logS := LogS + '?' + EscapeForLog(URIQuery);
+      AddAccessLog(EscapeForLog(RemoteHost), logS, EscapeForLog(HTTPVersion),
+        EscapeForLog(d.AuthUser), StatusCode, i);
       Finalize(logS);
 {$ENDIF}
       s := 'HTTP/1.0 ' + s + #13#10 + ResponseGeneralHeader.OutString +
@@ -3019,6 +3062,7 @@ begin
         SetEvent(ResetterThread.oSleep);
       end;
       Inc(SocksCount);
+      NewSocket.Counted := True;
       SocketsColl.Leave;
       NewThread := THTTPServerThread.Create;
       NewThread.FreeOnTerminate := True;

@@ -86,6 +86,7 @@ type
     Handle: THandle;
     Status: Integer;
     Registered: Boolean;
+    Counted: Boolean;
     procedure RegisterSelf;
     procedure DeregisterSelf;
 
@@ -2691,9 +2692,13 @@ begin
   DeregisterSelf;
   CloseSocket(Handle);
   SocketsColl.Enter;
-  Dec(SocksCount);
-  if SocksCount = 0 then
-    ResetterThread.TimeToSleep := INFINITE;
+  if Counted then
+  begin
+    Dec(SocksCount);
+    if SocksCount = 0 then
+      ResetterThread.TimeToSleep := INFINITE;
+    Counted := False;
+  end;
   SocketsColl.Leave;
   inherited Destroy;
 end;
