@@ -863,6 +863,50 @@ begin
   SetLength(Result, j);
 end;
 
+// Escape control bytes (0..31, 127), the literal '#', the double-quote, and
+// the backslash for safe log emission. Prohibited bytes become "#XX" where
+// XX is the byte value as exactly two uppercase hex digits, making the
+// encoding self-delimiting and uniquely decodable. Double-quote is escaped
+// because AddAccessLog wraps the request line in '"..."', so an unescaped
+// quote in a decoded URI would corrupt log parsing. Backslash is escaped to
+// keep the encoding compatible with CLF log parsers that treat '\"' as an
+// escaped quote.
+function EscapeForLog(const s: AnsiString): AnsiString;
+const
+  HexDigits: array[0..15] of AnsiChar = '0123456789ABCDEF';
+var
+  i, c, len, outLen, j: Integer;
+begin
+  len := Length(s);
+  outLen := 0;
+  for i := 1 to len do
+  begin
+    c := Ord(s[i]);
+    if (c < 32) or (c = 127) or (s[i] = '#') or (s[i] = '"') or (s[i] = '\') then
+      Inc(outLen, 3)
+    else
+      Inc(outLen);
+  end;
+  SetLength(Result, outLen);
+  j := 0;
+  for i := 1 to len do
+  begin
+    c := Ord(s[i]);
+    if (c < 32) or (c = 127) or (s[i] = '#') or (s[i] = '"') or (s[i] = '\') then
+    begin
+      Result[j + 1] := '#';
+      Result[j + 2] := HexDigits[(c shr 4) and $0F];
+      Result[j + 3] := HexDigits[c and $0F];
+      Inc(j, 3);
+    end
+    else
+    begin
+      Result[j + 1] := s[i];
+      Inc(j);
+    end;
+  end;
+end;
+
 function IsHeaderTChar(c: AnsiChar): Boolean;
 begin
   case c of
@@ -1359,7 +1403,9 @@ begin
     AuthUser + ' ' + // The username as which the user has authenticated himself
     CurTime + ' ' + // Date and time of the request
     '"' + ARequestLine + k + '" ' +
-  // The request line exactly as it came from the client
+  // The request line, log-escaped by the caller via EscapeForLog so that
+  // control bytes, '#', '"', and '\' are rendered as '#XX' hex. Callers
+  // must pre-escape every component they pass here.
     ItoS(AStatusCode) + ' ' + // The HTTP status code returned to the client
     z + // The content-length of the document transferred
     #13#10;
@@ -2107,7 +2153,7 @@ var
 {$ENDIF}
   s, z, k: AnsiString;
   d: THTTPData;
-  AbortConnection: Boolean;
+  AbortConnection, BadByte: Boolean;
   v, Actually: DWORD;
   CQuestion, CEqual, CZero, CSemicolon: AnsiChar;
 begin
@@ -2222,11 +2268,22 @@ begin
             k := '';
           end;
 
-          if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict or
-             ((RequestEntityHeader.ContentLength <> '') and
-              (RequestGeneralHeader.TransferEncoding <> '')) then
+          // RFC 9112 Section 3.3.1: a server that receives a request message
+          // with a transfer coding it does not implement SHOULD respond with
+          // 501 (Not Implemented). TinyWeb does not decode any transfer
+          // coding (including "chunked"), so any non-empty Transfer-Encoding
+          // value is treated as unsupported. Without this guard, a chunked
+          // body is silently ignored and the chunk octets can be reinterpreted
+          // as a subsequent pipelined request, enabling HTTP request smuggling.
+          if RequestGeneralHeader.TransferEncoding <> '' then
           begin
-            // RFC 9110/9112: 400 (Multiple CL / TE-CL Conflict)
+            StatusCode := 501;
+            Break;
+          end;
+
+          if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict then
+          begin
+            // RFC 9110/9112: 400 (Multiple Content-Length)
             StatusCode := 400;
             Break;
           end;
@@ -2301,11 +2358,25 @@ begin
           end;
           if not UnpackPchars(s) then
             Break;
+          BadByte := False;
+          for i := 1 to Length(s) do
+          begin
+            if (Ord(s[i]) < 32) or (Ord(s[i]) = 127) then
+            begin
+              BadByte := True;
+              Break;
+            end;
+          end;
+          if BadByte then
+          begin
+            StatusCode := 400;
+            Break;
+          end;
           URIPath := s;
 
 {$IFDEF LOGGING}
-          AddRefererLog(d.RequestRequestHeader.Referer, d.URIPath);
-          AddAgentLog(d.RequestRequestHeader.UserAgent);
+          AddRefererLog(EscapeForLog(d.RequestRequestHeader.Referer), EscapeForLog(d.URIPath));
+          AddAgentLog(EscapeForLog(d.RequestRequestHeader.UserAgent));
 {$ENDIF}
           PrepareResponse(d);
 
@@ -2414,9 +2485,10 @@ begin
       end;
 
 {$IFDEF LOGGING}
-      logS := Method + ' ' + URIPath;
-      if URIQuery <> '' then logS := LogS+'?'+URIQuery;
-      AddAccessLog(RemoteHost, logS, HTTPVersion, d.AuthUser, StatusCode, i);
+      logS := EscapeForLog(Method) + ' ' + EscapeForLog(URIPath);
+      if URIQuery <> '' then logS := LogS + '?' + EscapeForLog(URIQuery);
+      AddAccessLog(EscapeForLog(RemoteHost), logS, EscapeForLog(HTTPVersion),
+        EscapeForLog(d.AuthUser), StatusCode, i);
       Finalize(logS);
 {$ENDIF}
       s := 'HTTP/1.0 ' + s + #13#10 + ResponseGeneralHeader.OutString +
@@ -3008,8 +3080,7 @@ begin
       if SocksCount >= CMaxConnections then
       begin
         SocketsColl.Leave;
-        CloseSocket(NewSocketHandle);
-        FreeObject(NewSocket);
+        FreeObject(NewSocket); // TSocket.Destroy closes NewSocketHandle
         Continue;
       end;
 
@@ -3019,6 +3090,7 @@ begin
         SetEvent(ResetterThread.oSleep);
       end;
       Inc(SocksCount);
+      NewSocket.Counted := True;
       SocketsColl.Leave;
       NewThread := THTTPServerThread.Create;
       NewThread.FreeOnTerminate := True;
