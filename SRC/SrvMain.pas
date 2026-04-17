@@ -871,16 +871,35 @@ function EscapeForLog(const s: AnsiString): AnsiString;
 const
   HexDigits: array[0..15] of AnsiChar = '0123456789ABCDEF';
 var
-  i, c: Integer;
+  i, c, len, outLen, j: Integer;
 begin
-  Result := '';
-  for i := 1 to Length(s) do
+  len := Length(s);
+  outLen := 0;
+  for i := 1 to len do
   begin
     c := Ord(s[i]);
     if (c < 32) or (c = 127) or (s[i] = '#') then
-      Result := Result + '#' + HexDigits[(c shr 4) and $0F] + HexDigits[c and $0F]
+      Inc(outLen, 3)
     else
-      Result := Result + s[i];
+      Inc(outLen);
+  end;
+  SetLength(Result, outLen);
+  j := 0;
+  for i := 1 to len do
+  begin
+    c := Ord(s[i]);
+    if (c < 32) or (c = 127) or (s[i] = '#') then
+    begin
+      Result[j + 1] := '#';
+      Result[j + 2] := HexDigits[(c shr 4) and $0F];
+      Result[j + 3] := HexDigits[c and $0F];
+      Inc(j, 3);
+    end
+    else
+    begin
+      Result[j + 1] := s[i];
+      Inc(j);
+    end;
   end;
 end;
 
@@ -2256,11 +2275,9 @@ begin
             Break;
           end;
 
-          if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict or
-             ((RequestEntityHeader.ContentLength <> '') and
-              (RequestGeneralHeader.TransferEncoding <> '')) then
+          if RequestEntityHeader.Conflict or RequestGeneralHeader.Conflict then
           begin
-            // RFC 9110/9112: 400 (Multiple CL / TE-CL Conflict)
+            // RFC 9110/9112: 400 (Multiple Content-Length)
             StatusCode := 400;
             Break;
           end;
@@ -2338,8 +2355,7 @@ begin
           BadByte := False;
           for i := 1 to Length(s) do
           begin
-            if (s[i] = #0) or (s[i] = #10) or (s[i] = #13) or
-               ((Ord(s[i]) < 32) and (s[i] <> #9)) or (Ord(s[i]) = 127) then
+            if (Ord(s[i]) < 32) or (Ord(s[i]) = 127) then
             begin
               BadByte := True;
               Break;
