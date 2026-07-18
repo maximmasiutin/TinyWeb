@@ -527,6 +527,12 @@ const
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
 
+// Displays a modal failure dialog, but only when running on an interactive
+// desktop. Under a non-interactive session (Windows Service, Session 0,
+// scheduled task) it does nothing, so a modal box can never render on an
+// invisible desktop and block a headless TinyWeb forever.
+procedure ShowFailureBox(const s: AnsiString);
+
 {$IFDEF DEBUG}
 procedure xBaseSelfTest;
 {$ENDIF}
@@ -2994,6 +3000,54 @@ end;
 
 
 
+const
+  cUOI_FLAGS = 1;
+  cWSF_VISIBLE = $0001;
+type
+  TXUserObjectFlags = packed record
+    fInherit: BOOL;
+    fReserved: BOOL;
+    dwFlags: DWORD;
+  end;
+
+function xGetProcessWindowStation: THandle; stdcall;
+  external 'user32.dll' name 'GetProcessWindowStation';
+function xGetUserObjectInformation(hObj: THandle; nIndex: Integer; pvInfo: Pointer;
+  nLength: DWORD; lpnLengthNeeded: PDWORD): BOOL; stdcall;
+  external 'user32.dll' name 'GetUserObjectInformationA';
+
+// True only when this process has a visible window station, i.e. an interactive
+// desktop where a modal dialog can actually be seen and dismissed.
+function DesktopIsInteractive: Boolean;
+var
+  hWinSta: THandle;
+  Flags: TXUserObjectFlags;
+  Needed: DWORD;
+begin
+  Result := False;
+  hWinSta := xGetProcessWindowStation;
+  if hWinSta <> 0 then
+  begin
+    FillChar(Flags, SizeOf(Flags), 0);
+    Needed := 0;
+    if xGetUserObjectInformation(hWinSta, cUOI_FLAGS, @Flags, SizeOf(Flags), @Needed) then
+      Result := (Flags.dwFlags and cWSF_VISIBLE) <> 0;
+  end;
+end;
+
+procedure ShowFailureBox(const s: AnsiString);
+begin
+  if s <> '' then
+  begin
+    // Always emit to the debug channel so headless deployments, where the modal
+    // dialog is suppressed, still leave a diagnosable trace for an attached
+    // debugger or a tool such as DebugView.
+    OutputDebugStringA(PAnsiChar(s));
+    if DesktopIsInteractive then
+      MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+  end;
+end;
+
 function _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
 var
   s: AnsiString;
@@ -3016,7 +3070,7 @@ begin
     begin
       s := s + ' - '+SysErrorMsg(le);
     end;
-    MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+    ShowFailureBox(s);
   end;
 end;
 
@@ -3322,7 +3376,7 @@ begin
          le := GetLastError;
          Terminate;
          s := 'TFileFlusherThread WaitForSingleObject failed - '+SysErrorMsg(le);
-         MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+         ShowFailureBox(s);
        end;
     end;
   until Terminated;
