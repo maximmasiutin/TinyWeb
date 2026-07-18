@@ -3037,8 +3037,15 @@ end;
 
 procedure ShowFailureBox(const s: AnsiString);
 begin
-  if (s <> '') and DesktopIsInteractive then
-    MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+  if s <> '' then
+  begin
+    // Always emit to the debug channel so headless deployments, where the modal
+    // dialog is suppressed, still leave a diagnosable trace for an attached
+    // debugger or a tool such as DebugView.
+    OutputDebugStringA(PAnsiChar(s));
+    if DesktopIsInteractive then
+      MessageBoxA(0, PAnsiChar(s), CServerName, CMB_FAILED);
+  end;
 end;
 
 function _LogOK(const Name: AnsiString; var Handle: THandle): Boolean;
