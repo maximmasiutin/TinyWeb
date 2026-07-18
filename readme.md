@@ -94,9 +94,9 @@ TinyWeb has addressed the following security issues (using the CVE identifier wh
 |----------|------|----------|----------|
 | [CVE-2003-1510](https://www.masiutin.net/tinyweb-cve-2003-1510.html) | Denial of Service | High (7.8) | v1.93 |
 | [CVE-2004-2636](https://www.masiutin.net/tinyweb-cve-2004-2636.html) | Path Traversal (CWE-22) | Medium (5.0) | v1.93 |
+| [CVE-2026-22781](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html) | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
 | [CVE-2024-5193](https://www.masiutin.net/tinyweb-cve-2024-5193.html) | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
 | [CVE-2024-34199](https://www.masiutin.net/tinyweb-cve-2024-34199.html) | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
-| [CVE-2026-22781](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html) | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
 | [CVE-2026-27613](https://www.masiutin.net/tinyweb-cve-2026-27613.html) | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
 | [CVE-2026-27630](https://www.masiutin.net/tinyweb-cve-2026-27630.html) | Slowloris (CWE-400) | High (8.7) | v2.02 |
 | [CVE-2026-27633](https://www.masiutin.net/tinyweb-cve-2026-27633.html) | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
