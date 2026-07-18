@@ -102,9 +102,9 @@ TinyWeb has addressed the following security issues (using the CVE identifier wh
 | CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
 | CVE-2026-28497 | Integer Overflow / HTTP Request Smuggling (CWE-190/CWE-444) | High (8.7) | v2.03 |
 | CVE-2026-29046 | Header Control Character Injection (CWE-113/CWE-93) | High (8.8) | v2.04 |
-| GHSA-rprm-fpv2-mwwf | Slowloris regression via socket-counter imbalance (CWE-400) | High (7.5) | v2.05 |
-| GHSA-wxxh-8845-3c89 | Log Injection via URI control characters (CWE-117/CWE-93) | Medium (5.3) | v2.05 |
-| GHSA-56x3-254q-j68q | HTTP Request Smuggling via Transfer-Encoding (CWE-444) | Medium (5.9) | v2.05 |
+| [GHSA-rprm-fpv2-mwwf](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html) | Slowloris regression via socket-counter imbalance (CWE-400) | High (7.5) | v2.05 |
+| [GHSA-wxxh-8845-3c89](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html) | Log Injection via URI control characters (CWE-117/CWE-93) | Medium (5.3) | v2.05 |
+| [GHSA-56x3-254q-j68q](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html) | HTTP Request Smuggling via Transfer-Encoding (CWE-444) | Medium (5.9) | v2.05 |
 
 **Security Advisories:**
 - [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
@@ -115,8 +115,8 @@ TinyWeb has addressed the following security issues (using the CVE identifier wh
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
 - [CVE-2026-28497 Advisory (v2.03)](https://www.masiutin.net/tinyweb-cve-2026-28497.html)
 - [CVE-2026-29046 Advisory (v2.04)](https://www.masiutin.net/tinyweb-cve-2026-29046.html)
-- [Slowloris socket-counter regression (v2.05)](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html) - [GHSA-rprm-fpv2-mwwf](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-rprm-fpv2-mwwf)
-- [Log injection via URI control characters (v2.05)](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html) - [GHSA-wxxh-8845-3c89](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-wxxh-8845-3c89)
-- [HTTP request smuggling via Transfer-Encoding (v2.05)](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html) - [GHSA-56x3-254q-j68q](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-56x3-254q-j68q)
+- [GHSA-rprm-fpv2-mwwf Advisory (v2.05)](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html)
+- [GHSA-wxxh-8845-3c89 Advisory (v2.05)](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html)
+- [GHSA-56x3-254q-j68q Advisory (v2.05)](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html)
 
 **Recommendation:** Always use the latest version of TinyWeb.
