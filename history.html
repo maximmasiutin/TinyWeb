@@ -190,6 +190,13 @@
         <li>Hardened HTTP header parsing to enforce complete control-byte blocking in active request parsing.</li>
         <li>Enabled strict per-header validation before CGI environment mapping to prevent parser differential issues.</li>
     </ul>
+    <h2>2.05 (18 July 2026)</h2>
+    <ul>
+        <li>Fixed a socket-counter imbalance that could re-enable connection-exhaustion (Slowloris) attacks.</li>
+        <li>Rejected control characters in request URI paths with 400 and escaped control bytes in log output to prevent log injection.</li>
+        <li>Returned 501 for unsupported Transfer-Encoding to close an HTTP request-smuggling vector.</li>
+        <li>Hardened fatal-error dialogs so a headless deployment (service, Session 0, scheduled task) cannot hang on a modal message box; errors are emitted via OutputDebugString.</li>
+    </ul>
 </body>
 
 </html>
