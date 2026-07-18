@@ -2685,8 +2685,8 @@ begin
   Result := False;
   if ParamCount < 1 then
   begin
-    MessageBox(0, 'Path to home directory is absent!'#13#10 + CServerName +
-      ' failed to start.', CServerName, CMB_FAILED);
+    ShowFailureBox('Path to home directory is absent!'#13#10 + CServerName +
+      ' failed to start.');
     Exit;
   end;
   ParamStr1 := ParamStrAnsi(1);
@@ -2698,7 +2698,7 @@ begin
     s := 'Access to "' + s + '" failed'#13#10'Reason: "' +
       SysErrorMsg(GetLastError) + '"'#13#10#13#10 + CServerName +
       ' failed to start';
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+    ShowFailureBox(s);
     Exit;
   end;
   BindPort := 80;
@@ -3019,14 +3019,14 @@ begin
   if err <> 0 then
   begin
     s := 'Failed to initialize WinSocket,error #' + ItoS(err);
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+    ShowFailureBox(s);
     Halt;
   end;
   ServerSocketHandle := Socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
   if ServerSocketHandle = INVALID_SOCKET then
   begin
     s := 'Failed to create a socket, Error #' + ItoS(WSAGetLastError);
-    MessageBoxA(0, @(s[1]), CServerName, CMB_FAILED);
+    ShowFailureBox(s);
     Halt;
   end;
 
