@@ -88,10 +88,10 @@ To disable strict mode, comment out `{$DEFINE STRICT_CGI_PARAMS}` in `define.inc
 
 ## Security Vulnerabilities Fixed
 
-TinyWeb has addressed the following CVEs:
+TinyWeb has addressed the following security issues (CVE identifiers where assigned, otherwise the GitHub Security Advisory identifier):
 
-| CVE | Type | Severity | Fixed In |
-|-----|------|----------|----------|
+| Advisory | Type | Severity | Fixed In |
+|----------|------|----------|----------|
 | CVE-2003-1510 | Denial of Service | High (7.8) | v1.93 |
 | CVE-2004-2636 | Path Traversal (CWE-22) | Medium (5.0) | v1.93 |
 | CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
@@ -100,11 +100,11 @@ TinyWeb has addressed the following CVEs:
 | CVE-2026-27613 | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
 | CVE-2026-27630 | Slowloris (CWE-400) | High (8.7) | v2.02 |
 | CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
-| Pending | Integer Overflow (CWE-190) | High (8.7) | v2.03 |
-| TW-2026-0001 | Header Control Character Injection (CWE-113/CWE-93) | High | v2.04 |
-| TW-2026-0002 | Resource Exhaustion / Slowloris regression (CWE-400) | High | v2.05 |
-| TW-2026-0003 | Log Injection / Control Characters (CWE-117/CWE-93) | Medium | v2.05 |
-| TW-2026-0004 | HTTP Request Smuggling (CWE-444) | Medium | v2.05 |
+| CVE-2026-28497 | Integer Overflow / HTTP Request Smuggling (CWE-190) | High (8.7) | v2.03 |
+| CVE-2026-29046 | Header Control Character Injection (CWE-113/CWE-93) | High | v2.04 |
+| GHSA-rprm-fpv2-mwwf | Slowloris regression via socket-counter imbalance (CWE-400) | High (7.5) | v2.05 |
+| GHSA-wxxh-8845-3c89 | Log Injection via URI control characters (CWE-117/CWE-93) | Medium (5.3) | v2.05 |
+| GHSA-56x3-254q-j68q | HTTP Request Smuggling via Transfer-Encoding (CWE-444) | Medium (5.9) | v2.05 |
 
 **Security Advisories:**
 - [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
@@ -113,9 +113,10 @@ TinyWeb has addressed the following CVEs:
 - [CVE-2026-22781 Advisory](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html)
 - [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
-- [Integer Overflow Advisory (v2.03)]
-- [Header Control Character Injection Advisory (v2.04)]
-- [Slowloris regression, control-byte and request-smuggling fixes (v2.05)](https://github.com/maximmasiutin/TinyWeb/pull/5)
-- [Headless-deployment dialog hardening (v2.05)](https://github.com/maximmasiutin/TinyWeb/pull/6)
+- [CVE-2026-28497 Advisory (v2.03)](https://www.masiutin.net/tinyweb-cve-2026-28497.html)
+- [CVE-2026-29046 Advisory (v2.04)](https://www.masiutin.net/tinyweb-cve-2026-29046.html)
+- [Slowloris socket-counter regression (v2.05)](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html) - [GHSA-rprm-fpv2-mwwf](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-rprm-fpv2-mwwf)
+- [Log injection via URI control characters (v2.05)](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html) - [GHSA-wxxh-8845-3c89](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-wxxh-8845-3c89)
+- [HTTP request smuggling via Transfer-Encoding (v2.05)](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html) - [GHSA-56x3-254q-j68q](https://github.com/maximmasiutin/TinyWeb/security/advisories/GHSA-56x3-254q-j68q)
 
 **Recommendation:** Always use the latest version of TinyWeb.
