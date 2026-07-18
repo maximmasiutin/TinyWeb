@@ -88,7 +88,7 @@ To disable strict mode, comment out `{$DEFINE STRICT_CGI_PARAMS}` in `define.inc
 
 ## Security Vulnerabilities Fixed
 
-TinyWeb has addressed the following security issues (CVE identifiers where assigned, otherwise the GitHub Security Advisory identifier):
+TinyWeb has addressed the following security issues (using the CVE identifier where a CVE has been assigned, otherwise the GitHub Security Advisory identifier):
 
 | Advisory | Type | Severity | Fixed In |
 |----------|------|----------|----------|
@@ -100,8 +100,8 @@ TinyWeb has addressed the following security issues (CVE identifiers where assig
 | CVE-2026-27613 | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
 | CVE-2026-27630 | Slowloris (CWE-400) | High (8.7) | v2.02 |
 | CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
-| CVE-2026-28497 | Integer Overflow / HTTP Request Smuggling (CWE-190) | High (8.7) | v2.03 |
-| CVE-2026-29046 | Header Control Character Injection (CWE-113/CWE-93) | High | v2.04 |
+| CVE-2026-28497 | Integer Overflow / HTTP Request Smuggling (CWE-190/CWE-444) | High (8.7) | v2.03 |
+| CVE-2026-29046 | Header Control Character Injection (CWE-113/CWE-93) | High (8.8) | v2.04 |
 | GHSA-rprm-fpv2-mwwf | Slowloris regression via socket-counter imbalance (CWE-400) | High (7.5) | v2.05 |
 | GHSA-wxxh-8845-3c89 | Log Injection via URI control characters (CWE-117/CWE-93) | Medium (5.3) | v2.05 |
 | GHSA-56x3-254q-j68q | HTTP Request Smuggling via Transfer-Encoding (CWE-444) | Medium (5.9) | v2.05 |
