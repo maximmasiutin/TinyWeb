@@ -115,8 +115,8 @@ TinyWeb has addressed the following security issues (using the CVE identifier wh
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
 - [CVE-2026-28497 Advisory (v2.03)](https://www.masiutin.net/tinyweb-cve-2026-28497.html)
 - [CVE-2026-29046 Advisory (v2.04)](https://www.masiutin.net/tinyweb-cve-2026-29046.html)
-- [GHSA-rprm-fpv2-mwwf](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html) - Slowloris socket-counter regression (v2.05)
-- [GHSA-wxxh-8845-3c89](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html) - Log injection via URI control characters (v2.05)
-- [GHSA-56x3-254q-j68q](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html) - HTTP request smuggling via Transfer-Encoding (v2.05)
+- [GHSA-rprm-fpv2-mwwf Advisory (v2.05)](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html)
+- [GHSA-wxxh-8845-3c89 Advisory (v2.05)](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html)
+- [GHSA-56x3-254q-j68q Advisory (v2.05)](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html)
 
 **Recommendation:** Always use the latest version of TinyWeb.
