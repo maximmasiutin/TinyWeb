@@ -1,8 +1,8 @@
 # TinyWeb Server
 
-Version 2.04
+Version 2.05
 
-Released 06 March 2026
+Released 18 July 2026
 
 Written by Maxim Masiutin
 
@@ -102,6 +102,9 @@ TinyWeb has addressed the following CVEs:
 | CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
 | Pending | Integer Overflow (CWE-190) | High (8.7) | v2.03 |
 | TW-2026-0001 | Header Control Character Injection (CWE-113/CWE-93) | High | v2.04 |
+| TW-2026-0002 | Resource Exhaustion / Slowloris regression (CWE-400) | High | v2.05 |
+| TW-2026-0003 | Log Injection / Control Characters (CWE-117/CWE-93) | Medium | v2.05 |
+| TW-2026-0004 | HTTP Request Smuggling (CWE-444) | Medium | v2.05 |
 
 **Security Advisories:**
 - [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
@@ -112,5 +115,7 @@ TinyWeb has addressed the following CVEs:
 - [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
 - [Integer Overflow Advisory (v2.03)]
 - [Header Control Character Injection Advisory (v2.04)]
+- [Slowloris regression, control-byte and request-smuggling fixes (v2.05)](https://github.com/maximmasiutin/TinyWeb/pull/5)
+- [Headless-deployment dialog hardening (v2.05)](https://github.com/maximmasiutin/TinyWeb/pull/6)
 
 **Recommendation:** Always use the latest version of TinyWeb.
