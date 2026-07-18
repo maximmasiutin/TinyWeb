@@ -92,31 +92,20 @@ TinyWeb has addressed the following security issues (using the CVE identifier wh
 
 | Advisory | Type | Severity | Fixed In |
 |----------|------|----------|----------|
-| CVE-2003-1510 | Denial of Service | High (7.8) | v1.93 |
-| CVE-2004-2636 | Path Traversal (CWE-22) | Medium (5.0) | v1.93 |
-| CVE-2024-5193 | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
-| CVE-2024-34199 | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
-| CVE-2026-22781 | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
-| CVE-2026-27613 | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
-| CVE-2026-27630 | Slowloris (CWE-400) | High (8.7) | v2.02 |
-| CVE-2026-27633 | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
-| CVE-2026-28497 | Integer Overflow / HTTP Request Smuggling (CWE-190/CWE-444) | High (8.7) | v2.03 |
-| CVE-2026-29046 | Header Control Character Injection (CWE-113/CWE-93) | High (8.8) | v2.04 |
+| [CVE-2003-1510](https://www.masiutin.net/tinyweb-cve-2003-1510.html) | Denial of Service | High (7.8) | v1.93 |
+| [CVE-2004-2636](https://www.masiutin.net/tinyweb-cve-2004-2636.html) | Path Traversal (CWE-22) | Medium (5.0) | v1.93 |
+| [CVE-2026-22781](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html) | Command Injection (CWE-78) | Critical (9.8) | v1.98 |
+| [CVE-2024-5193](https://www.masiutin.net/tinyweb-cve-2024-5193.html) | CRLF Injection (CWE-93) | Medium (5.3) | v1.99 |
+| [CVE-2024-34199](https://www.masiutin.net/tinyweb-cve-2024-34199.html) | Buffer Overflow (CWE-787) | High (8.6) | v1.99 |
+| [CVE-2026-27613](https://www.masiutin.net/tinyweb-cve-2026-27613.html) | CGI Param Injection (CWE-88) | Critical (9.3) | v2.01 |
+| [CVE-2026-27630](https://www.masiutin.net/tinyweb-cve-2026-27630.html) | Slowloris (CWE-400) | High (8.7) | v2.02 |
+| [CVE-2026-27633](https://www.masiutin.net/tinyweb-cve-2026-27633.html) | Memory Exhaustion (CWE-400) | High (8.7) | v2.02 |
+| [CVE-2026-28497](https://www.masiutin.net/tinyweb-cve-2026-28497.html) | Integer Overflow / HTTP Request Smuggling (CWE-190/CWE-444) | High (8.7) | v2.03 |
+| [CVE-2026-29046](https://www.masiutin.net/tinyweb-cve-2026-29046.html) | Header Control Character Injection (CWE-113/CWE-93) | High (8.8) | v2.04 |
 | [GHSA-rprm-fpv2-mwwf](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html) | Slowloris regression via socket-counter imbalance (CWE-400) | High (7.5) | v2.05 |
 | [GHSA-wxxh-8845-3c89](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html) | Log Injection via URI control characters (CWE-117/CWE-93) | Medium (5.3) | v2.05 |
 | [GHSA-56x3-254q-j68q](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html) | HTTP Request Smuggling via Transfer-Encoding (CWE-444) | Medium (5.9) | v2.05 |
 
-**Security Advisories:**
-- [CVE-2026-27633 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27633.html)
-- [CVE-2026-27630 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27630.html)
-- [CVE-2026-27613 Advisory](https://www.masiutin.net/tinyweb-cve-2026-27613.html)
-- [CVE-2026-22781 Advisory](https://www.masiutin.net/tinyweb-cve-2025-cgi-command-injection.html)
-- [CVE-2024-5193 Advisory](https://www.masiutin.net/tinyweb-cve-2024-5193.html)
-- [CVE-2024-34199, CVE-2024-2636, CVE-2003-1510 Advisory](https://www.masiutin.net/tinyweb-cves-mitre.html)
-- [CVE-2026-28497 Advisory (v2.03)](https://www.masiutin.net/tinyweb-cve-2026-28497.html)
-- [CVE-2026-29046 Advisory (v2.04)](https://www.masiutin.net/tinyweb-cve-2026-29046.html)
-- [GHSA-rprm-fpv2-mwwf Advisory (v2.05)](https://www.masiutin.net/tinyweb-slowloris-socket-counter-v2.05.html)
-- [GHSA-wxxh-8845-3c89 Advisory (v2.05)](https://www.masiutin.net/tinyweb-log-injection-uri-v2.05.html)
-- [GHSA-56x3-254q-j68q Advisory (v2.05)](https://www.masiutin.net/tinyweb-request-smuggling-transfer-encoding-v2.05.html)
+Each advisory identifier in the table links to its advisory page on masiutin.net.
 
 **Recommendation:** Always use the latest version of TinyWeb.
