@@ -54,6 +54,28 @@ interface
 
 procedure ComeOn;
 
+{ Pure parsing and escaping helpers, declared here so the unit-test program
+  TESTS/unit/srvtest.dpr can reach them; exposing the declarations changes
+  no behavior. }
+
+function FileTimeToStr(AT: DWORD): AnsiString;
+function StrToFileTime(AStr: AnsiString): DWORD;
+function StripCRLF(const s: AnsiString): AnsiString;
+function EscapeForLog(const s: AnsiString): AnsiString;
+function IsHeaderTChar(c: AnsiChar): Boolean;
+function IsHexChar(c: AnsiChar): Boolean;
+function HexNibble(c: AnsiChar): Integer;
+function HasDangerousPercentEncoding(const s: AnsiString): Boolean;
+function ParseHeaderLineStrict(const Line: AnsiString;
+  var HeaderNameUpper, HeaderValue: AnsiString): Boolean;
+{$IFDEF STRICT_CGI_PARAMS}
+function IsQueryParamSafe(const s: AnsiString): Boolean;
+{$ENDIF}
+function EscapeShellParam(const s: AnsiString): AnsiString;
+function IsURL(const s: AnsiString): Boolean;
+function _Adr2Int(const s: AnsiString): DWORD;
+function Adr2Int(const s: AnsiString): Integer;
+
 implementation
 
 uses
