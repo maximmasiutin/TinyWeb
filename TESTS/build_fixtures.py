@@ -85,6 +85,7 @@ def build_all():
     try:
         _run([
             fpc, "-B", "-MDelphi", "-FE" + str(BIN), "-FU" + str(unit_dir),
+            "-Fu" + str(REPO / "SRC"),  # loginu.pas uses xBase.GetEnvVariable
             str(CGITEST / "login.dpr"),
         ], cwd=CGITEST)
         caps["login"] = True
