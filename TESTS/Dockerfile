@@ -17,7 +17,15 @@ RUN dpkg --add-architecture i386 \
        wine wine32:i386 python3 python3-pytest \
     && rm -rf /var/lib/apt/lists/*
 
+# The suite needs no root privileges: wine creates its prefix under this
+# user's home on first start, and the repository arrives as a bind mount.
+RUN useradd --create-home tester
+USER tester
+
 ENV WINEDEBUG=-all
 ENV TINYWEB_WINE=1
+
+# A batch test runner has no service to probe; NONE states that on purpose.
+HEALTHCHECK NONE
 
 CMD ["python3", "-m", "pytest", "TESTS", "-m", "not slow"]
