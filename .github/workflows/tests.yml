@@ -1,0 +1,65 @@
+---
+name: Tests
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'SRC/**'
+      - 'CGITEST/**'
+      - 'TESTS/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths:
+      - 'SRC/**'
+      - 'CGITEST/**'
+      - 'TESTS/**'
+      - '.github/workflows/tests.yml'
+  workflow_dispatch:
+
+env:
+  fpc_ver: '3.2.2'
+  fpc_installer_name: 'fpc_installer'
+
+jobs:
+  integration_tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set environment variables for FPC
+        run: |
+          echo "FPC=C:\FPC\${{ env.fpc_ver }}\bin\i386-win32\fpc.exe" >> $env:GITHUB_ENV
+          echo "FPC_URL=https://sourceforge.net/projects/freepascal/files/Win32/${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe/download" >> $env:GITHUB_ENV
+          echo "FPC_INSTALLER_PATH=$Env:TEMP\${{ env.fpc_installer_name }}.exe" >> $env:GITHUB_ENV
+
+      - name: Download FreePascal installer
+        run: |
+          & 'curl.exe' @('-L', '-o', "$Env:FPC_INSTALLER_PATH", "$Env:FPC_URL")
+
+      - name: Install FreePascal silently
+        run: |
+          & "$Env:FPC_INSTALLER_PATH" @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LOG')
+          Wait-Process -Name '${{ env.fpc_installer_name }}' -Timeout 600
+          Remove-Item "$Env:FPC_INSTALLER_PATH"
+
+      - name: Compile TinyWeb with FreePascal
+        working-directory: ${{ github.workspace }}/SRC
+        run: |
+          & "$Env:FPC" @('-B', '-MObjFPC', 'Tiny.dpr')
+
+      - name: Install pytest
+        run: |
+          python -m pip install --quiet pytest
+
+      - name: Run the test suite
+        run: |
+          python -m pytest TESTS -v -m 'not slow'
+
+      - name: Run the slow resource-limit tests
+        run: |
+          python -m pytest TESTS -v -m 'slow'

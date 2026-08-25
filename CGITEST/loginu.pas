@@ -35,7 +35,8 @@ implementation
 
 uses
   Windows,
-  SysUtils;
+  SysUtils,
+  xBase;
 
 
 var
@@ -162,12 +163,15 @@ var
 
 
   Variable:string;
-  Buffer:array [0..4095] of char;
 begin
   StdIn  := GetStdHandle(STD_INPUT_HANDLE);
   StdOut := GetStdHandle(STD_OUTPUT_HANDLE);
   S := '';
-  SetString(Variable, Buffer, GetEnvironmentVariable(PChar('CONTENT_LENGTH'), Buffer, SizeOf(Buffer)));
+  // xBase.GetEnvVariable, never the raw GetEnvironmentVariableA: when the
+  // value exceeds the buffer, the raw call returns the REQUIRED size, so a
+  // SetString over the untouched buffer fabricates a string of that length.
+  // The wrapper carries the two-call sizing protocol.
+  Variable := GetEnvVariable('CONTENT_LENGTH');
   I := StrToInt(Variable);
   if I <= 0 then ShowError('Internal script error reading StdIn');
   FileSeek(StdIn, 0, FILE_BEGIN);

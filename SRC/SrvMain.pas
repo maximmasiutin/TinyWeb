@@ -295,6 +295,10 @@ type
     EntityLength: Integer;
     SetCookie, CGIStatus, CGILocation: AnsiString;
     Conflict: Boolean;
+    // Distinguishes an absent Content-Length header from a present one
+    // whose value is empty: both leave ContentLength = '', and only a
+    // truly absent header may fall back to a body-derived length.
+    HasContentLength: Boolean;
     function Filter(const z, s: AnsiString): Boolean;
     procedure CopyEntityBody(Collector: TCollector);
     function OutString: AnsiString;
@@ -378,8 +382,11 @@ begin
   if v = INVALID_VALUE then
     Exit;
   d.wDay := v;
-  LSubstring := #1 + UpperCase(z) + #1;
+  // The month word must be read before LSubstring is built from z;
+  // v1.95..v2.05 built it from the day digits still in z, so the month
+  // lookup always failed and If-Modified-Since never produced 304.
   GetWrdA(s, z);
+  LSubstring := #1 + UpperCase(z) + #1;
   d.wMonth := Pos(LSubstring, CPatterns);
   if d.wMonth = 0 then
     Exit;
@@ -579,7 +586,8 @@ begin
     ContentLanguage := s
   else if z = 'CONTENT-LENGTH' then // 14.13
   begin
-    if ContentLength <> '' then Conflict := True;
+    if HasContentLength then Conflict := True;
+    HasContentLength := True;
     ContentLength := s;
   end
   else if z = 'CONTENT-LOCATION' then // 14.14
@@ -797,15 +805,21 @@ begin
 
       if EntityHeader.Conflict then
       begin
-        // RFC 9110/9112: 400 (Multiple CL)
+        // RFC 9110: duplicated Content-Length in the CGI response; the
+        // response is discarded and the client receives 500.
         Result := False;
         Exit;
       end;
 
+      // RFC 3875 Section 6.3: a CGI response need not carry Content-Length,
+      // and only a truly absent header may fall back to the body-derived
+      // length (val stays 0; ExecuteScript derives it later). A present
+      // value, including a present empty one, must parse: _Val rejects
+      // the empty string, and the failure surfaces to the client as 500.
       val := 0;
-      if not _Val(EntityHeader.ContentLength, val) then
+      if EntityHeader.HasContentLength and
+        (not _Val(EntityHeader.ContentLength, val)) then
       begin
-        // RFC 9110/9112: 400 (Malformed CL)
         Result := False;
         Exit;
       end;
@@ -2291,7 +2305,10 @@ begin
           if (s <> '') or (z <> '') then
             Break;
           val := 0;
-          if (RequestEntityHeader.ContentLength <> '') and
+          // A present Content-Length must parse even when its value is
+          // empty; _Val rejects the empty string. Only a request that
+          // never carried the header proceeds with length 0.
+          if RequestEntityHeader.HasContentLength and
              (not _Val(RequestEntityHeader.ContentLength, val)) then
           begin
             // RFC 9110/9112: 400 (Malformed CL)
@@ -2399,7 +2416,11 @@ begin
           ZeroHandle(FHandle);
           TransferFile := False;
           StatusCode := 304;
-          ReportError := True;
+          // RFC 9110 Section 15.4.5: a 304 response must not carry
+          // content. ReportError stays False, because the error path
+          // fabricates an HTML entity body for any response without one
+          // and would attach it to this 304.
+          ReportError := False;
         end;
       end;
 
