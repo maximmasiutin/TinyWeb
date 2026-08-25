@@ -1,8 +1,8 @@
 # TinyWeb Server
 
-Version 2.05
+Version 2.06
 
-Released 18 July 2026
+Released 25 August 2026
 
 Written by Maxim Masiutin
 
@@ -12,7 +12,6 @@ Copyright (C) 2000-2017 RITLABS S.R.L.
 
 Copyright (C) 1997-2000 RIT Research Labs
 
-
 ## Setup
 To set up the TinyWeb Server, just create a shortcut in the Startup menu with the following properties:
 
@@ -20,7 +19,6 @@ To set up the TinyWeb Server, just create a shortcut in the Startup menu with th
 `c:\www\bin\tiny.exe c:\www\root`
 ### Start In
 `c:\www\log`
-
 
 Here, `c:\www\bin\tiny.exe` is the path to TinyWeb executable, `c:\www\root` is the path to www home (root) directory, and `c:\www\log` is the directory for log files that TinyWeb keeps.
 

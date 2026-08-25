@@ -197,6 +197,15 @@
         <li>Returned 501 for unsupported Transfer-Encoding to close an HTTP request-smuggling vector.</li>
         <li>Hardened fatal-error dialogs so a headless deployment (service, Session 0, scheduled task) cannot hang on a modal message box; errors are emitted via OutputDebugString.</li>
     </ul>
+    <h2>2.06 (25 August 2026)</h2>
+    <ul>
+        <li>Fixed a regression introduced in 2.03 that rejected every CGI response without a Content-Length header, which RFC 3875 Section 6.3 makes optional, so all classic CGI programs answered error 500. Reported from the field by a research database that worked on 1.99.</li>
+        <li>Fixed If-Modified-Since handling, broken since 1.95: the date parser built its month token from the day digits, so conditional requests never received 304 Not Modified.</li>
+        <li>304 responses no longer carry a fabricated HTML error body (RFC 9110 Section 15.4.5) and keep the connection alive.</li>
+        <li>A present but empty or duplicated Content-Length header is now rejected on both the request side (400 Bad Request) and the CGI response side (500); only a truly absent header falls back to a body-derived length.</li>
+        <li>Repaired the CGITEST login example: loginu.pas compiles again under compilers whose SysUtils shadows the WinAPI GetEnvironmentVariable, and it now reads the environment through the xBase GetEnvVariable wrapper instead of a raw Windows API call.</li>
+        <li>Added an integration test suite (TESTS, pytest, 46 tests) that drives the real binary over HTTP: CGI behavior including the Content-Length regression, static serving, and one regression test per security fix from 1.98 through 2.05, with a CI workflow on every push and pull request and a Wine-based container lane.</li>
+    </ul>
 </body>
 
 </html>
