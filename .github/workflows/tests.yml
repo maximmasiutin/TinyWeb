@@ -34,14 +34,40 @@ jobs:
       - name: Set environment variables for FPC
         run: |
           echo "FPC=C:\FPC\${{ env.fpc_ver }}\bin\i386-win32\fpc.exe" >> $env:GITHUB_ENV
+          echo "FPC_ASSET_URL=https://github.com/maximmasiutin/TinyWeb/releases/download/build-tools-fpc-${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe" >> $env:GITHUB_ENV
           echo "FPC_URL=https://sourceforge.net/projects/freepascal/files/Win32/${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe/download" >> $env:GITHUB_ENV
+          echo "FPC_SHA256=8C255390544B051388B577EB61C6191A04883264AFE0E3369B3600A56DAF7BDE" >> $env:GITHUB_ENV
           echo "FPC_INSTALLER_PATH=$Env:TEMP\${{ env.fpc_installer_name }}.exe" >> $env:GITHUB_ENV
 
+      # The installed compiler is cached so warm runs skip the download and
+      # the silent install. A cold run downloads from this repository's
+      # build-tools release (GitHub's CDN), falls back to SourceForge, and
+      # refuses to execute an installer whose SHA-256 is not the pinned one.
+      - name: Cache FreePascal
+        id: fpc-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: C:\FPC\${{ env.fpc_ver }}
+          key: fpc-${{ env.fpc_ver }}-win32-and-win64-v1
+
       - name: Download FreePascal installer
+        if: steps.fpc-cache.outputs.cache-hit != 'true'
         run: |
-          & 'curl.exe' @('-L', '-o', "$Env:FPC_INSTALLER_PATH", "$Env:FPC_URL")
+          $curlArgs = @('-fL', '--retry', '5', '--retry-all-errors', '--connect-timeout', '20', '--max-time', '600', '-o', "$Env:FPC_INSTALLER_PATH")
+          & 'curl.exe' ($curlArgs + "$Env:FPC_ASSET_URL")
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'The release asset mirror failed; falling back to SourceForge.'
+            & 'curl.exe' ($curlArgs + "$Env:FPC_URL")
+          }
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $hash = (Get-FileHash -Path "$Env:FPC_INSTALLER_PATH" -Algorithm SHA256).Hash
+          if ($hash -ne $Env:FPC_SHA256) {
+            Write-Error "FPC installer SHA-256 mismatch: got $hash, expected $Env:FPC_SHA256"
+            exit 1
+          }
 
       - name: Install FreePascal silently
+        if: steps.fpc-cache.outputs.cache-hit != 'true'
         run: |
           & "$Env:FPC_INSTALLER_PATH" @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/LOG')
           Wait-Process -Name '${{ env.fpc_installer_name }}' -Timeout 600
