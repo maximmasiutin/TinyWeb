@@ -98,6 +98,13 @@ def test_malformed_content_length_response_rejected(server):
     assert status == 500, body
 
 
+def test_empty_content_length_response_rejected(server):
+    # A present but empty Content-Length is malformed, not absent; only a
+    # truly absent header may use the body-derived length.
+    status, headers, body = server.request("GET", "/cgi-bin/emptyclen.exe")
+    assert status == 500, body
+
+
 def test_cgitest_hello_c(server):
     if not server.caps["gcc"]:
         pytest.skip("gcc not available: CGITEST C examples not built")

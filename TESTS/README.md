@@ -24,9 +24,9 @@ SRC> fpc -B -MObjFPC Tiny.dpr
 > python -m pytest TESTS
 ```
 
-`build_fixtures.py` finds the compiler through the `FPC` environment variable, then `fpc` on `PATH`, then `C:\FPC\<ver>\bin\i386-win32`. `TINYWEB_EXE` overrides the server binary under test.
+`build_fixtures.py` finds the compiler through the `FPC` environment variable, then `fpc` on `PATH`. `TINYWEB_EXE` overrides the server binary under test.
 
-CI: `.github/workflows/tests.yml` runs the suite on `windows-latest` for every push and pull request touching `SRC/`, `CGITEST/`, or `TESTS/`, including the slow resource-limit tests.
+CI: `.github/workflows/tests.yml` runs the suite on `windows-latest` for every push to `master` and every pull request touching `SRC/`, `CGITEST/`, or `TESTS/`, including the slow resource-limit tests.
 
 Container (Docker in Linux-containers mode; binaries are built on the Windows host, the suite runs them under Wine):
 

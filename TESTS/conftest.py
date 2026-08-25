@@ -4,7 +4,7 @@ Environment knobs:
 - TINYWEB_EXE: path to the server binary (default: SRC/Tiny.exe).
 - FPC: path to the Free Pascal compiler used for fixture builds.
 - TINYWEB_WINE=1: run the Windows binaries through Wine (container lane).
-  In this mode nothing is compiled; TESTS/.work/bin must already hold the
+  In this mode nothing is compiled; TESTS/_work/bin must already hold the
   fixture binaries (python TESTS/build_fixtures.py on a Windows host).
 """
 
@@ -54,7 +54,9 @@ class ServerEnv:
             conn.request(method, target, body=body, headers=hdrs)
             resp = conn.getresponse()
             data = resp.read()
-            return resp.status, dict(resp.getheaders()), data
+            # resp.headers keeps case-insensitive lookup, which is what
+            # HTTP field names have; a plain dict would not.
+            return resp.status, resp.headers, data
         finally:
             conn.close()
 
@@ -117,7 +119,7 @@ def server():
     if WINE:
         if not any(bf.BIN.glob("*.exe")):
             pytest.exit(
-                "TESTS/.work/bin holds no fixture binaries; run "
+                "TESTS/_work/bin holds no fixture binaries; run "
                 "python TESTS/build_fixtures.py on a Windows host first"
             )
         caps["gcc"] = (bf.BIN / "hello.exe").is_file()

@@ -110,6 +110,29 @@ def test_duplicate_request_content_length_rejected(server):
     assert status == 400
 
 
+def test_empty_request_content_length_rejected(server):
+    # A present Content-Length with an empty value is malformed and must
+    # not be read as an absent header.
+    payload = (
+        b"POST /cgi-bin/postecho.exe HTTP/1.1\r\nHost: t\r\n"
+        b"Content-Length:\r\nConnection: close\r\n\r\n"
+    )
+    status = server.raw_status(payload)
+    assert status == 400
+
+
+def test_duplicate_empty_request_content_length_rejected(server):
+    # Two empty Content-Length fields must trip the duplicate check, not
+    # slide through because both look like the absent-header value.
+    payload = (
+        b"POST /cgi-bin/postecho.exe HTTP/1.1\r\nHost: t\r\n"
+        b"Content-Length:\r\nContent-Length:\r\n"
+        b"Connection: close\r\n\r\n"
+    )
+    status = server.raw_status(payload)
+    assert status == 400
+
+
 # GHSA-56x3-254q-j68q (v2.05): unimplemented Transfer-Encoding must 501.
 
 def test_transfer_encoding_chunked_501(server):
@@ -174,7 +197,10 @@ def test_connection_timeout_cuts_off_trickling_client(server):
                 closed_at = time.monotonic() - start
                 break
     assert closed_at is not None, "server never cut off the trickling client"
-    assert closed_at < 50, closed_at
+    # The lower bound proves the close came from CConnectionTimeoutSecs
+    # (30 s) and not from an immediate parser rejection of the partial
+    # request; the upper bound keeps a hung server from passing.
+    assert 25 < closed_at < 50, closed_at
 
 
 def test_server_alive_after_security_tests(server):

@@ -3,12 +3,12 @@
 Used two ways:
 - imported by conftest.py, which calls build_all() before the server starts;
 - run directly (python TESTS/build_fixtures.py) on a Windows host to
-  pre-build .work/bin for the Wine container lane, where no compiler runs.
+  pre-build _work/bin for the Wine container lane, where no compiler runs.
 
 Compilers:
 - FPC builds every Pascal fixture (TESTS/cgi/*.pas) and the CGITEST Delphi
   example (login.dpr, -MDelphi). FPC location: the FPC environment variable,
-  then fpc on PATH, then the conventional C:/FPC/<ver>/bin/i386-win32.
+  then fpc on PATH.
 - gcc, when present, builds the CGITEST C examples (hello.c, helloh.c).
   Their absence only skips the corresponding tests.
 """
@@ -36,6 +36,7 @@ PASCAL_FIXTURES = [
     "locdir.pas",
     "dupclen.pas",
     "badclen.pas",
+    "emptyclen.pas",
 ]
 
 C_FIXTURES = ["hello.c", "helloh.c"]
@@ -45,15 +46,7 @@ def find_fpc():
     exe = os.environ.get("FPC")
     if exe and Path(exe).is_file():
         return exe
-    exe = shutil.which("fpc")
-    if exe:
-        return exe
-    conventional = Path("C:/FPC")
-    if conventional.is_dir():
-        hits = sorted(conventional.glob("*/bin/i386-win32/fpc.exe"))
-        if hits:
-            return str(hits[-1])
-    return None
+    return shutil.which("fpc")
 
 
 def find_gcc():
