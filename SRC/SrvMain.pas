@@ -378,8 +378,11 @@ begin
   if v = INVALID_VALUE then
     Exit;
   d.wDay := v;
-  LSubstring := #1 + UpperCase(z) + #1;
+  // The month word must be read before LSubstring is built from z;
+  // v1.95..v2.05 built it from the day digits still in z, so the month
+  // lookup always failed and If-Modified-Since never produced 304.
   GetWrdA(s, z);
+  LSubstring := #1 + UpperCase(z) + #1;
   d.wMonth := Pos(LSubstring, CPatterns);
   if d.wMonth = 0 then
     Exit;
@@ -802,8 +805,13 @@ begin
         Exit;
       end;
 
+      // RFC 3875 Section 6.3: a CGI response need not carry Content-Length,
+      // so only a present but malformed value is rejected here. An empty
+      // value keeps val = 0, and ExecuteScript later derives the length
+      // from the collected entity body.
       val := 0;
-      if not _Val(EntityHeader.ContentLength, val) then
+      if (EntityHeader.ContentLength <> '') and
+        (not _Val(EntityHeader.ContentLength, val)) then
       begin
         // RFC 9110/9112: 400 (Malformed CL)
         Result := False;

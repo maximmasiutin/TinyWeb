@@ -167,7 +167,9 @@ begin
   StdIn  := GetStdHandle(STD_INPUT_HANDLE);
   StdOut := GetStdHandle(STD_OUTPUT_HANDLE);
   S := '';
-  SetString(Variable, Buffer, GetEnvironmentVariable(PChar('CONTENT_LENGTH'), Buffer, SizeOf(Buffer)));
+  // Windows.* qualifier: SysUtils declares a one-argument
+  // GetEnvironmentVariable that otherwise shadows this WinAPI form.
+  SetString(Variable, Buffer, Windows.GetEnvironmentVariable(PChar('CONTENT_LENGTH'), Buffer, SizeOf(Buffer)));
   I := StrToInt(Variable);
   if I <= 0 then ShowError('Internal script error reading StdIn');
   FileSeek(StdIn, 0, FILE_BEGIN);
