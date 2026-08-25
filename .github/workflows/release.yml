@@ -9,6 +9,7 @@ on:
 env:
   fpc_ver: '3.2.2'
   fpc_installer_name: 'fpc_installer'
+  fpc_sha256: '8C255390544B051388B577EB61C6191A04883264AFE0E3369B3600A56DAF7BDE'
 
 jobs:
   security-scan:
@@ -40,7 +41,7 @@ jobs:
           echo "FPC_PATH=C:\FPC\${{ env.fpc_ver }}\bin\i386-win32\fpc.exe" >> $env:GITHUB_ENV
           echo "FPC_ASSET_URL=https://github.com/maximmasiutin/TinyWeb/releases/download/build-tools-fpc-${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe" >> $env:GITHUB_ENV
           echo "FPC_URL=https://sourceforge.net/projects/freepascal/files/Win32/${{ env.fpc_ver }}/fpc-${{ env.fpc_ver }}.win32.and.win64.exe/download" >> $env:GITHUB_ENV
-          echo "FPC_SHA256=8C255390544B051388B577EB61C6191A04883264AFE0E3369B3600A56DAF7BDE" >> $env:GITHUB_ENV
+          echo "FPC_SHA256=${{ env.fpc_sha256 }}" >> $env:GITHUB_ENV
           echo "FPC_INSTALLER_PATH=$Env:TEMP\${{ env.fpc_installer_name }}.exe" >> $env:GITHUB_ENV
 
       # The installed compiler is cached so warm runs skip the download and
@@ -52,7 +53,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: C:\FPC\${{ env.fpc_ver }}
-          key: fpc-${{ env.fpc_ver }}-win32-and-win64-v1
+          key: fpc-${{ env.fpc_ver }}-win32-and-win64-${{ env.fpc_sha256 }}-v1
 
       - name: Download FreePascal installer
         if: steps.fpc-cache.outputs.cache-hit != 'true'
@@ -60,7 +61,7 @@ jobs:
           $curlArgs = @('-fL', '--retry', '5', '--retry-all-errors', '--connect-timeout', '20', '--max-time', '600', '-o', "$Env:FPC_INSTALLER_PATH")
           & 'curl.exe' ($curlArgs + "$Env:FPC_ASSET_URL")
           if ($LASTEXITCODE -ne 0) {
-            Write-Host 'The release asset mirror failed; falling back to SourceForge.'
+            Write-Host 'The GitHub release asset download failed; falling back to SourceForge.'
             & 'curl.exe' ($curlArgs + "$Env:FPC_URL")
           }
           if ($LASTEXITCODE -ne 0) { exit 1 }

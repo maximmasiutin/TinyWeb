@@ -2284,9 +2284,13 @@ begin
       end;
     BufSize + 1 .. MaxInt:
       begin
-        SetLength(Result, I + 1);
+        // On a too-small buffer the first call answered the REQUIRED size,
+        // which counts the terminating NUL, so the value itself is I - 1
+        // bytes; the second call writes that NUL into the AnsiString's
+        // hidden terminator slot. Keeping I bytes here left a trailing #0
+        // on every value longer than the first buffer (found by xbtest).
+        SetLength(Result, I - 1);
         GetEnvironmentVariableA(@(Name[1]), @Result[1], I);
-        SetLength(Result, I);
       end;
   else
     begin

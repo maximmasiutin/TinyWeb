@@ -13,6 +13,8 @@ Integration tests that run the real `Tiny.exe` against a scratch webroot and dri
 | `test_static.py` | Static serving baseline: index, HEAD, redirects, If-Modified-Since. |
 | `test_security.py` | One test per hardening measure from v1.98-v2.05 (CVE and GHSA fixes). |
 | `Dockerfile`, `run_container.ps1` | Wine container lane. |
+| `unit/xbtest.dpr` | Unit tests for every testable free function of `SRC/xBase.pas`, the `TColl`/`TSortedColl`/`TStringColl` family, and smoke tests for the OS-bound wrappers. |
+| `unit/srvtest.dpr` | Unit tests for the pure `SRC/SrvMain.pas` parsers (date parsing, header strictness, log escaping, CGI parameter escaping, address parsing), reached through interface declarations added for this purpose. |
 
 ## Running
 
@@ -26,7 +28,12 @@ SRC> fpc -B -MObjFPC Tiny.dpr
 
 `build_fixtures.py` finds the compiler through the `FPC` environment variable, then `fpc` on `PATH`. `TINYWEB_EXE` overrides the server binary under test.
 
-CI: `.github/workflows/tests.yml` runs the suite on `windows-latest` for every push to `master` and every pull request touching `SRC/`, `CGITEST/`, or `TESTS/`, including the slow resource-limit tests.
+CI: `.github/workflows/tests.yml` runs the suite on `windows-latest` for every push to `master` and every pull request touching `SRC/`, `CGITEST/`, or `TESTS/`, including the slow resource-limit tests. Before pytest it compiles and runs the two unit-test programs in both compiler modes:
+
+```text
+TESTS\unit> fpc -B -MObjFPC -Fu..\..\SRC -Fi..\..\SRC xbtest.dpr && xbtest
+TESTS\unit> fpc -B -MObjFPC -Fu..\..\SRC -Fi..\..\SRC srvtest.dpr && srvtest
+```
 
 Container (Docker in Linux-containers mode; binaries are built on the Windows host, the suite runs them under Wine):
 
