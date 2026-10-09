@@ -34,6 +34,7 @@ PASCAL_FIXTURES = [
     "clenresp.pas",
     "statusdir.pas",
     "locdir.pas",
+    "loclocal.pas",
     "dupclen.pas",
     "badclen.pas",
     "emptyclen.pas",

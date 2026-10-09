@@ -6,7 +6,7 @@ Integration tests that run the real `Tiny.exe` against a scratch webroot and dri
 
 | Path | Purpose |
 | --- | --- |
-| `conftest.py` | Builds fixtures, assembles a webroot under `_work/` (not a dot-name: Wine reports dot-directories as hidden and TinyWeb refuses hidden directories), starts the server on a free port. |
+| `conftest.py` | Builds fixtures once per session, assembles a webroot under `_work/` (not a dot-name: Wine reports dot-directories as hidden and TinyWeb refuses hidden directories), starts the server bound to `127.0.0.1` on a free port, so a test run never listens beyond loopback, and waits for a 200 carrying a per-start token. A second, module-scoped server runs on the mixed-case root `_work/MixedCase/WebRoot` with its own log directory. |
 | `build_fixtures.py` | Compiles `cgi/*.pas` (FPC), `CGITEST/login.dpr` (FPC in Delphi mode), and `CGITEST/hello.c`, `helloh.c` (gcc, optional). Also runnable directly to pre-build for the container lane. |
 | `cgi/*.pas` | Purpose-built CGI fixtures; each file's header comment states its contract. |
 | `test_cgi.py` | CGI behavior: the Content-Length regression, QUERY_STRING, ISINDEX arguments, POST to stdin, Status and Location directives, the CGITEST examples. |
@@ -50,5 +50,5 @@ Container (Docker in Linux-containers mode; binaries are built on the Windows ho
 ## Behavior notes the tests pin
 
 - A missing static file answers 403, not 404: `LocalFNameSafe` refuses paths it cannot validate before any not-found distinction is made.
-- The CGI `Location` directive is tested in its absolute-URL form (302). The local-path form goes through `OpenRequestedFile` with a webroot-relative name and has not worked in any surveyed version.
+- The CGI `Location` directive is tested in two forms. An absolute URL answers 302. An absolute Windows filesystem path (`C:\www\page.html`), a TinyWeb extension and not an RFC 3875 Section 6.2.2 local redirect, is sent by `OpenRequestedFile`: a static file under the web root answers 200, and the canonical path of a file under `cgi-bin` (`<root>\cgi-bin\<file>`) answers 403 (`cgi/loclocal.pas` on the mixed-case root). A webroot-relative URL path (`/page.html`, the RFC local-redirect form) is still unsupported.
 - A CGI response with a present but malformed or duplicated `Content-Length` stays a 500; only the absent header is legal.
