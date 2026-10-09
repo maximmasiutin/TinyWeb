@@ -7,9 +7,14 @@
 //   fpc -B -MObjFPC -Fu..\..\SRC -Fi..\..\SRC xbtest.dpr
 //   xbtest.exe
 // Exit code 0 when every check passes, 1 otherwise; failures print one line each.
+//
+// xbtest.rc embeds xbtest.manifest, which sets the process ANSI code page to
+// UTF-8 (Windows 10 1903 or later), so the multibyte ExpandFileName cases run
+// the same way on every runner; windres ships with FPC.
 program xbtest;
 
 {$APPTYPE CONSOLE}
+{$R xbtest.rc}
 
 uses
   Windows,
@@ -333,6 +338,97 @@ begin
   CheckStr('ExpandFileName empty', ExpandFileName(''), '');
 end;
 
+// Path of exactly L bytes: 'C:\' and ASCII segments of 49 characters.
+function AsciiPath(L: Integer): AnsiString;
+var
+  i: Integer;
+begin
+  Result := 'C:\';
+  i := 0;
+  while Length(Result) < L do
+  begin
+    Inc(i);
+    if ((i mod 50) = 0) and (Length(Result) < L - 1) then
+      AddStr(Result, '\')
+    else
+      AddStr(Result, 'a');
+  end;
+end;
+
+// Path of exactly L bytes in UTF-8: 'C:\', one 'a' when needed for parity,
+// then Width-byte characters (2: U+00E9, 3: U+20AC). Every character is one
+// UTF-16 unit, so the path has fewer UTF-16 units than bytes.
+function MultibytePath(L, Width: Integer): AnsiString;
+begin
+  Result := 'C:\';
+  while ((L - Length(Result)) mod Width) <> 0 do
+    AddStr(Result, 'a');
+  while Length(Result) < L do
+    if Width = 2 then
+      Result := Result + #$C3#$A9
+    else
+      Result := Result + #$E2#$82#$AC;
+end;
+
+// Compares paths by length, NUL count and content, so a failure line stays
+// printable when the result holds binary garbage.
+procedure CheckPath(const Name, Got, Want: AnsiString);
+var
+  i, Nuls: Integer;
+begin
+  Inc(Checks);
+  if Got = Want then
+    Exit;
+  Nuls := 0;
+  for i := 1 to Length(Got) do
+    if Got[i] = #0 then
+      Inc(Nuls);
+  Fail(Name, 'got length ' + I64toS(Length(Got)) + ' (' + I64toS(Nuls) +
+    ' NUL bytes) want length ' + I64toS(Length(Want)));
+end;
+
+procedure TestExpandFileNameLimits;
+const
+  CUtf8CodePage = 65001;
+var
+  s: AnsiString;
+begin
+  // ASCII paths: bytes equal UTF-16 units, and the ANSI function refuses
+  // MAX_PATH units or more with 0, which ExpandFileName answers as ''.
+  s := AsciiPath(258);
+  CheckPath('ExpandFileName ascii 258', ExpandFileName(s), s);
+  s := AsciiPath(259);
+  CheckPath('ExpandFileName ascii 259', ExpandFileName(s), s);
+  CheckPath('ExpandFileName ascii 260 fails', ExpandFileName(AsciiPath(260)), '');
+  CheckPath('ExpandFileName ascii 261 fails', ExpandFileName(AsciiPath(261)), '');
+  CheckPath('ExpandFileName ascii 1000 fails', ExpandFileName(AsciiPath(1000)), '');
+  CheckPath('ExpandFileName ascii 40000 fails', ExpandFileName(AsciiPath(40000)), '');
+  CheckPath('ExpandFileName empty answers empty', ExpandFileName(''), '');
+  s := ExpandFileName('xbtest_rel.txt');
+  Check('ExpandFileName relative resolves against the current directory',
+    (Length(s) > Length('\xbtest_rel.txt')) and StrEnds(s, '\xbtest_rel.txt') and
+    (s[2] = ':'));
+
+  // Multibyte paths: fewer UTF-16 units than bytes, so a path of MAX_PATH
+  // bytes or more can still be valid and GetFullPathNameA answers the buffer
+  // size it needs, terminator included.
+  Check('process ANSI code page is UTF-8 (xbtest.manifest)', GetACP = CUtf8CodePage);
+  if GetACP <> CUtf8CodePage then
+    Exit;
+  s := MultibytePath(259, 2);
+  CheckPath('ExpandFileName utf8 259 bytes', ExpandFileName(s), s);
+  s := MultibytePath(260, 2);
+  CheckPath('ExpandFileName utf8 260 bytes', ExpandFileName(s), s);
+  s := MultibytePath(261, 2);
+  CheckPath('ExpandFileName utf8 261 bytes', ExpandFileName(s), s);
+  s := MultibytePath(300, 2);
+  CheckPath('ExpandFileName utf8 300 bytes', ExpandFileName(s), s);
+  s := MultibytePath(768, 3);
+  CheckPath('ExpandFileName utf8 768 bytes in 258 units', ExpandFileName(s), s);
+  CheckPath('ExpandFileName utf8 261 units fails',
+    ExpandFileName(MultibytePath(519, 2)), '');
+end;
+
 procedure TestMask;
 begin
   Check('MatchMask star', MatchMask('FILE.TXT', '*.txt'));
@@ -582,6 +678,7 @@ begin
   TestBasicRoutines;
   TestRfc;
   TestPaths;
+  TestExpandFileNameLimits;
   TestMask;
   TestTime;
   TestColl;

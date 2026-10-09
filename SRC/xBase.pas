@@ -2529,22 +2529,54 @@ begin
     Result := '';
 end;
 
+// Answers the fully qualified form of FileName, or '' when FileName is empty
+// or the expansion fails. GetFullPathNameA answers the number of characters
+// it copied, terminator excluded, when the buffer is large enough; the size
+// the buffer needs, terminator included, when it is not (nothing is copied
+// then); and 0 on any other failure. With a multibyte ANSI code page (UTF-8,
+// or a DBCS one such as 932) a path shorter than MAX_PATH UTF-16 characters
+// can need MAX_PATH bytes or more, so the size answer is reachable even
+// though the ANSI function refuses paths of MAX_PATH UTF-16 characters or
+// more with 0 (ERROR_FILENAME_EXCED_RANGE). The previous code copied the
+// answer as a length in both cases, which built a string from the untouched
+// buffer and from the stack past its end. Now a size answer gets one retry
+// with exactly that buffer; the result is limited to
+// CMaxExpandedPathLength bytes, and a second size answer (the path grew
+// between the calls, for example after a working-directory change) is a
+// failure. Only characters the API reported as copied are kept.
 function ExpandFileName(const FileName: AnsiString): AnsiString;
+const
+  CMaxExpandedPathLength = 32767;
 var
   FName: PAnsiChar;
   Buffer: array [0 .. MAX_PATH - 1] of AnsiChar;
+  Need, Got: DWORD;
 begin
+  Result := '';
   if FileName = '' then
+    Exit;
+  FName := nil;
+  Need := GetFullPathNameA(@(FileName[1]), SizeOf(Buffer), Buffer, FName);
+  if Need = 0 then
+    Exit;
+  if Need < SizeOf(Buffer) then
+  begin
+    SetString(Result, Buffer, Need);
+    Exit;
+  end;
+  if Need > CMaxExpandedPathLength + 1 then
+    Exit;
+  // Need counts the terminating NUL; the AnsiString keeps a hidden
+  // terminator slot after its last character, which receives it.
+  SetLength(Result, Need - 1);
+  FName := nil;
+  Got := GetFullPathNameA(@(FileName[1]), Need, @(Result[1]), FName);
+  if (Got = 0) or (Got >= Need) then
   begin
     Result := '';
-  end
-  else
-  begin
-    FillChar(Buffer, SizeOf(Buffer), 0);
-    FName := nil;
-    SetString(Result, Buffer, GetFullPathNameA(@(FileName[1]), SizeOf(Buffer),
-      Buffer, FName));
+    Exit;
   end;
+  SetLength(Result, Got);
 end;
 
 function UpperCase(const S: AnsiString): AnsiString;
