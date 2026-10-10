@@ -82,6 +82,7 @@ function IsReservedDeviceName(const AName: AnsiString): Boolean;
 // CodePage 0 is CP_ACP, the code page of the ANSI file functions.
 function LocalPathSpellingOK(const s: AnsiString; CodePage: Cardinal = 0): Boolean;
 function ResolveWebRoot(const Arg: AnsiString): AnsiString;
+function WebRootOnDrive(const Root: AnsiString): Boolean;
 function _Adr2Int(const s: AnsiString): DWORD;
 function Adr2Int(const s: AnsiString): Integer;
 
@@ -2874,6 +2875,14 @@ begin
   Result := DropTrailingBackslash(ExpandFileName(Result));
 end;
 
+// True when Root starts with a drive letter and ':'; UNC and '\\?\' roots are
+// unsupported because every served path must start that way.
+function WebRootOnDrive(const Root: AnsiString): Boolean;
+begin
+  Result := (Length(Root) >= 2) and (Root[1] in ['A' .. 'Z', 'a' .. 'z']) and
+    (Root[2] = ':');
+end;
+
 function GetHomeDir: Boolean;
 var
   s: AnsiString;
@@ -2886,8 +2895,15 @@ begin
       ' failed to start.');
     Exit;
   end;
-  // The web root must be an existing directory; UNC roots are unsupported.
+  // The web root must be an existing directory on a drive letter.
   ParamStr1 := ResolveWebRoot(ParamStrAnsi(1));
+  if (ParamStr1 <> '') and not WebRootOnDrive(ParamStr1) then
+  begin
+    ShowFailureBox('Home directory "' + ParamStrAnsi(1) +
+      '" is not on a drive letter; UNC paths are not supported'#13#10 +
+      CServerName + ' failed to start.');
+    Exit;
+  end;
   s := ParamStr1 + '\';
   fa := INVALID_FILE_ATTRIBUTES;
   if ParamStr1 <> '' then

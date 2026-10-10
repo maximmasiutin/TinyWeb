@@ -277,6 +277,14 @@ begin
   Check('ResolveWebRoot relative resolves against the current directory',
     (Length(s) > Length('\srvtest_root')) and (s[2] = ':') and
     (Copy(s, Length(s) - Length('\srvtest_root') + 1, MaxInt) = '\srvtest_root'));
+  Check('WebRootOnDrive drive path', WebRootOnDrive(ResolveWebRoot('C:\www')));
+  Check('WebRootOnDrive drive root', WebRootOnDrive(ResolveWebRoot('C:')));
+  Check('WebRootOnDrive relative path', WebRootOnDrive(s));
+  Check('WebRootOnDrive UNC', not WebRootOnDrive(ResolveWebRoot('\\srv\share\www')));
+  Check('WebRootOnDrive extended-length prefix',
+    not WebRootOnDrive(ResolveWebRoot('\\?\C:\www')));
+  Check('WebRootOnDrive device prefix', not WebRootOnDrive('\\.\C:\www'));
+  Check('WebRootOnDrive empty', not WebRootOnDrive(''));
 end;
 
 procedure TestUrlAndAddr;
