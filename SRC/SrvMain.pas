@@ -1506,8 +1506,8 @@ begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
   end;
-  if Copy(z, 1, Length(ParamStr1) + 1 + Length(ScriptsPath) + 1) = ParamStr1 +
-    '\' + (ScriptsPath) + '\' then
+  if Copy(z, 1, Length(ParamStr1) + 1 + Length(ScriptsPath) + 1) =
+    LowerCase(ParamStr1 + '\' + ScriptsPath + '\') then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;

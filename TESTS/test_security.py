@@ -222,6 +222,35 @@ def test_percent_encoded_crlf_in_header_value_rejected(server):
     assert status == 400
 
 
+# A CGI Location holding an absolute filesystem path must not send files under
+# cgi-bin; mixedcase_server's root has uppercase letters.
+
+
+def _assert_location_refused(env, target):
+    status, headers, body = env.request(
+        "GET", "/cgi-bin/loclocal.exe?target=" + target
+    )
+    assert body[:2] != b"MZ", "script executable disclosed, status %s" % status
+    assert env.cgi_marker not in body, "cgi-bin file disclosed, status %s" % status
+    assert status == 403, status
+
+
+def test_cgi_location_path_to_script_refused(mixedcase_server):
+    _assert_location_refused(mixedcase_server, "self")
+
+
+def test_cgi_location_path_to_cgi_bin_file_refused(mixedcase_server):
+    _assert_location_refused(mixedcase_server, "secret")
+
+
+def test_cgi_location_path_to_static_file_served(mixedcase_server):
+    status, headers, body = mixedcase_server.request(
+        "GET", "/cgi-bin/loclocal.exe?target=page"
+    )
+    assert status == 200, status
+    assert b"tinyweb-static-page" in body
+
+
 # CVE-2026 pending (v2.02): resource-exhaustion limits. Slow by nature.
 
 @pytest.mark.slow
