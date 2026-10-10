@@ -2093,6 +2093,13 @@ begin
 
   LocalFName := ExpandFileName(ParamStr1 + s);
 
+  // Requests reach only expanded paths shorter than MAX_PATH bytes.
+  if Length(LocalFName) >= MAX_PATH then
+  begin
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
+
   if not StrEnds(LocalFName, s) then // level #2 of protection from \.\
   begin
     Result := THttpResponseErrorCode.Create(403);

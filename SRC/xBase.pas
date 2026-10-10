@@ -2529,22 +2529,40 @@ begin
     Result := '';
 end;
 
+// Full path of FileName, or '' when FileName is empty or expansion fails.
+// When the buffer is too small, retries once with the size the API asked for.
 function ExpandFileName(const FileName: AnsiString): AnsiString;
+const
+  CMaxExpandedPathLength = 32767;
 var
   FName: PAnsiChar;
   Buffer: array [0 .. MAX_PATH - 1] of AnsiChar;
+  Need, Got: DWORD;
 begin
+  Result := '';
   if FileName = '' then
+    Exit;
+  FName := nil;
+  Need := GetFullPathNameA(@(FileName[1]), SizeOf(Buffer), Buffer, FName);
+  if Need = 0 then
+    Exit;
+  if Need < SizeOf(Buffer) then
+  begin
+    SetString(Result, Buffer, Need);
+    Exit;
+  end;
+  if Need > CMaxExpandedPathLength + 1 then
+    Exit;
+  // Need includes the NUL, which goes into the AnsiString's hidden terminator.
+  SetLength(Result, Need - 1);
+  FName := nil;
+  Got := GetFullPathNameA(@(FileName[1]), Need, @(Result[1]), FName);
+  if (Got = 0) or (Got >= Need) then
   begin
     Result := '';
-  end
-  else
-  begin
-    FillChar(Buffer, SizeOf(Buffer), 0);
-    FName := nil;
-    SetString(Result, Buffer, GetFullPathNameA(@(FileName[1]), SizeOf(Buffer),
-      Buffer, FName));
+    Exit;
   end;
+  SetLength(Result, Got);
 end;
 
 function UpperCase(const S: AnsiString): AnsiString;

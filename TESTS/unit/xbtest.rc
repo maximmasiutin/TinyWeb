@@ -1,0 +1,2 @@
+// Embeds xbtest.manifest as the application manifest (RT_MANIFEST = 24).
+1 24 "xbtest.manifest"

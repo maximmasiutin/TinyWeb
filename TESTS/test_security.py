@@ -6,8 +6,11 @@ next door prove the same hardening leaves legitimate CGI traffic working.
 Raw sockets are used where http.client would refuse to send the request.
 """
 
+import ctypes
 import socket
+import sys
 import time
+import urllib.parse
 
 import pytest
 
@@ -17,6 +20,59 @@ def _req(target, extra_headers=b""):
         b"GET " + target + b" HTTP/1.1\r\nHost: t\r\n" + extra_headers +
         b"Connection: close\r\n\r\n"
     )
+
+
+MULTIBYTE_MARKER = b"tinyweb-multibyte-name\n"
+E_ACUTE = chr(0xE9)
+
+
+def _ansi_code_page():
+    if sys.platform != "win32":
+        return None
+    return ctypes.windll.kernel32.GetACP()
+
+
+def _multibyte_file(server, units):
+    """Create a file whose path holds `units` U+00E9 characters, split over a
+    directory and a file name to stay under Linux's 255-byte name limit."""
+    half = units // 2
+    folder = "d" + E_ACUTE * half
+    name = "m" + E_ACUTE * (units - half) + ".html"
+    (server.webroot / folder).mkdir(exist_ok=True)
+    (server.webroot / folder / name).write_bytes(MULTIBYTE_MARKER)
+    rel = folder + "/" + name
+    return ("/" + urllib.parse.quote(rel.encode("utf-8"))).encode("ascii")
+
+
+def _utf8_bytes(server, units):
+    """Byte length of the expanded path under a UTF-8 ANSI code page."""
+    root = str(server.webroot).rstrip("\\/")
+    return len(root.encode("utf-8")) + 4 + 2 * units + len(".html")
+
+
+def test_long_multibyte_path_refused(server):
+    # About 290 UTF-8 bytes but under 260 UTF-16 units; refused by the
+    # MAX_PATH-byte check under UTF-8 and by GetFullPathNameA under 1252.
+    root_units = len(str(server.webroot)) + 9
+    units = max(1, 290 - _utf8_bytes(server, 0)) // 2
+    assert root_units + units < 250, "webroot path too long for this test"
+    assert _utf8_bytes(server, units) >= 260
+    target = _multibyte_file(server, units)
+    data = server.raw(_req(target))
+    assert data.split(b"\r\n", 1)[0].split()[1] == b"403"
+    assert MULTIBYTE_MARKER not in data
+
+
+def test_short_multibyte_path_served(server):
+    if _ansi_code_page() != 65001:
+        pytest.skip("the server's ANSI code page is not UTF-8, so a UTF-8 "
+                    "request path does not name this file")
+    units = 20
+    assert _utf8_bytes(server, units) < 260
+    target = _multibyte_file(server, units)
+    data = server.raw(_req(target))
+    assert data.split(b"\r\n", 1)[0].split()[1] == b"200"
+    assert data.endswith(b"\r\n\r\n" + MULTIBYTE_MARKER)
 
 
 # CVE pending (fixed 1.98/2.01): ISINDEX command-line injection.
