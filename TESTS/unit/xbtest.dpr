@@ -471,6 +471,16 @@ begin
     PathWithinDir('C:\t\'#$95#$5C'\a', 'C:\t\'#$95#$5C, 932));
   Check('PathWithinDir 932 directory ending in a lone lead byte',
     not PathWithinDir('C:\t\'#$95'\a', 'C:\t\'#$95, 932));
+  // $83 $41 and $83 $61 are different characters in 932; their trail bytes
+  // must not be case-folded together.
+  Check('PathWithinDir 932 sibling differing only in a trail byte',
+    not PathWithinDir('C:\t'#$83#$61'\a', 'C:\t'#$83#$41, 932));
+  Check('PathWithinDir 932 child under a trail byte in A to Z',
+    PathWithinDir('C:\t'#$83#$41'\a', 'C:\t'#$83#$41, 932));
+  Check('PathWithinDir 932 folds ASCII around double-byte characters',
+    PathWithinDir('C:\T'#$83#$41'\A', 'c:\t'#$83#$41, 932));
+  Check('PathWithinDir 1252 folds the same bytes',
+    PathWithinDir('C:\t'#$83#$61'\a', 'C:\t'#$83#$41, 1252));
 
   // Folding is ASCII only.
   Check('PathWithinDir ASCII-only folding',

@@ -2700,16 +2700,32 @@ begin
     (S[Length(S)] = '\');
 end;
 
-// Lexical, ASCII-case-folded: True when APath is ADir or below it. Both must be
-// validated absolute paths in the same form; an empty argument answers False.
+// S with ASCII letters lowercased, except bytes of double-byte characters.
+function LowerCaseSingleBytes(const S: AnsiString; CodePage: UINT): AnsiString;
+var
+  I, N: Integer;
+begin
+  Result := S;
+  I := 1;
+  while I <= Length(Result) do
+  begin
+    N := AnsiCharLength(Result, I, CodePage);
+    if (N = 1) and (Result[I] in ['A' .. 'Z']) then
+      Result[I] := AnsiChar(Ord(Result[I]) + 32);
+    Inc(I, N);
+  end;
+end;
+
+// Lexical, single-byte ASCII case folded: True when APath is ADir or below it.
+// Both must be validated absolute paths in the same form; '' answers False.
 function PathWithinDir(const APath, ADir: AnsiString;
   CodePage: UINT = CP_ACP): Boolean;
 var
   P, D: AnsiString;
 begin
   Result := False;
-  P := LowerCase(APath);
-  D := LowerCase(ADir);
+  P := LowerCaseSingleBytes(APath, CodePage);
+  D := LowerCaseSingleBytes(ADir, CodePage);
   if EndsWithBackslash(P, CodePage) then
     Delete(P, Length(P), 1);
   if EndsWithBackslash(D, CodePage) then
