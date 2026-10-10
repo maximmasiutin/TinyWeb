@@ -1393,23 +1393,8 @@ type
   TGetFinalPathNameByHandleA = function(hFile: THandle; lpszFilePath: PAnsiChar;
     cchFilePath, dwFlags: DWORD): DWORD; stdcall;
 
-// Answers the final path of the object behind Handle, as the file system
-// names it once every link, junction and short-name alias is resolved: in
-// drive-letter form ('C:\dir\file'), or in UNC form ('\\server\share\file')
-// for a remote object; '' on any failure, which callers treat as a refusal.
-// GetFinalPathNameByHandleA exists from Windows Vista on and is looked up at
-// run time, so on an older system the answer is always ''. The answer is the
-// characters copied, terminator excluded, when the buffer is large enough;
-// the size needed when it is not; 0 on failure. Microsoft documents the size
-// answer as counting the terminator, but the ANSI function of Windows 11
-// leaves it out, so each retry buffer gets one byte more than the answer and
-// either form fits; a retry that is answered with a larger size (the name
-// grew, or the size came in other units) is retried with that size, up to
-// CMaxTries calls in all. Windows Vista and Server 2008 count the terminator
-// in the success answer of the ANSI function, so trailing NUL characters are
-// dropped. Characters outside the ANSI code page are replaced (by '?' or by
-// a best-fit character), so two different names can come back the same; a
-// name that only a writer under the web root can create is trusted anyway.
+// Final path behind Handle without the \\?\ prefix, or '' on failure or before
+// Vista; retry buffers get one extra byte, as Windows 11 omits the terminator.
 function GetFinalPathByHandle(Handle: THandle): AnsiString;
 const
   CMaxFinalPathLength = 32767;
@@ -1470,9 +1455,8 @@ begin
     Delete(Result, 1, 4);
 end;
 
-// Opens FName, a file or a directory, without read or write access (so
-// neither list rights nor a sharing mode stand in the way) and answers
-// GetFinalPathByHandle for it; '' when it cannot be opened or resolved.
+// GetFinalPathByHandle of FName, a file or directory opened without access
+// rights; '' when it cannot be opened or resolved.
 function GetFinalPathName(const FName: AnsiString): AnsiString;
 var
   Handle: THandle;
@@ -2650,21 +2634,8 @@ begin
     Result := '';
 end;
 
-// Answers the fully qualified form of FileName, or '' when FileName is empty
-// or the expansion fails. GetFullPathNameA answers the number of characters
-// it copied, terminator excluded, when the buffer is large enough; the size
-// the buffer needs, terminator included, when it is not (nothing is copied
-// then); and 0 on any other failure. With a multibyte ANSI code page (UTF-8,
-// or a DBCS one such as 932) a path shorter than MAX_PATH UTF-16 characters
-// can need MAX_PATH bytes or more, so the size answer is reachable even
-// though the ANSI function refuses paths of MAX_PATH UTF-16 characters or
-// more with 0 (ERROR_FILENAME_EXCED_RANGE). The previous code copied the
-// answer as a length in both cases, which built a string from the untouched
-// buffer and from the stack past its end. Now a size answer gets one retry
-// with exactly that buffer; the result is limited to
-// CMaxExpandedPathLength bytes, and a second size answer (the path grew
-// between the calls, for example after a working-directory change) is a
-// failure. Only characters the API reported as copied are kept.
+// Full path of FileName, or '' when FileName is empty or expansion fails.
+// When the buffer is too small, retries once with the size the API asked for.
 function ExpandFileName(const FileName: AnsiString): AnsiString;
 const
   CMaxExpandedPathLength = 32767;
@@ -2687,8 +2658,7 @@ begin
   end;
   if Need > CMaxExpandedPathLength + 1 then
     Exit;
-  // Need counts the terminating NUL; the AnsiString keeps a hidden
-  // terminator slot after its last character, which receives it.
+  // Need includes the NUL, which goes into the AnsiString's hidden terminator.
   SetLength(Result, Need - 1);
   FName := nil;
   Got := GetFullPathNameA(@(FileName[1]), Need, @(Result[1]), FName);
@@ -2700,11 +2670,8 @@ begin
   SetLength(Result, Got);
 end;
 
-// Length in bytes, 1 or 2, of the character that starts at S[I] in the ANSI
-// code page CodePage (CP_ACP: the one the ANSI file functions use). In a
-// double-byte code page such as 932 a lead byte and the byte after it form
-// one character, and that trail byte may be $5C, the backslash. A lead byte
-// at the end of S stands alone.
+// Byte length, 1 or 2, of the character starting at S[I] in CodePage; a DBCS
+// trail byte may be $5C.
 function AnsiCharLength(const S: AnsiString; I: Integer; CodePage: UINT): Integer;
 begin
   Result := 1;
@@ -2712,8 +2679,7 @@ begin
     Result := 2;
 end;
 
-// Index of the first byte of the last character of S read in CodePage, or
-// 0 for an empty S.
+// Index of the first byte of the last character of S, or 0 for an empty S.
 function LastCharStart(const S: AnsiString; CodePage: UINT): Integer;
 var
   I: Integer;
@@ -2727,24 +2693,15 @@ begin
   end;
 end;
 
-// True when the last character of S, read in CodePage, is a backslash; a
-// $5C that is the trail byte of a double-byte character is not one.
+// True when the last character of S is a backslash, not a DBCS trail byte.
 function EndsWithBackslash(const S: AnsiString; CodePage: UINT): Boolean;
 begin
   Result := (S <> '') and (LastCharStart(S, CodePage) = Length(S)) and
     (S[Length(S)] = '\');
 end;
 
-// Lexical containment: True when APath is ADir itself or names something
-// below it. Preconditions: both are absolute paths the caller has already
-// validated, in the same representation (drive-letter or UNC form,
-// backslashes only, no '.' or '..' and no empty components). This helper
-// never validates raw input and never touches the file system. One trailing
-// backslash on either side is ignored, so a drive root may be given as 'C:'
-// or 'C:\'. Bytes are read as characters of CodePage, so a $5C that is the
-// trail byte of a double-byte character is never taken for a separator; an
-// ADir that ends in a lone lead byte answers False. Case folding is ASCII
-// only, as in LowerCase. An empty argument answers False.
+// Lexical, ASCII-case-folded: True when APath is ADir or below it. Both must be
+// validated absolute paths in the same form; an empty argument answers False.
 function PathWithinDir(const APath, ADir: AnsiString;
   CodePage: UINT = CP_ACP): Boolean;
 var

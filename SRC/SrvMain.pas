@@ -1498,18 +1498,12 @@ end;
 function LocalFNameSafe(const AFName: AnsiString): Boolean; forward;
 
 var
-  // Final paths of the web root and of its cgi-bin directory, as
-  // GetFinalPathName answered them at startup (GetHomeDir), without a
-  // trailing backslash; ScriptsFinalPath is '' when cgi-bin did not exist.
+  // Startup final paths of the root and cgi-bin, no trailing backslash;
+  // ScriptsFinalPath is '' when cgi-bin does not exist.
   RootFinalPath, ScriptsFinalPath: AnsiString;
 
-// Checks the object behind an open handle before any byte of it is sent: a
-// regular disk file (not a device, pipe, directory, hidden or system file)
-// whose final path, once every link, junction and short-name alias is
-// resolved, lies inside the web root and outside cgi-bin. cgi-bin is checked
-// in two forms, below the final path of the root and as its own final path,
-// so a cgi-bin that is itself a link is covered too. Any failure answers
-// False.
+// True when Handle is a regular disk file whose final path lies inside the
+// web root and outside cgi-bin, checked below the root and as its own path.
 function HandleServable(Handle: THandle): Boolean;
 var
   fa: DWORD;
@@ -1530,19 +1524,8 @@ begin
   Result := True;
 end;
 
-// The one routine that sends a file of the file system as a static response.
-// Every route that names such a file ends here: the URI route (a requested
-// file, or the directory index FindRootFile found) and the CGI Location
-// route (MakeHeaders, for an lkFilePath value). Invariant: every static
-// response is sent from the handle opened here, after that same handle
-// passed HandleServable; every refusal closes the handle and sends no file
-// content. The checks, in order:
-//   1. spelling (LocalPathSpellingOK), refused rather than normalized;
-//   2. lexical containment: inside the web root and outside cgi-bin, with a
-//      directory boundary (PathWithinDir), and no hidden or system
-//      directory on the way (LocalFNameSafe);
-//   3. the attributes of the name: not a directory, hidden or system file;
-//   4. after the open, HandleServable on the handle itself.
+// Sends a static file for the URI and CGI Location routes; refused unless the
+// spelling, lexical containment and HandleServable on the opened handle pass.
 function OpenRequestedFile(const AFName: AnsiString; thr: THTTPServerThread;
   d: THTTPData): TAbstractHttpResponseData;
 var
@@ -1690,20 +1673,8 @@ begin
   Result := THttpResponseErrorCode.Create(302);
 end;
 
-// Sorts a CGI Location value. Length and control bytes come first: a value
-// of CMaxLocationLength bytes or more, or one holding NUL, another control
-// byte or DEL, is refused. Then:
-//   scheme://...  an RFC 3986 scheme (a letter, then letters, digits, '+',
-//                 '-' or '.') right before '://': lkURL, sent to the client
-//                 as a 302 redirect, as before;
-//   X:\...        a drive letter, ':' and '\': lkFilePath, the TinyWeb
-//                 extension where the server sends that file itself, through
-//                 every check of OpenRequestedFile;
-//   anything else lkRefused (403). That covers the RFC 3875 Section 6.2.2
-//                 local redirect ('/path'), which TinyWeb does not implement,
-//                 a scheme separator later in the value, relative,
-//                 drive-relative ('C:x') and rooted ('\x') paths, and UNC,
-//                 '\\?\' and '\\.\' paths.
+// lkURL for scheme://..., lkFilePath for X:\..., else lkRefused; values with
+// control bytes or of CMaxLocationLength bytes or more are refused.
 function ClassifyLocation(const s: AnsiString): TLocationKind;
 const
   CMaxLocationLength = 8192;
@@ -1937,20 +1908,8 @@ begin
   Result := (s <> '') and (Pos(#1 + s + #1, fDevices) > 0);
 end;
 
-// The spelling policy for an absolute filesystem path the server is asked to
-// send, whichever route named it. Accepted: a drive letter, ':\', then one
-// or more components separated by single backslashes, shorter than MAX_PATH
-// bytes in all. Refused rather than normalized, because Windows would open
-// a file under a different name than the one checked: a forward slash; an
-// empty component (a doubled or trailing backslash); '.' and '..'; a
-// component ending in a dot or a space, which Windows strips; a colon past
-// the drive (alternate data streams and $INDEX_ALLOCATION); the wildcard,
-// quote, '<', '>' and '|' characters; NUL, other control bytes and DEL; and a
-// reserved device name in any component. UNC, '\\?\' and '\\.\' paths,
-// drive-relative ('C:x') and rooted ('\x') paths have no drive letter,
-// colon and backslash at their start and are refused too. Bytes of 128 and
-// above pass: names are ANSI. Bytes are read as characters of CodePage, so
-// in a double-byte code page a trail byte ($5C included) is part of a name.
+// Accepts only X:\ plus single-backslash components; refuses '/', extra ':',
+// a trailing dot or space, wildcards, control bytes and device names.
 function LocalPathSpellingOK(const s: AnsiString; CodePage: Cardinal = 0): Boolean;
 var
   i, n, Start: Integer;
@@ -2261,11 +2220,7 @@ begin
 
   LocalFName := ExpandFileName(ParamStr1 + s);
 
-  // Length policy: a request reaches only files whose expanded ANSI path is
-  // shorter than MAX_PATH bytes, which is all the server ever served.
-  // ExpandFileName now also answers longer paths (a multibyte ANSI code page
-  // can need MAX_PATH bytes or more for fewer UTF-16 characters), and those
-  // stay refused here; its failure answer '' fails StrEnds below.
+  // Requests reach only expanded paths shorter than MAX_PATH bytes.
   if Length(LocalFName) >= MAX_PATH then
   begin
     Result := THttpResponseErrorCode.Create(403);
@@ -2908,11 +2863,8 @@ begin
     Delete(Result, Length(Result), 1);
 end;
 
-// The web root as the server keeps it in ParamStr1: the startup argument
-// resolved once against the startup directory (ExpandFileName), without a
-// trailing backslash, so a drive root is kept as 'C:'. A bare drive letter
-// ('C:') has always meant the drive root here, so it is read as 'C:\' rather
-// than as that drive's current directory. An empty argument answers ''.
+// Startup argument expanded once, without a trailing backslash; a bare 'C:'
+// means the drive root.
 function ResolveWebRoot(const Arg: AnsiString): AnsiString;
 begin
   Result := Arg;
@@ -2934,12 +2886,7 @@ begin
       ' failed to start.');
     Exit;
   end;
-  // The web root (ResolveWebRoot). It must be an existing directory; an
-  // empty argument is refused before any character of it is read. Every
-  // ParamStr1 + '\' + name stays one separator, and PathWithinDir reads a
-  // drive root kept as 'C:' as 'C:\'. A UNC root is not supported:
-  // LocalPathSpellingOK and LocalFNameSafe need a drive letter, as the URI
-  // route always did.
+  // The web root must be an existing directory; UNC roots are unsupported.
   ParamStr1 := ResolveWebRoot(ParamStrAnsi(1));
   s := ParamStr1 + '\';
   fa := INVALID_FILE_ATTRIBUTES;
@@ -2953,10 +2900,8 @@ begin
       ' failed to start.');
     Exit;
   end;
-  // Final paths for the check every opened file passes (HandleServable). A
-  // root, or an existing cgi-bin, whose final path cannot be resolved would
-  // leave that check without its reference, so the server does not start;
-  // a cgi-bin that does not exist leaves ScriptsFinalPath empty.
+  // Without these final paths HandleServable has no reference, so startup
+  // fails; a missing cgi-bin leaves ScriptsFinalPath empty.
   RootFinalPath := DropTrailingBackslash(GetFinalPathName(s));
   if RootFinalPath = '' then
   begin

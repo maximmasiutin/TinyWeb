@@ -1,28 +1,5 @@
-"""What the static-file routine may send.
-
-A CGI program may answer with a Location header carrying an absolute
-Windows filesystem path; TinyWeb then sends that file itself through
-OpenRequestedFile, the routine the URI route ends in as well. It may send
-only a regular file inside the web root and outside cgi-bin, spelled
-canonically. The cases run on mixedcase_server (a web root with upper- and
-lowercase letters). Each Location value is written to
-<webroot>/cgi-bin/loclocal.txt and loclocal.exe?target=file sends it
-unchanged, so a value with any bytes can be probed while no query string
-ever names a path.
-
-Every case has a class:
-- regression: earlier versions send a protected file (the script
-  executable, cgi-bin/secret.txt, or a file outside the root); now 403
-  without it.
-- protection: an existing protection, 403 before and now.
-- compatibility: an allowed form, the same answer before and now.
-- change: a documented compatibility change; earlier versions send an
-  allowed file or a redirect, now 403.
-
-With TINYWEB_PROBE_TABLE=<file> every probe appends one line (class, id,
-status, whether protected content was sent) to that file; this is how the
-expected-result table for an earlier build is recorded.
-"""
+"""Files OpenRequestedFile may send, probed via loclocal.exe?target=file on
+mixedcase_server; TINYWEB_PROBE_TABLE=<file> records each probe's result."""
 
 import ctypes
 import os
@@ -30,9 +7,9 @@ import sys
 
 import pytest
 
-from conftest import WINE, host_path
+from conftest import CGI_MARKER, WINE, host_path
 
-SECRET = b"tinyweb-cgi-secret"
+CGI_FILE_MARKER = CGI_MARKER.encode("ascii")
 SIBLING = b"tinyweb-sibling-marker"
 PAGE = b"tinyweb-static-page"
 SUB = b"tinyweb-static-subdir-index"
@@ -53,7 +30,7 @@ def serve(marker):
 
 def disclosed(body):
     """True when the body carries protected content."""
-    return body[:2] == b"MZ" or SECRET in body or SIBLING in body
+    return body[:2] == b"MZ" or CGI_FILE_MARKER in body or SIBLING in body
 
 
 def _encode(value):
@@ -94,9 +71,8 @@ def check(cls, case_id, expect, result):
 
 
 class Box:
-    """The mixed-case server, its root as the server sees it, the sibling
-    directory that shares the root's name as a prefix, and the file that
-    holds the next Location value."""
+    """The mixed-case server, its host-side root, a prefix-sharing sibling
+    directory and the file holding the next Location value."""
 
     def __init__(self, env):
         self.env = env
@@ -115,6 +91,7 @@ class Box:
 
 @pytest.fixture(scope="module")
 def box(mixedcase_server):
+    assert mixedcase_server.cgi_marker == CGI_FILE_MARKER
     b = Box(mixedcase_server)
     b.sibling.mkdir(exist_ok=True)
     (b.sibling / "marker.txt").write_bytes(SIBLING + b"\n")
@@ -125,9 +102,8 @@ def location_cases(R, root_name):
     drive, rest = R[:2], R[2:]
     other = "D:" if drive.upper() == "C:" else "C:"
     return [
-        # Regressions: the review's three bypasses (a dot segment, mixed
-        # separators, a sibling sharing the root's name as a prefix) and
-        # neighbouring spellings that Windows opens as a file in cgi-bin.
+        # Regressions: dot segments, mixed separators, a prefix-sharing
+        # sibling and other spellings Windows opens as a file in cgi-bin.
         ("dotdot-secret", REG, R + r"\sub\..\cgi-bin\secret.txt", DENY),
         ("dotdot-exe", REG, R + r"\sub\..\cgi-bin\loclocal.exe", DENY),
         ("mixedsep-secret", REG, R + r"\cgi-bin/secret.txt", DENY),
@@ -199,9 +175,7 @@ def test_location_value(box, case_id):
     check(cls, case_id, expect, box.location(value))
 
 
-# The URI route reaches the same routine with the name it built from the
-# request path; a component ending in a dot or a space is a spelling its
-# own checks do not name, so these pin that it stays refused.
+# The URI route must also refuse components ending in a dot or a space.
 URI_CASES = [
     ("uri-trailing-dot-dir", PROT, "/cgi-bin./secret.txt", DENY),
     ("uri-trailing-dot-exe", PROT, "/cgi-bin./loclocal.exe", DENY),
@@ -227,9 +201,7 @@ def _raw_head(box, target):
 
 
 def test_head_location_file_answers_as_head_static(box):
-    # HEAD that reaches a file through a Location value answers as HEAD on
-    # the URI route for the same file: the same status and the same bytes
-    # after the header.
+    # HEAD via Location answers like HEAD on the URI route for the same file.
     loc_status, loc_tail = _raw_head(box, b"/cgi-bin/loclocal.exe?target=page")
     uri_status, uri_tail = _raw_head(box, b"/page.html")
     _record(COMPAT, "head-location-page", "%s/%d bytes" % (
@@ -241,9 +213,8 @@ def test_head_location_file_answers_as_head_static(box):
     assert loc_tail == uri_tail
 
 
-# RFC 9110 Section 9.3.2: a HEAD answer carries no content. Both routes send
-# the file after the header today, a defect older than this file that
-# test_static.py cannot see, because http.client never reads a HEAD body.
+# RFC 9110 Section 9.3.2: a HEAD answer carries no content; both routes still
+# send the file, so this is a strict expected failure.
 @pytest.mark.xfail(strict=True, reason="HEAD sends the file body")
 @pytest.mark.parametrize("target", [b"/page.html",
                                     b"/cgi-bin/loclocal.exe?target=page"])
@@ -253,12 +224,8 @@ def test_head_sends_no_body(box, target):
     assert tail == b""
 
 
-# A deterministic corpus around the protected targets and two allowed
-# files: each separator replaced by '/' or doubled, a dot, a space, '::$DATA'
-# or ':$I30:$INDEX_ALLOCATION' appended to each component, a '.' or a
-# 'sub\..' component inserted before each, case changes, and the '\\?\' and
-# '\\.\' prefixes. Only the canonical spelling and its case changes may
-# serve an allowed file; nothing may send a protected one.
+# Separator, suffix, dot-segment, case and prefix variants of each target;
+# only canonical spellings and their case changes may serve an allowed file.
 CORPUS_TARGETS = [
     (("cgi-bin", "secret.txt"), None),
     (("cgi-bin", "loclocal.exe"), None),
@@ -442,9 +409,8 @@ def _handle_count(pid):
 
 
 def test_refusals_keep_the_handle_count(junctions):
-    # The junction cases are refused after the open, on the handle; each
-    # refusal must close it. Every request also runs the CGI program
-    # through pipes and a thread, so the count is compared with slack.
+    # Each handle-time refusal must close its handle; CGI pipes and threads
+    # make the count noisy, hence the slack.
     box = junctions
     values = [
         box.R + r"\jcgi\secret.txt",

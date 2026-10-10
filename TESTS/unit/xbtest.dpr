@@ -7,10 +7,7 @@
 //   fpc -B -MObjFPC -Fu..\..\SRC -Fi..\..\SRC xbtest.dpr
 //   xbtest.exe
 // Exit code 0 when every check passes, 1 otherwise; failures print one line each.
-//
-// xbtest.rc embeds xbtest.manifest, which sets the process ANSI code page to
-// UTF-8 (Windows 10 1903 or later), so the multibyte ExpandFileName cases run
-// the same way on every runner; windres ships with FPC.
+// xbtest.rc embeds xbtest.manifest, which sets the ANSI code page to UTF-8.
 program xbtest;
 
 {$APPTYPE CONSOLE}
@@ -355,9 +352,8 @@ begin
   end;
 end;
 
-// Path of exactly L bytes in UTF-8: 'C:\', one 'a' when needed for parity,
-// then Width-byte characters (2: U+00E9, 3: U+20AC). Every character is one
-// UTF-16 unit, so the path has fewer UTF-16 units than bytes.
+// Path of exactly L UTF-8 bytes of Width-byte characters (2: U+00E9,
+// 3: U+20AC), so it has fewer UTF-16 units than bytes.
 function MultibytePath(L, Width: Integer): AnsiString;
 begin
   Result := 'C:\';
@@ -370,8 +366,7 @@ begin
       Result := Result + #$E2#$82#$AC;
 end;
 
-// Compares paths by length, NUL count and content, so a failure line stays
-// printable when the result holds binary garbage.
+// Reports lengths and NUL counts so a failure line stays printable.
 procedure CheckPath(const Name, Got, Want: AnsiString);
 var
   i, Nuls: Integer;
@@ -393,8 +388,7 @@ const
 var
   s: AnsiString;
 begin
-  // ASCII paths: bytes equal UTF-16 units, and the ANSI function refuses
-  // MAX_PATH units or more with 0, which ExpandFileName answers as ''.
+  // ASCII: the ANSI API refuses MAX_PATH characters or more.
   s := AsciiPath(258);
   CheckPath('ExpandFileName ascii 258', ExpandFileName(s), s);
   s := AsciiPath(259);
@@ -409,9 +403,7 @@ begin
     (Length(s) > Length('\xbtest_rel.txt')) and StrEnds(s, '\xbtest_rel.txt') and
     (s[2] = ':'));
 
-  // Multibyte paths: fewer UTF-16 units than bytes, so a path of MAX_PATH
-  // bytes or more can still be valid and GetFullPathNameA answers the buffer
-  // size it needs, terminator included.
+  // UTF-8: MAX_PATH bytes or more can still be under MAX_PATH UTF-16 units.
   Check('process ANSI code page is UTF-8 (xbtest.manifest)', GetACP = CUtf8CodePage);
   if GetACP <> CUtf8CodePage then
     Exit;
@@ -480,15 +472,11 @@ begin
   Check('PathWithinDir 932 directory ending in a lone lead byte',
     not PathWithinDir('C:\t\'#$95'\a', 'C:\t\'#$95, 932));
 
-  // Pinned as documentation: case folding is ASCII only, so a non-ASCII
-  // letter in another case is another name.
+  // Folding is ASCII only.
   Check('PathWithinDir ASCII-only folding',
     not PathWithinDir('C:\'#$C9'\a', 'C:\'#$E9));
 
-  // Properties over every directory and name above: the directory is within
-  // itself; a child stays inside under any ASCII case change of either side;
-  // a sibling that only shares the prefix is outside; a parent is outside its
-  // child; a grandchild stays inside the child.
+  // Properties: itself, child, case change, prefix sibling, parent, grandchild.
   for i := Low(Dirs) to High(Dirs) do
   begin
     D := Dirs[i];
@@ -554,10 +542,8 @@ begin
   Check('GetFileAttrByHandle invalid handle',
     GetFileAttrByHandle(INVALID_HANDLE_VALUE) = INVALID_FILE_ATTRIBUTES);
 
-  // A final path of MAX_PATH bytes or more takes the sized retry. Under the
-  // UTF-8 code page that xbtest.manifest sets, U+00E9 is two bytes and one
-  // UTF-16 unit, so ANSI calls create the file while its ANSI path is longer
-  // than the first buffer.
+  // Under UTF-8, U+00E9 is two bytes and one UTF-16 unit, so this path takes
+  // the sized retry.
   if GetACP <> CUtf8CodePage then
     Exit;
   longdir := MakeNormName(dir, 'xbtest_long_');
