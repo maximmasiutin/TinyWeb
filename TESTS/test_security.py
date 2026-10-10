@@ -22,12 +22,6 @@ def _req(target, extra_headers=b""):
     )
 
 
-# xBase.ExpandFileName buffer contract: with a multibyte ANSI code page a
-# path of MAX_PATH bytes or more can have fewer than MAX_PATH UTF-16 units,
-# and the old code built LocalFName from an untouched buffer and the stack
-# past it. The request route keeps its length policy: an expanded path of
-# MAX_PATH bytes or more is refused, as it always was.
-
 MULTIBYTE_MARKER = b"tinyweb-multibyte-name\n"
 E_ACUTE = chr(0xE9)
 
@@ -39,11 +33,8 @@ def _ansi_code_page():
 
 
 def _multibyte_file(server, units):
-    """Create webroot/d<h x U+00E9>/m<units - h x U+00E9>.html with
-    h = units // 2, and return its URI target. The multibyte part is split
-    over a directory and a file so that no single name exceeds about 200
-    UTF-8 bytes: Linux allows 255 bytes per name, which matters for the
-    container lane on a Linux Docker host."""
+    """Create a file whose path holds `units` U+00E9 characters, split over a
+    directory and a file name to stay under Linux's 255-byte name limit."""
     half = units // 2
     folder = "d" + E_ACUTE * half
     name = "m" + E_ACUTE * (units - half) + ".html"
@@ -60,12 +51,8 @@ def _utf8_bytes(server, units):
 
 
 def test_long_multibyte_path_refused(server):
-    # About 290 bytes in UTF-8 but under 260 UTF-16 units. Under a UTF-8
-    # ANSI code page the MAX_PATH-byte check in WebServerHttpResponse is what
-    # refuses it (a build without the check serves the file). Under a
-    # single-byte code page such as 1252 every byte is one UTF-16 unit, so
-    # GetFullPathNameA already fails with error 206 and this test does not
-    # exercise the check. Either way the file is never served.
+    # About 290 UTF-8 bytes but under 260 UTF-16 units; refused by the
+    # MAX_PATH-byte check under UTF-8 and by GetFullPathNameA under 1252.
     root_units = len(str(server.webroot)) + 9
     units = max(1, 290 - _utf8_bytes(server, 0)) // 2
     assert root_units + units < 250, "webroot path too long for this test"

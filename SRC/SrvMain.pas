@@ -2093,11 +2093,7 @@ begin
 
   LocalFName := ExpandFileName(ParamStr1 + s);
 
-  // Length policy: a request reaches only files whose expanded ANSI path is
-  // shorter than MAX_PATH bytes, which is all the server ever served.
-  // ExpandFileName now also answers longer paths (a multibyte ANSI code page
-  // can need MAX_PATH bytes or more for fewer UTF-16 characters), and those
-  // stay refused here; its failure answer '' fails StrEnds below.
+  // Requests reach only expanded paths shorter than MAX_PATH bytes.
   if Length(LocalFName) >= MAX_PATH then
   begin
     Result := THttpResponseErrorCode.Create(403);

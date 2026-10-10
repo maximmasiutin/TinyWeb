@@ -2529,21 +2529,8 @@ begin
     Result := '';
 end;
 
-// Answers the fully qualified form of FileName, or '' when FileName is empty
-// or the expansion fails. GetFullPathNameA answers the number of characters
-// it copied, terminator excluded, when the buffer is large enough; the size
-// the buffer needs, terminator included, when it is not (nothing is copied
-// then); and 0 on any other failure. With a multibyte ANSI code page (UTF-8,
-// or a DBCS one such as 932) a path shorter than MAX_PATH UTF-16 characters
-// can need MAX_PATH bytes or more, so the size answer is reachable even
-// though the ANSI function refuses paths of MAX_PATH UTF-16 characters or
-// more with 0 (ERROR_FILENAME_EXCED_RANGE). The previous code copied the
-// answer as a length in both cases, which built a string from the untouched
-// buffer and from the stack past its end. Now a size answer gets one retry
-// with exactly that buffer; the result is limited to
-// CMaxExpandedPathLength bytes, and a second size answer (the path grew
-// between the calls, for example after a working-directory change) is a
-// failure. Only characters the API reported as copied are kept.
+// Full path of FileName, or '' when FileName is empty or expansion fails.
+// When the buffer is too small, retries once with the size the API asked for.
 function ExpandFileName(const FileName: AnsiString): AnsiString;
 const
   CMaxExpandedPathLength = 32767;
@@ -2566,8 +2553,7 @@ begin
   end;
   if Need > CMaxExpandedPathLength + 1 then
     Exit;
-  // Need counts the terminating NUL; the AnsiString keeps a hidden
-  // terminator slot after its last character, which receives it.
+  // Need includes the NUL, which goes into the AnsiString's hidden terminator.
   SetLength(Result, Need - 1);
   FName := nil;
   Got := GetFullPathNameA(@(FileName[1]), Need, @(Result[1]), FName);
