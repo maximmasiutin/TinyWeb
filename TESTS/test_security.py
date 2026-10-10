@@ -166,15 +166,8 @@ def test_percent_encoded_crlf_in_header_value_rejected(server):
     assert status == 400
 
 
-# CGI Location carrying an absolute Windows filesystem path (a TinyWeb
-# extension, not an RFC 3875 Section 6.2.2 local redirect): the server
-# sends the named file through OpenRequestedFile, which must refuse every
-# file under cgi-bin so scripts and their data never go out as static
-# content. Its cgi-bin check compared the lowercased path with the web root
-# as typed, so a root holding an uppercase letter let such files out.
-# mixedcase_server runs on a root with uppercase letters on every lane.
-
-CGI_SECRET_MARKER = b"tinyweb-cgi-secret"
+# A CGI Location holding an absolute filesystem path must not send files under
+# cgi-bin; mixedcase_server's root has uppercase letters.
 
 
 def _assert_location_refused(env, target):
@@ -182,21 +175,18 @@ def _assert_location_refused(env, target):
         "GET", "/cgi-bin/loclocal.exe?target=" + target
     )
     assert body[:2] != b"MZ", "script executable disclosed, status %s" % status
-    assert CGI_SECRET_MARKER not in body, "cgi-bin file disclosed, status %s" % status
+    assert env.cgi_marker not in body, "cgi-bin file disclosed, status %s" % status
     assert status == 403, status
 
 
-# Regression: the unfixed server sends the script executable (200, MZ).
 def test_cgi_location_path_to_script_refused(mixedcase_server):
     _assert_location_refused(mixedcase_server, "self")
 
 
-# Regression: the unfixed server sends cgi-bin/secret.txt (200, marker).
 def test_cgi_location_path_to_cgi_bin_file_refused(mixedcase_server):
     _assert_location_refused(mixedcase_server, "secret")
 
 
-# Compatibility: a filesystem path to a static file is still served.
 def test_cgi_location_path_to_static_file_served(mixedcase_server):
     status, headers, body = mixedcase_server.request(
         "GET", "/cgi-bin/loclocal.exe?target=page"

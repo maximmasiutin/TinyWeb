@@ -26,21 +26,16 @@ WINE = os.environ.get("TINYWEB_WINE") == "1"
 STATIC_INDEX = "tinyweb-static-index\n"
 STATIC_PAGE = "tinyweb-static-page\n"
 STATIC_SUB = "tinyweb-static-subdir-index\n"
-# A non-executable file under cgi-bin; its marker must never reach a client.
-CGI_SECRET = "tinyweb-cgi-secret\n"
-# Readiness probe: a static file holding a per-start token, so a 200 that
-# carries it proves the answer came from the server just started on this
-# web root, not from some other listener that took the port.
+# Content of a non-executable file under cgi-bin; it must never reach a client.
+CGI_MARKER = "tinyweb-cgi-file-" + secrets.token_hex(16)
+# Static file holding a per-start token; a 200 carrying it proves the answer
+# came from the server just started.
 READY_FILE = "ready.txt"
 STARTUP_SECS = 120 if WINE else 20
 
 
 def host_path(p):
-    """Path as the server binary sees it (Wine maps the root to Z:).
-
-    The case of every component is kept as it is: the mixed-case web root
-    exists to exercise case handling in the server.
-    """
+    """Path as the server binary sees it (Wine maps the root to Z:)."""
     p = str(p)
     if WINE:
         return "Z:" + p.replace("/", "\\")
@@ -53,6 +48,7 @@ class ServerEnv:
         self.webroot = webroot
         self.caps = caps
         self.proc = proc
+        self.cgi_marker = CGI_MARKER.encode("ascii")
         self.logdir = logdir
         self.host = "127.0.0.1"
 
@@ -115,7 +111,7 @@ def _assemble_webroot(root):
     (root / "index.html").write_text(STATIC_INDEX)
     (root / "page.html").write_text(STATIC_PAGE)
     (root / "sub" / "index.html").write_text(STATIC_SUB)
-    (root / "cgi-bin" / "secret.txt").write_text(CGI_SECRET)
+    (root / "cgi-bin" / "secret.txt").write_text(CGI_MARKER)
     for exe in bf.BIN.glob("*.exe"):
         shutil.copy2(exe, root / "cgi-bin" / exe.name)
 
@@ -146,12 +142,8 @@ def _diagnostics(cmd, proc, logdir, reason):
 
 
 def _start_server(exe, webroot, logdir, caps):
-    """Start Tiny.exe on webroot with its own log directory, bound to 127.0.0.1.
-
-    Returns a ServerEnv once the server answered 200 for READY_FILE with
-    this start's token and a TinyWeb Server field. On any failure the
-    process is killed, waited for, and StartupError carries diagnostics.
-    """
+    """Start Tiny.exe on webroot bound to 127.0.0.1; return a ServerEnv once
+    READY_FILE answers with this start's token, else raise StartupError."""
     logdir.mkdir(parents=True, exist_ok=True)
     token = "tinyweb-ready-" + secrets.token_hex(8)
     (webroot / READY_FILE).write_text(token)
@@ -242,12 +234,8 @@ def server(server_exe, fixture_caps):
 
 @pytest.fixture(scope="module")
 def mixedcase_server(server_exe, fixture_caps):
-    """A second server whose web root has upper- and lowercase letters.
-
-    The root is _work/MixedCase/WebRoot on every lane, natively and under
-    Wine, so tests of case handling never depend on where the checkout
-    lives. It has its own log directory.
-    """
+    """A second server on the mixed-case root _work/MixedCase/WebRoot, with
+    its own log directory."""
     base = bf.WORK / "MixedCase"
     webroot = base / "WebRoot"
     _assemble_webroot(webroot)
