@@ -395,12 +395,18 @@ def test_symlink(symlinks, case_id):
 
 
 def _handle_count(pid):
-    k32 = ctypes.windll.kernel32
+    from ctypes import wintypes
+    k32 = ctypes.WinDLL("kernel32")
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    k32.GetProcessHandleCount.argtypes = [wintypes.HANDLE,
+                                          ctypes.POINTER(wintypes.DWORD)]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
     h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
     if not h:
         return None
     try:
-        n = ctypes.c_ulong()
+        n = wintypes.DWORD()
         if not k32.GetProcessHandleCount(h, ctypes.byref(n)):
             return None
         return n.value
