@@ -136,7 +136,7 @@ def test_cgitest_login_post_flow(server):
 
 
 def test_head_cgi_answer_carries_no_body(server):
-    # RFC 3875 Section 4.3.2: the server discards what the script writes after
+    # RFC 3875 Section 4.3.3: the server discards what the script writes after
     # its header for a HEAD request.
     raw = server.raw(
         b"HEAD /cgi-bin/envdump.exe HTTP/1.1\r\nHost: t\r\n"

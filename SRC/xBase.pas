@@ -532,7 +532,7 @@ var
   SocksCount: Integer;
 
 const
-  CServerVersion = '2.06';
+  CServerVersion = '2.07';
   CServerProductName = 'TinyWeb';
   CServerName = CServerProductName + '/' + CServerVersion;
   CMB_FAILED = MB_APPLMODAL or MB_OK or MB_ICONSTOP;
