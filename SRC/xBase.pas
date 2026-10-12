@@ -146,9 +146,12 @@ type
     cSequentialScan, // Indicates that the file is to be accessed
     // sequentially from beginning to end.
 
-    cDeleteOnClose // Indicates that the operating system is to delete
+    cDeleteOnClose, // Indicates that the operating system is to delete
     // the file immediately after all of its handles
     // have been closed.
+
+    cBackupSemantics // Opens a directory as well as a file
+    // (FILE_FLAG_BACKUP_SEMANTICS), for queries on the handle.
 
     );
 
@@ -371,6 +374,10 @@ function MakeFullDir(const D, S: AnsiString): AnsiString;
 function MakeNormName(const Path, Name: AnsiString): AnsiString;
 function MonthE(m: Integer): AnsiString;
 function NewStr(const S: AnsiString): PAnsiString;
+function AnsiCharLength(const S: AnsiString; I: Integer; CodePage: UINT): Integer;
+function EndsWithBackslash(const S: AnsiString; CodePage: UINT): Boolean;
+function PathWithinDir(const APath, ADir: AnsiString;
+  CodePage: UINT = CP_ACP): Boolean;
 function Replace(const Pattern, ReplaceString: AnsiString;
   var S: AnsiString): Boolean;
 
@@ -433,6 +440,9 @@ function GetEnvVariable(const Name: AnsiString): AnsiString;
 function GetFileNfo(const FName: AnsiString; var Info: TFileInfo;
   NeedAttr: Boolean): Boolean;
 function GetFileNfoByHandle(Handle: THandle; var Info: TFileInfo): Boolean;
+function GetFileAttrByHandle(Handle: THandle): DWORD;
+function GetFinalPathByHandle(Handle: THandle): AnsiString;
+function GetFinalPathName(const FName: AnsiString): AnsiString;
 function ZeroHandle(var Handle: THandle): Boolean;
 
 function _CreateFile(const FName: AnsiString; Mode: TCreateFileModeSet)
@@ -1366,6 +1376,99 @@ begin
   Result := True;
 end;
 
+// Attributes of the object behind Handle, or INVALID_FILE_ATTRIBUTES when
+// they cannot be read.
+function GetFileAttrByHandle(Handle: THandle): DWORD;
+var
+  I: TByHandleFileInformation;
+begin
+  Result := INVALID_FILE_ATTRIBUTES;
+  if (Handle = INVALID_HANDLE_VALUE) or (Handle = 0) then
+    Exit;
+  if GetFileInformationByHandle(Handle, I) then
+    Result := I.dwFileAttributes;
+end;
+
+type
+  TGetFinalPathNameByHandleA = function(hFile: THandle; lpszFilePath: PAnsiChar;
+    cchFilePath, dwFlags: DWORD): DWORD; stdcall;
+
+// Final path behind Handle without the \\?\ prefix, or '' on failure or before
+// Vista; retry buffers get one extra byte, as Windows 11 omits the terminator.
+function GetFinalPathByHandle(Handle: THandle): AnsiString;
+const
+  CMaxFinalPathLength = 32767;
+  CMaxTries = 3;
+  CFileNameNormalizedVolumeNameDos = 0;
+var
+  GetFinalPathNameByHandleA: TGetFinalPathNameByHandleA;
+  Buffer: array [0 .. MAX_PATH - 1] of AnsiChar;
+  Need, Got: DWORD;
+  Tries: Integer;
+begin
+  Result := '';
+  if (Handle = INVALID_HANDLE_VALUE) or (Handle = 0) then
+    Exit;
+  GetFinalPathNameByHandleA := TGetFinalPathNameByHandleA(
+    GetProcAddress(GetModuleHandleA('kernel32.dll'), 'GetFinalPathNameByHandleA'));
+  if not Assigned(GetFinalPathNameByHandleA) then
+    Exit;
+  Need := GetFinalPathNameByHandleA(Handle, Buffer, SizeOf(Buffer),
+    CFileNameNormalizedVolumeNameDos);
+  if Need = 0 then
+    Exit;
+  if Need < SizeOf(Buffer) then
+    SetString(Result, Buffer, Need)
+  else
+  begin
+    Tries := 1;
+    repeat
+      if (Need > CMaxFinalPathLength + 1) or (Tries >= CMaxTries) then
+      begin
+        Result := '';
+        Exit;
+      end;
+      Inc(Tries);
+      // Need characters plus the terminator: the AnsiString keeps a hidden
+      // terminator slot after its last character, which receives it.
+      SetLength(Result, Need);
+      Got := GetFinalPathNameByHandleA(Handle, @(Result[1]), Need + 1,
+        CFileNameNormalizedVolumeNameDos);
+      if Got = 0 then
+      begin
+        Result := '';
+        Exit;
+      end;
+      if Got <= Need then
+      begin
+        SetLength(Result, Got);
+        Break;
+      end;
+      Need := Got;
+    until False;
+  end;
+  while (Result <> '') and (Result[Length(Result)] = #0) do
+    Delete(Result, Length(Result), 1);
+  if Copy(Result, 1, 8) = '\\?\UNC\' then
+    Result := '\' + Copy(Result, 8, MaxInt)
+  else if Copy(Result, 1, 4) = '\\?\' then
+    Delete(Result, 1, 4);
+end;
+
+// GetFinalPathByHandle of FName, a file or directory opened without access
+// rights; '' when it cannot be opened or resolved.
+function GetFinalPathName(const FName: AnsiString): AnsiString;
+var
+  Handle: THandle;
+begin
+  Result := '';
+  Handle := _CreateFile(FName, [cExisting, cShareAllowWrite, cBackupSemantics]);
+  if Handle = INVALID_HANDLE_VALUE then
+    Exit;
+  Result := GetFinalPathByHandle(Handle);
+  ClearHandle(Handle);
+end;
+
 function ClearHandle(var Handle: THandle): Boolean;
 begin
   if Handle = INVALID_HANDLE_VALUE then
@@ -1474,6 +1577,8 @@ begin
       Flags := Flags or FILE_FLAG_SEQUENTIAL_SCAN;
     if cDeleteOnClose in Mode then
       Flags := Flags or FILE_FLAG_DELETE_ON_CLOSE;
+    if cBackupSemantics in Mode then
+      Flags := Flags or FILE_FLAG_BACKUP_SEMANTICS;
 
 
     // Prepare 'Access' and 'Share'
@@ -2563,6 +2668,80 @@ begin
     Exit;
   end;
   SetLength(Result, Got);
+end;
+
+// Byte length, 1 or 2, of the character starting at S[I] in CodePage; a DBCS
+// trail byte may be $5C.
+function AnsiCharLength(const S: AnsiString; I: Integer; CodePage: UINT): Integer;
+begin
+  Result := 1;
+  if (I < Length(S)) and IsDBCSLeadByteEx(CodePage, Byte(S[I])) then
+    Result := 2;
+end;
+
+// Index of the first byte of the last character of S, or 0 for an empty S.
+function LastCharStart(const S: AnsiString; CodePage: UINT): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  I := 1;
+  while I <= Length(S) do
+  begin
+    Result := I;
+    Inc(I, AnsiCharLength(S, I, CodePage));
+  end;
+end;
+
+// True when the last character of S is a backslash, not a DBCS trail byte.
+function EndsWithBackslash(const S: AnsiString; CodePage: UINT): Boolean;
+begin
+  Result := (S <> '') and (LastCharStart(S, CodePage) = Length(S)) and
+    (S[Length(S)] = '\');
+end;
+
+// S with ASCII letters lowercased, except bytes of double-byte characters.
+function LowerCaseSingleBytes(const S: AnsiString; CodePage: UINT): AnsiString;
+var
+  I, N: Integer;
+begin
+  Result := S;
+  I := 1;
+  while I <= Length(Result) do
+  begin
+    N := AnsiCharLength(Result, I, CodePage);
+    if (N = 1) and (Result[I] in ['A' .. 'Z']) then
+      Result[I] := AnsiChar(Ord(Result[I]) + 32);
+    Inc(I, N);
+  end;
+end;
+
+// Lexical, single-byte ASCII case folded: True when APath is ADir or below it.
+// Both must be validated absolute paths in the same form; '' answers False.
+function PathWithinDir(const APath, ADir: AnsiString;
+  CodePage: UINT = CP_ACP): Boolean;
+var
+  P, D: AnsiString;
+begin
+  Result := False;
+  P := LowerCaseSingleBytes(APath, CodePage);
+  D := LowerCaseSingleBytes(ADir, CodePage);
+  if EndsWithBackslash(P, CodePage) then
+    Delete(P, Length(P), 1);
+  if EndsWithBackslash(D, CodePage) then
+    Delete(D, Length(D), 1);
+  if (P = '') or (D = '') then
+    Exit;
+  if IsDBCSLeadByteEx(CodePage, Byte(D[Length(D)])) and
+    (LastCharStart(D, CodePage) = Length(D)) then
+    Exit;
+  if P = D then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := (Length(P) > Length(D)) and (P[Length(D) + 1] = '\') and
+    (Copy(P, 1, Length(D)) = D);
 end;
 
 function UpperCase(const S: AnsiString): AnsiString;

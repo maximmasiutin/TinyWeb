@@ -1,9 +1,30 @@
 // CGI fixture: answers a Location holding an absolute filesystem path, picked by
-// QUERY_STRING target=page, self (also empty) or secret; other values get 400.
+// target=page, self (also empty), secret, or file (cgi-bin\loclocal.txt); else 400.
 program loclocal;
 {$H+}
 uses
   SysUtils;
+
+function ReadTargetFile(const Name: string): string;
+var
+  F: File;
+  n: LongInt;
+begin
+  Result := '';
+  FileMode := 0;
+  AssignFile(F, Name);
+  {$I-}
+  Reset(F, 1);
+  {$I+}
+  if IOResult <> 0 then
+    Exit;
+  n := FileSize(F);
+  SetLength(Result, n);
+  if n > 0 then
+    BlockRead(F, Result[1], n);
+  CloseFile(F);
+end;
+
 var
   Query, CgiDir, WebRoot, Target: string;
 begin
@@ -16,6 +37,8 @@ begin
     Target := WebRoot + 'page.html'
   else if Query = 'target=secret' then
     Target := CgiDir + 'secret.txt'
+  else if Query = 'target=file' then
+    Target := ReadTargetFile(CgiDir + 'loclocal.txt')
   else
     Target := '';
   if Target = '' then

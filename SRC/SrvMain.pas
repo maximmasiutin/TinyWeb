@@ -72,7 +72,17 @@ function ParseHeaderLineStrict(const Line: AnsiString;
 function IsQueryParamSafe(const s: AnsiString): Boolean;
 {$ENDIF}
 function EscapeShellParam(const s: AnsiString): AnsiString;
-function IsURL(const s: AnsiString): Boolean;
+
+type
+  // How MakeHeaders treats a CGI Location value; see ClassifyLocation.
+  TLocationKind = (lkRefused, lkURL, lkFilePath);
+
+function ClassifyLocation(const s: AnsiString): TLocationKind;
+function IsReservedDeviceName(const AName: AnsiString): Boolean;
+// CodePage 0 is CP_ACP, the code page of the ANSI file functions.
+function LocalPathSpellingOK(const s: AnsiString; CodePage: Cardinal = 0): Boolean;
+function ResolveWebRoot(const Arg: AnsiString): AnsiString;
+function WebRootOnDrive(const Root: AnsiString): Boolean;
 function _Adr2Int(const s: AnsiString): DWORD;
 function Adr2Int(const s: AnsiString): Integer;
 
@@ -1486,6 +1496,37 @@ begin
   FHandle := AHandle
 end;
 
+function LocalFNameSafe(const AFName: AnsiString): Boolean; forward;
+
+var
+  // Startup final paths of the root and cgi-bin, no trailing backslash;
+  // ScriptsFinalPath is '' when cgi-bin does not exist.
+  RootFinalPath, ScriptsFinalPath: AnsiString;
+
+// True when Handle is a regular disk file whose final path lies inside the
+// web root and outside cgi-bin, checked below the root and as its own path.
+function HandleServable(Handle: THandle): Boolean;
+var
+  fa: DWORD;
+  FinalPath: AnsiString;
+begin
+  Result := False;
+  if GetFileType(Handle) <> FILE_TYPE_DISK then
+    Exit;
+  fa := GetFileAttrByHandle(Handle);
+  if (fa = INVALID_FILE_ATTRIBUTES) or ((fa and (FILE_ATTRIBUTE_DIRECTORY or
+    FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM)) <> 0) then
+    Exit;
+  FinalPath := GetFinalPathByHandle(Handle);
+  if (FinalPath = '') or (not PathWithinDir(FinalPath, RootFinalPath)) or
+    PathWithinDir(FinalPath, RootFinalPath + '\' + ScriptsPath) or
+    PathWithinDir(FinalPath, ScriptsFinalPath) then
+    Exit;
+  Result := True;
+end;
+
+// Sends a static file for the URI and CGI Location routes; refused unless the
+// spelling, lexical containment and HandleServable on the opened handle pass.
 function OpenRequestedFile(const AFName: AnsiString; thr: THTTPServerThread;
   d: THTTPData): TAbstractHttpResponseData;
 var
@@ -1499,15 +1540,10 @@ begin
     Result := nil;
     Exit;
   end;
-  // Try to open Requested file
-  z := LowerCase(AFName);
-  if Copy(z, 1, Length(ParamStr1)) <> LowerCase(ParamStr1) then
-  begin
-    Result := THttpResponseErrorCode.Create(403);
-    Exit;
-  end;
-  if Copy(z, 1, Length(ParamStr1) + 1 + Length(ScriptsPath) + 1) =
-    LowerCase(ParamStr1 + '\' + ScriptsPath + '\') then
+  if (not LocalPathSpellingOK(AFName)) or
+    (not PathWithinDir(AFName, ParamStr1)) or
+    PathWithinDir(AFName, ParamStr1 + '\' + ScriptsPath) or
+    (not LocalFNameSafe(AFName)) then
   begin
     Result := THttpResponseErrorCode.Create(403);
     Exit;
@@ -1530,8 +1566,20 @@ begin
     Result := THttpResponseErrorCode.Create(404);
     Exit;
   end;
+  if not HandleServable(FHandle) then
+  begin
+{$IFDEF LOGGING}
+    AddErrorLog('access to ' + EscapeForLog(AFName) + ' refused for ' +
+      thr.RemoteHost + ', reason: the opened object is not a regular file ' +
+      'inside the web root and outside ' + ScriptsPath);
+{$ENDIF}
+    ClearHandle(FHandle);
+    Result := THttpResponseErrorCode.Create(403);
+    Exit;
+  end;
   if not GetFileNfoByHandle(FHandle, d.FileNfo) then
   begin
+    ClearHandle(FHandle);
     Result := THttpResponseErrorCode.Create(404);
     Exit;
   end;
@@ -1626,11 +1674,34 @@ begin
   Result := THttpResponseErrorCode.Create(302);
 end;
 
-function IsURL(const s: AnsiString): Boolean;
+// lkURL for scheme://..., lkFilePath for X:\..., else lkRefused; values with
+// control bytes or of CMaxLocationLength bytes or more are refused.
+function ClassifyLocation(const s: AnsiString): TLocationKind;
 const
-  Pattern: AnsiString = '://';
+  CMaxLocationLength = 8192;
+var
+  i: Integer;
 begin
-  Result := Pos(Pattern, s) > 0;
+  Result := lkRefused;
+  if (s = '') or (Length(s) >= CMaxLocationLength) then
+    Exit;
+  for i := 1 to Length(s) do
+    if (s[i] < ' ') or (s[i] = #127) then
+      Exit;
+  if (Length(s) >= 3) and (s[1] in ['A' .. 'Z', 'a' .. 'z']) and
+    (s[2] = ':') and (s[3] = '\') then
+  begin
+    Result := lkFilePath;
+    Exit;
+  end;
+  if not (s[1] in ['A' .. 'Z', 'a' .. 'z']) then
+    Exit;
+  i := 2;
+  while (i <= Length(s)) and (s[i] in ['A' .. 'Z', 'a' .. 'z', '0' .. '9',
+    '+', '-', '.']) do
+    Inc(i);
+  if Copy(s, i, 3) = '://' then
+    Result := lkURL;
 end;
 
 type
@@ -1789,8 +1860,9 @@ begin
 
 end;
 
-// FileIsRegular: Validates that a filename is a regular file, not a Windows
-// reserved device name. Windows reserved names can be accessed regardless of
+// IsReservedDeviceName answers whether one path component names a Windows
+// reserved device; FileIsRegular validates that a filename is a regular file,
+// not such a device. Windows reserved names can be accessed regardless of
 // extension (e.g., "CON.txt" still refers to the console device).
 //
 // References:
@@ -1812,7 +1884,7 @@ end;
 //   CONOUT$  - Console output stream
 //   CLOCK$   - Real-time clock device (legacy DOS device)
 //
-function FileIsRegular(const FN: AnsiString): Boolean;
+function IsReservedDeviceName(const AName: AnsiString): Boolean;
 const
   CDot: AnsiChar = '.';
   // Device names delimited by #1 for efficient substring search.
@@ -1823,21 +1895,74 @@ const
     + #1'COM0'#1'COM1'#1'COM2'#1'COM3'#1'COM4'#1'COM5'#1'COM6'#1'COM7'#1'COM8'#1'COM9'
     + #1'LPT'#1'LPT0'#1'LPT1'#1'LPT2'#1'LPT3'#1'LPT4'#1'LPT5'#1'LPT6'#1'LPT7'#1'LPT8'#1'LPT9'#1;
 var
+  i: Integer;
+  s: AnsiString;
+begin
+  // The part before the first dot names the device, and Windows ignores
+  // spaces at its end, so 'CON .txt' is the console as well.
+  s := UpperCase(AName);
+  i := Pos(CDot, s);
+  if i > 0 then
+    Delete(s, i, Length(s) - i + 1);
+  while (s <> '') and (s[Length(s)] = ' ') do
+    Delete(s, Length(s), 1);
+  Result := (s <> '') and (Pos(#1 + s + #1, fDevices) > 0);
+end;
+
+// Accepts only X:\ plus single-backslash components; refuses '/', extra ':',
+// a trailing dot or space, wildcards, control bytes and device names.
+function LocalPathSpellingOK(const s: AnsiString; CodePage: Cardinal = 0): Boolean;
+var
+  i, n, Start: Integer;
+  Component: AnsiString;
+begin
+  Result := False;
+  if (Length(s) < 4) or (Length(s) >= MAX_PATH) then
+    Exit;
+  if not (s[1] in ['A' .. 'Z', 'a' .. 'z']) or (s[2] <> ':') or
+    (s[3] <> '\') then
+    Exit;
+  Start := 4;
+  i := 4;
+  while i <= Length(s) + 1 do
+  begin
+    if (i <= Length(s)) and (s[i] <> '\') then
+    begin
+      n := AnsiCharLength(s, i, CodePage);
+      if (n = 1) and ((s[i] < ' ') or (s[i] = #127) or
+        (s[i] in ['/', ':', '*', '?', '"', '<', '>', '|'])) then
+        Exit;
+      // A lead byte must not carry NUL or a control byte along as its
+      // trail byte.
+      if (n = 2) and ((s[i + 1] < ' ') or (s[i + 1] = #127)) then
+        Exit;
+      Inc(i, n);
+      Continue;
+    end;
+    Component := Copy(s, Start, i - Start);
+    // A trailing dot also covers the '.' and '..' components.
+    if (Component = '') or (Component[Length(Component)] in ['.', ' ']) or
+      IsReservedDeviceName(Component) then
+      Exit;
+    Start := i + 1;
+    Inc(i);
+  end;
+  Result := True;
+end;
+
+function FileIsRegular(const FN: AnsiString): Boolean;
+var
   F: THandle;
   FT: DWORD;
-  i: Integer;
   FileNameExpanded, s: AnsiString;
 begin
-  s := UpperCase(ExtractFileName(FN));
+  s := ExtractFileName(FN);
   if s = '' then
   begin
     Result := False;
     Exit;
   end;
-  i := Pos(CDot, s);
-  if i > 0 then
-    Delete(s, i, Length(s) - i + 1);
-  Result := (s = '') or (Pos(#1 + s + #1, fDevices) = 0);
+  Result := not IsReservedDeviceName(s);
   if Result then
   begin
     FileNameExpanded := ExpandFileName(FN);
@@ -1881,7 +2006,9 @@ begin
     end;
 
     FName := ExtractFileName(ParentDir);
-    if (FName <> '') and (not FileIsRegular(FName)) then
+    // The full path, not the bare name: FileIsRegular opens what it checks,
+    // and a bare name would resolve against the working directory.
+    if (FName <> '') and (not FileIsRegular(ParentDir)) then
     begin
       Break;
     end;
@@ -2038,13 +2165,14 @@ var
     begin
       if ResponseEntityHeader.CGILocation <> '' then
       begin
-        if IsURL(ResponseEntityHeader.CGILocation) then
-        begin
-          Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
-        end
+        case ClassifyLocation(ResponseEntityHeader.CGILocation) of
+          lkURL:
+            Result := ReturnNewLocation(ResponseEntityHeader.CGILocation, d);
+          lkFilePath:
+            Result := OpenRequestedFile(ResponseEntityHeader.CGILocation,
+              thr, d);
         else
-        begin
-          Result := OpenRequestedFile(ResponseEntityHeader.CGILocation, thr, d);
+          Result := THttpResponseErrorCode.Create(403);
         end;
       end
       else
@@ -2727,10 +2855,38 @@ var
   BindPort, BindAddr: DWORD;
   IsCGI: Boolean;
 
+// Drops one trailing backslash; a $5C that is the trail byte of a
+// double-byte character is part of a name and stays.
+function DropTrailingBackslash(const s: AnsiString): AnsiString;
+begin
+  Result := s;
+  if EndsWithBackslash(Result, CP_ACP) then
+    Delete(Result, Length(Result), 1);
+end;
+
+// Startup argument expanded once, without a trailing backslash; a bare 'C:'
+// means the drive root.
+function ResolveWebRoot(const Arg: AnsiString): AnsiString;
+begin
+  Result := Arg;
+  if (Length(Result) = 2) and (Result[1] in ['A' .. 'Z', 'a' .. 'z']) and
+    (Result[2] = ':') then
+    Result := Result + '\';
+  Result := DropTrailingBackslash(ExpandFileName(Result));
+end;
+
+// True when Root starts with a drive letter and ':'; UNC and '\\?\' roots are
+// unsupported because every served path must start that way.
+function WebRootOnDrive(const Root: AnsiString): Boolean;
+begin
+  Result := (Length(Root) >= 2) and (Root[1] in ['A' .. 'Z', 'a' .. 'z']) and
+    (Root[2] = ':');
+end;
+
 function GetHomeDir: Boolean;
 var
   s: AnsiString;
-  i: DWORD;
+  i, fa: DWORD;
 begin
   Result := False;
   if ParamCount < 1 then
@@ -2739,9 +2895,49 @@ begin
       ' failed to start.');
     Exit;
   end;
-  ParamStr1 := ParamStrAnsi(1);
-  if ParamStr1[Length(ParamStr1)] = '\' then
-    Delete(ParamStr1, Length(ParamStr1), 1);
+  // The web root must be an existing directory on a drive letter.
+  ParamStr1 := ResolveWebRoot(ParamStrAnsi(1));
+  if (ParamStr1 <> '') and not WebRootOnDrive(ParamStr1) then
+  begin
+    ShowFailureBox('Home directory "' + ParamStrAnsi(1) +
+      '" is not on a drive letter; UNC paths are not supported'#13#10 +
+      CServerName + ' failed to start.');
+    Exit;
+  end;
+  s := ParamStr1 + '\';
+  fa := INVALID_FILE_ATTRIBUTES;
+  if ParamStr1 <> '' then
+    fa := GetFileAttributesA(@(s[1]));
+  if (fa = INVALID_FILE_ATTRIBUTES) or ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0)
+  then
+  begin
+    ShowFailureBox('Home directory "' + ParamStrAnsi(1) +
+      '" is not an existing directory'#13#10 + CServerName +
+      ' failed to start.');
+    Exit;
+  end;
+  // Without these final paths HandleServable has no reference, so startup
+  // fails; a missing cgi-bin leaves ScriptsFinalPath empty.
+  RootFinalPath := DropTrailingBackslash(GetFinalPathName(s));
+  if RootFinalPath = '' then
+  begin
+    s := 'The final path of "' + ParamStr1 + '" cannot be resolved'#13#10 +
+      'Reason: "' + SysErrorMsg(GetLastError) + '"'#13#10#13#10 + CServerName +
+      ' failed to start';
+    ShowFailureBox(s);
+    Exit;
+  end;
+  s := ParamStr1 + '\' + ScriptsPath;
+  ScriptsFinalPath := DropTrailingBackslash(GetFinalPathName(s));
+  if (ScriptsFinalPath = '') and
+    (GetFileAttributesA(@(s[1])) <> INVALID_FILE_ATTRIBUTES) then
+  begin
+    s := 'The final path of "' + s + '" cannot be resolved'#13#10 +
+      'Reason: "' + SysErrorMsg(GetLastError) + '"'#13#10#13#10 + CServerName +
+      ' failed to start';
+    ShowFailureBox(s);
+    Exit;
+  end;
   s := FindRootFile('\', IsCGI);
   if not FileExists(s) then
   begin

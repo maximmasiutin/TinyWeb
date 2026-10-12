@@ -421,6 +421,162 @@ begin
     ExpandFileName(MultibytePath(519, 2)), '');
 end;
 
+procedure TestPathContainment;
+const
+  Dirs: array [0 .. 4] of AnsiString = ('C:\www', 'C:\Web Root\Site', 'D:\a',
+    '\\srv\share', 'C:\www\cgi-bin');
+  Names: array [0 .. 3] of AnsiString = ('a', 'Index.HTML', 'x y.z', 'cgi-bin');
+var
+  i, j: Integer;
+  D, N: AnsiString;
+begin
+  Check('PathWithinDir child', PathWithinDir('C:\www\page.html', 'C:\www'));
+  Check('PathWithinDir exact root', PathWithinDir('C:\www', 'C:\www'));
+  Check('PathWithinDir root with a trailing separator',
+    PathWithinDir('C:\www\a', 'C:\www\'));
+  Check('PathWithinDir path with a trailing separator',
+    PathWithinDir('C:\www\', 'C:\www'));
+  Check('PathWithinDir folds ASCII case', PathWithinDir('c:\WWW\Page.HTML', 'C:\www'));
+  Check('PathWithinDir sibling sharing the prefix',
+    not PathWithinDir('C:\www-review\marker.txt', 'C:\www'));
+  Check('PathWithinDir longer name', not PathWithinDir('C:\wwwx', 'C:\www'));
+  Check('PathWithinDir cgi-bin-other is not cgi-bin',
+    not PathWithinDir('C:\www\cgi-bin-other\a.exe', 'C:\www\cgi-bin'));
+  Check('PathWithinDir cgi-bin child', PathWithinDir('C:\www\cgi-bin\a.exe', 'C:\www\cgi-bin'));
+  Check('PathWithinDir parent', not PathWithinDir('C:\', 'C:\www'));
+  Check('PathWithinDir other drive', not PathWithinDir('D:\www\a', 'C:\www'));
+  Check('PathWithinDir drive root as C:', PathWithinDir('C:\a\b', 'C:'));
+  Check('PathWithinDir drive root as C:\', PathWithinDir('C:\a\b', 'C:\'));
+  Check('PathWithinDir drive root itself', PathWithinDir('C:\', 'C:'));
+  Check('PathWithinDir drive root, other drive', not PathWithinDir('D:\a', 'C:\'));
+  Check('PathWithinDir drive-relative name', not PathWithinDir('C:a', 'C:'));
+  Check('PathWithinDir UNC child', PathWithinDir('\\srv\share\a', '\\srv\share'));
+  Check('PathWithinDir UNC sibling share',
+    not PathWithinDir('\\srv\share2\a', '\\srv\share'));
+  Check('PathWithinDir empty path', not PathWithinDir('', 'C:\www'));
+  Check('PathWithinDir empty directory', not PathWithinDir('C:\www\a', ''));
+  Check('PathWithinDir bare separator', not PathWithinDir('C:\www\a', '\'));
+  // Code page 932: $95 $5C is one character, so its $5C is no separator.
+  CheckInt('AnsiCharLength 932 lead byte', AnsiCharLength(#$95#$5C, 1, 932), 2);
+  CheckInt('AnsiCharLength 932 lone lead byte', AnsiCharLength(#$95, 1, 932), 1);
+  CheckInt('AnsiCharLength 1252', AnsiCharLength(#$95#$5C, 1, 1252), 1);
+  Check('EndsWithBackslash 932 separator', EndsWithBackslash('C:\t\', 932));
+  Check('EndsWithBackslash 932 trail byte',
+    not EndsWithBackslash('C:\t\'#$95#$5C, 932));
+  Check('EndsWithBackslash 1252 same bytes', EndsWithBackslash('C:\t\'#$95#$5C, 1252));
+  Check('EndsWithBackslash empty', not EndsWithBackslash('', 932));
+  Check('PathWithinDir 932 root ending in a $5C trail byte, sibling',
+    not PathWithinDir('C:\t\'#$95#$5C'x\a', 'C:\t\'#$95#$5C, 932));
+  Check('PathWithinDir 932 root ending in a $5C trail byte, child',
+    PathWithinDir('C:\t\'#$95#$5C'\a', 'C:\t\'#$95#$5C, 932));
+  Check('PathWithinDir 932 directory ending in a lone lead byte',
+    not PathWithinDir('C:\t\'#$95'\a', 'C:\t\'#$95, 932));
+  // $83 $41 and $83 $61 are different characters in 932; their trail bytes
+  // must not be case-folded together.
+  Check('PathWithinDir 932 sibling differing only in a trail byte',
+    not PathWithinDir('C:\t'#$83#$61'\a', 'C:\t'#$83#$41, 932));
+  Check('PathWithinDir 932 child under a trail byte in A to Z',
+    PathWithinDir('C:\t'#$83#$41'\a', 'C:\t'#$83#$41, 932));
+  Check('PathWithinDir 932 folds ASCII around double-byte characters',
+    PathWithinDir('C:\T'#$83#$41'\A', 'c:\t'#$83#$41, 932));
+  Check('PathWithinDir 1252 folds the same bytes',
+    PathWithinDir('C:\t'#$83#$61'\a', 'C:\t'#$83#$41, 1252));
+
+  // Folding is ASCII only.
+  Check('PathWithinDir ASCII-only folding',
+    not PathWithinDir('C:\'#$C9'\a', 'C:\'#$E9));
+
+  // Properties: itself, child, case change, prefix sibling, parent, grandchild.
+  for i := Low(Dirs) to High(Dirs) do
+  begin
+    D := Dirs[i];
+    Check('PathWithinDir property: itself, ' + D, PathWithinDir(D, D));
+    for j := Low(Names) to High(Names) do
+    begin
+      N := Names[j];
+      Check('PathWithinDir property: child, ' + D + '\' + N,
+        PathWithinDir(D + '\' + N, D));
+      Check('PathWithinDir property: case change, ' + D + '\' + N,
+        PathWithinDir(UpperCase(D + '\' + N), LowerCase(D)) and
+        PathWithinDir(LowerCase(D + '\' + N), UpperCase(D)));
+      Check('PathWithinDir property: prefix sibling, ' + D + N,
+        not PathWithinDir(D + N, D));
+      Check('PathWithinDir property: parent, ' + D + '\' + N,
+        not PathWithinDir(D, D + '\' + N));
+      Check('PathWithinDir property: grandchild, ' + D + '\' + N,
+        PathWithinDir(D + '\' + N + '\' + N, D + '\' + N));
+    end;
+  end;
+end;
+
+procedure TestFinalPath;
+const
+  CUtf8CodePage = 65001;
+var
+  dir, fname, f, fd, longdir, longname: AnsiString;
+  h: THandle;
+  fa: DWORD;
+  i: Integer;
+begin
+  dir := GetEnvVariable('TEMP');
+  fname := MakeNormName(dir, 'xbtest_final.txt');
+  h := _CreateFile(fname, [cWrite, cTruncate]);
+  Check('final path: create a file', h <> INVALID_HANDLE_VALUE);
+  f := GetFinalPathByHandle(h);
+  Check('GetFinalPathByHandle answers a drive-letter path, no \\?\ prefix',
+    (Length(f) > 3) and (f[2] = ':') and (f[3] = '\'));
+  Check('GetFinalPathByHandle ends with the file name',
+    StrEnds(LowerCase(f), '\xbtest_final.txt'));
+  fa := GetFileAttrByHandle(h);
+  Check('GetFileAttrByHandle file',
+    (fa <> INVALID_FILE_ATTRIBUTES) and ((fa and FILE_ATTRIBUTE_DIRECTORY) = 0));
+  CloseHandle(h);
+  CheckStr('GetFinalPathName of a file equals the handle answer',
+    GetFinalPathName(fname), f);
+  fd := GetFinalPathName(dir);
+  Check('GetFinalPathName opens a directory', fd <> '');
+  Check('the final path of the file lies in the final path of its directory',
+    PathWithinDir(f, fd) and (f <> fd));
+  h := _CreateFile(dir, [cRead, cShareAllowWrite, cBackupSemantics]);
+  Check('_CreateFile cBackupSemantics opens a directory', h <> INVALID_HANDLE_VALUE);
+  fa := GetFileAttrByHandle(h);
+  Check('GetFileAttrByHandle directory',
+    (fa <> INVALID_FILE_ATTRIBUTES) and ((fa and FILE_ATTRIBUTE_DIRECTORY) <> 0));
+  CloseHandle(h);
+  DeleteFileA(PAnsiChar(fname));
+  CheckStr('GetFinalPathName missing file', GetFinalPathName(fname), '');
+  CheckStr('GetFinalPathName empty name', GetFinalPathName(''), '');
+  CheckStr('GetFinalPathByHandle invalid handle',
+    GetFinalPathByHandle(INVALID_HANDLE_VALUE), '');
+  CheckStr('GetFinalPathByHandle zero handle', GetFinalPathByHandle(0), '');
+  Check('GetFileAttrByHandle invalid handle',
+    GetFileAttrByHandle(INVALID_HANDLE_VALUE) = INVALID_FILE_ATTRIBUTES);
+
+  // Under UTF-8, U+00E9 is two bytes and one UTF-16 unit, so this path takes
+  // the sized retry.
+  if GetACP <> CUtf8CodePage then
+    Exit;
+  longdir := MakeNormName(dir, 'xbtest_long_');
+  for i := 1 to 90 do
+    longdir := longdir + #$C3#$A9;
+  longname := 'f';
+  for i := 1 to 40 do
+    longname := longname + #$C3#$A9;
+  longname := longname + '.txt';
+  fname := MakeNormName(longdir, longname);
+  Check('final path: the long path has MAX_PATH bytes or more',
+    Length(fname) >= MAX_PATH);
+  CreateDirectoryA(PAnsiChar(longdir), nil);
+  h := _CreateFile(fname, [cWrite, cTruncate]);
+  Check('final path: create the long file', h <> INVALID_HANDLE_VALUE);
+  f := GetFinalPathByHandle(h);
+  Check('GetFinalPathByHandle long path, sized retry',
+    (Length(f) >= MAX_PATH) and StrEnds(f, '\' + longname));
+  CloseHandle(h);
+  DeleteFileA(PAnsiChar(fname));
+  RemoveDirectoryA(PAnsiChar(longdir));
+end;
+
 procedure TestMask;
 begin
   Check('MatchMask star', MatchMask('FILE.TXT', '*.txt'));
@@ -671,6 +827,8 @@ begin
   TestRfc;
   TestPaths;
   TestExpandFileNameLimits;
+  TestPathContainment;
+  TestFinalPath;
   TestMask;
   TestTime;
   TestColl;
