@@ -135,6 +135,18 @@ def test_cgitest_login_post_flow(server):
     assert b"successfully logged in" in body
 
 
+def test_head_cgi_answer_carries_no_body(server):
+    # RFC 3875 Section 4.3.2: the server discards what the script writes after
+    # its header for a HEAD request.
+    raw = server.raw(
+        b"HEAD /cgi-bin/envdump.exe HTTP/1.1\r\nHost: t\r\n"
+        b"Connection: close\r\n\r\n"
+    )
+    head, sep, tail = raw.partition(b"\r\n\r\n")
+    assert b" 200 " in head.split(b"\r\n", 1)[0], head
+    assert tail == b""
+
+
 def test_server_alive_after_cgi_tests(server):
     status, headers, body = server.request("GET", "/index.html")
     assert status == 200
