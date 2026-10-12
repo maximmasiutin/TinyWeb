@@ -2675,7 +2675,7 @@ begin
 
       if Method = 'HEAD' then
       begin
-        // RFC 9110 Section 9.3.2, RFC 3875 Section 4.3.2: the GET header without
+        // RFC 9110 Section 9.3.2, RFC 3875 Section 4.3.3: the GET header without
         // content, whether the answer is a file, CGI output or an error page.
         Socket.WriteStr(s);
         ZeroHandle(FHandle);
