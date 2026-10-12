@@ -1,8 +1,8 @@
 # TinyWeb Server
 
-Version 2.06
+Version 2.07
 
-Released 25 August 2026
+Released 12 October 2026
 
 Written by Maxim Masiutin
 
@@ -23,6 +23,8 @@ To set up the TinyWeb Server, just create a shortcut in the Startup menu with th
 Here, `c:\www\bin\tiny.exe` is the path to TinyWeb executable, `c:\www\root` is the path to www home (root) directory, and `c:\www\log` is the directory for log files that TinyWeb keeps.
 
 **Note:** These paths are just examples. You can customize them to your needs. Also, make sure that an `index.html` file exists in your www home (root) directory, otherwise the server will fail to start.
+
+TinyWeb 2.07 and later require Windows Vista or Windows Server 2008 or later.
 
 TinyWeb is not a windowed application, so there is no window with TinyWeb. It is also not a console application, so there is no console window for TinyWeb. Moreover, it is not a Windows Service. Once started, the `tiny.exe` process will appear in Task List. There is no way to stop Tiny Web except via the "End Task" operation.
 
@@ -84,6 +86,12 @@ The `STRICT_CGI_PARAMS` define in `SRC/define.inc` controls whitelist validation
 - **Disabled**: Allows all characters (escaped for safety)
 
 To disable strict mode, comment out `{$DEFINE STRICT_CGI_PARAMS}` in `define.inc`.
+
+## Security Model
+
+TinyWeb serves files from the www home (root) directory and runs CGI programs from its `cgi-bin` directory. A CGI program may also answer with a filesystem path in its `Location` header, a TinyWeb extension; TinyWeb then sends that file only when it lies inside the root directory and outside `cgi-bin`. For every static file it sends, TinyWeb checks the final path of the opened file, after junctions and symbolic links are resolved.
+
+Anyone who can create, replace or link files under the root directory is trusted. That includes the accounts with write access to it, upload handlers and CGI programs that write files there, and the tools that deploy or synchronize the site. TinyWeb does not defend against such a writer: a hard link inside the root to a file elsewhere is served, and a file replaced while a request is being handled may be the one sent. A deployment in which untrusted users can create files under the root directory is outside this model; keep upload directories outside the root.
 
 ## Security Vulnerabilities Fixed
 
