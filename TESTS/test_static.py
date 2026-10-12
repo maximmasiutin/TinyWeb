@@ -1,5 +1,7 @@
 """Static file serving: the baseline the CGI tests stand on."""
 
+import socket
+
 
 def test_index_file(server):
     status, headers, body = server.request("GET", "/index.html")
@@ -66,6 +68,42 @@ def test_304_carries_no_body_on_the_wire(server):
     head, sep, tail = raw.partition(b"\r\n\r\n")
     assert b" 304 " in head.split(b"\r\n", 1)[0]
     assert tail == b""
+
+
+def test_head_error_page_carries_no_body(server):
+    # RFC 9110 Section 9.3.2: the generated error page is content as well.
+    raw = server.raw(
+        b"HEAD /no-such-file.html HTTP/1.1\r\nHost: t\r\n"
+        b"Connection: close\r\n\r\n"
+    )
+    head, sep, tail = raw.partition(b"\r\n\r\n")
+    assert b" 403 " in head.split(b"\r\n", 1)[0], head
+    assert tail == b""
+
+
+def test_head_keeps_keep_alive_framing(server):
+    # On a kept-alive connection a body after the HEAD header would be read
+    # as the start of the next answer.
+    buf = b""
+    with socket.create_connection((server.host, server.port), timeout=15) as s:
+        s.sendall(b"HEAD /page.html HTTP/1.1\r\nHost: t\r\n"
+                  b"Connection: Keep-Alive\r\n\r\n")
+        while b"\r\n\r\n" not in buf:
+            b = s.recv(65536)
+            assert b, buf
+            buf += b
+        s.sendall(b"GET /page.html HTTP/1.1\r\nHost: t\r\n"
+                  b"Connection: close\r\n\r\n")
+        while True:
+            b = s.recv(65536)
+            if not b:
+                break
+            buf += b
+    head, sep, tail = buf.partition(b"\r\n\r\n")
+    assert b" 200 " in head.split(b"\r\n", 1)[0], head
+    assert b"Keep-Alive" in head, head
+    assert tail.startswith(b"HTTP/1.0 200 "), tail[:80]
+    assert b"tinyweb-static-page" in tail.partition(b"\r\n\r\n")[2], tail
 
 
 def test_unsupported_method_403(server):

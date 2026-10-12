@@ -213,9 +213,7 @@ def test_head_location_file_answers_as_head_static(box):
     assert loc_tail == uri_tail
 
 
-# RFC 9110 Section 9.3.2: a HEAD answer carries no content; both routes still
-# send the file, so this is a strict expected failure.
-@pytest.mark.xfail(strict=True, reason="HEAD sends the file body")
+# RFC 9110 Section 9.3.2: a HEAD answer carries no content on either route.
 @pytest.mark.parametrize("target", [b"/page.html",
                                     b"/cgi-bin/loclocal.exe?target=page"])
 def test_head_sends_no_body(box, target):
